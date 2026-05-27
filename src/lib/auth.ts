@@ -2,7 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-import { TicketDatabase, UserProfile, isClientRole } from "@/lib/ticketing";
+import { TicketDatabase, UserProfile, isClientRole, isInternalRole } from "@/lib/ticketing";
 
 export const CLIENT_SESSION_COOKIE = "nexops_client_actor";
 export const LOCAL_CLIENT_PASSWORD = "NexOps2026!";
@@ -29,15 +29,19 @@ export async function clearClientSession() {
 }
 
 export async function getAuthenticatedClientActor(db: TicketDatabase) {
-  const actorId = await getClientSessionActorId();
-  if (!actorId) return null;
-
-  const actor = db.users.find((user) => user.id === actorId) ?? null;
+  const actor = await getAuthenticatedActor(db);
   if (!actor || !actor.companyId || !isClientRole(actor.role)) {
     return null;
   }
 
   return actor;
+}
+
+export async function getAuthenticatedActor(db: TicketDatabase) {
+  const actorId = await getClientSessionActorId();
+  if (!actorId) return null;
+
+  return db.users.find((user) => user.id === actorId) ?? null;
 }
 
 export function getClientUsers(db: TicketDatabase): UserProfile[] {
@@ -53,4 +57,14 @@ export function findClientUserByEmail(db: TicketDatabase, email: string) {
         user.email.toLowerCase() === email.toLowerCase(),
     ) ?? null
   );
+}
+
+export function findUserByEmail(db: TicketDatabase, email: string) {
+  return (
+    db.users.find((user) => user.email.toLowerCase() === email.toLowerCase()) ?? null
+  );
+}
+
+export function isInternalActor(actor: UserProfile | null) {
+  return Boolean(actor && isInternalRole(actor.role));
 }

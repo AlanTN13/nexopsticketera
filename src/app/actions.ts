@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { LOCAL_CLIENT_PASSWORD, clearClientSession, findClientUserByEmail, setClientSession } from "@/lib/auth";
+import { LOCAL_CLIENT_PASSWORD, clearClientSession, findUserByEmail, isInternalActor, setClientSession } from "@/lib/auth";
 import { addComment, createCompany, createTicket, createUser, getAppSnapshot, resetDemoDb, updateTicketWorkflow } from "@/lib/app-store";
-import { COMPANY_PLANS, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES, isClientRole } from "@/lib/ticketing";
+import { COMPANY_PLANS, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
@@ -49,10 +49,10 @@ export async function loginClientAction(
   const email = getString(formData, "email").toLowerCase();
   const password = getString(formData, "password");
   const db = await getAppSnapshot();
-  const actor = findClientUserByEmail(db, email);
+  const actor = findUserByEmail(db, email);
 
-  if (!actor || !actor.companyId || !isClientRole(actor.role)) {
-    return { error: "No encontramos un usuario cliente con ese email." };
+  if (!actor) {
+    return { error: "No encontramos un usuario con ese email." };
   }
 
   if (!password) {
@@ -71,7 +71,7 @@ export async function loginClientAction(
   }
 
   await setClientSession(actor.id);
-  redirect("/portal");
+  redirect(isInternalActor(actor) ? routeWithActor("/backoffice", actor.id) : "/portal");
 }
 
 export async function logoutClientAction() {

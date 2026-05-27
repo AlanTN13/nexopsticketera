@@ -1,13 +1,17 @@
 import { redirect } from "next/navigation";
 
-import { getAuthenticatedClientActor } from "@/lib/auth";
+import { getAuthenticatedActor, isInternalActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const db = await getAppSnapshot();
-  const actor = await getAuthenticatedClientActor(db);
+  const actor = await getAuthenticatedActor(db);
 
-  redirect(actor ? "/portal" : "/portal/login");
+  if (!actor) {
+    redirect("/portal/login");
+  }
+
+  redirect(isInternalActor(actor) ? `/backoffice?actor=${encodeURIComponent(actor.id)}` : "/portal");
 }

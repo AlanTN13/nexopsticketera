@@ -2,17 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LoginClientForm } from "@/components/login-client-form";
-import { getAuthenticatedClientActor } from "@/lib/auth";
+import { getAuthenticatedActor, isInternalActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
 
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
   const db = await getAppSnapshot();
-  const authenticatedActor = await getAuthenticatedClientActor(db);
+  const authenticatedActor = await getAuthenticatedActor(db);
 
   if (authenticatedActor) {
-    redirect("/portal");
+    redirect(isInternalActor(authenticatedActor) ? `/backoffice?actor=${encodeURIComponent(authenticatedActor.id)}` : "/portal");
   }
 
   return (
