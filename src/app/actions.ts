@@ -40,6 +40,11 @@ function buildPostActionRedirect(path: string, actorId: string) {
   return routeWithActor(path, actorId);
 }
 
+function buildErrorRedirect(path: string, message: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}error=${encodeURIComponent(message)}`;
+}
+
 export type LoginClientState = {
   error: string | null;
 };
@@ -170,15 +175,24 @@ export async function createCompanyAction(formData: FormData) {
   const actorId = getString(formData, "actorId");
   const returnPath = getString(formData, "returnPath");
 
-  await createCompany({
-    actorId,
-    companyName: getString(formData, "companyName"),
-    industry: getString(formData, "industry"),
-    plan: assertInSet(getString(formData, "plan"), COMPANY_PLANS),
-    adminName: getString(formData, "adminName"),
-    adminEmail: getString(formData, "adminEmail"),
-    adminTitle: getString(formData, "adminTitle"),
-  });
+  try {
+    await createCompany({
+      actorId,
+      companyName: getString(formData, "companyName"),
+      industry: getString(formData, "industry"),
+      plan: assertInSet(getString(formData, "plan"), COMPANY_PLANS),
+      adminName: getString(formData, "adminName"),
+      adminEmail: getString(formData, "adminEmail"),
+      adminTitle: getString(formData, "adminTitle"),
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "No pudimos crear la empresa. Revisá los datos e intentá de nuevo.";
+
+    redirect(buildErrorRedirect(returnPath || "/backoffice", message));
+  }
 
   revalidatePath("/backoffice");
   revalidatePath(returnPath);

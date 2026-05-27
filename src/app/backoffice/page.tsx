@@ -11,7 +11,12 @@ import { companyPlanLabels } from "@/lib/ticketing";
 
 export const dynamic = "force-dynamic";
 
-export default async function BackofficeHome() {
+type BackofficeHomeProps = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function BackofficeHome({ searchParams }: BackofficeHomeProps) {
+  const { error } = await searchParams;
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
   if (!actor) {
@@ -39,6 +44,12 @@ export default async function BackofficeHome() {
         <StatCard label="Alta prioridad" value={stats.highPriority} detail="Casos high + critical visibles para NexOps." tone="light" />
         <StatCard label="Esperando cliente" value={stats.waitingCustomer} detail="Tickets bloqueados hasta respuesta del cliente." tone="light" />
       </div>
+
+      {error ? (
+        <div className="rounded-[24px] border border-rose-300/40 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-[0_10px_30px_rgba(244,63,94,0.08)]">
+          {error}
+        </div>
+      ) : null}
 
       <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
         <SectionCard
