@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { LogoutClientForm } from "@/components/forms";
 import { TicketTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
@@ -43,6 +44,7 @@ export default async function BackofficeQueuePage({ searchParams }: BackofficeQu
         <>
           <NavButton href={withActor("/backoffice", actor.id)} label="Empresas" muted tone="light" />
           <NavButton href={withActor("/backoffice/users", actor.id)} label="Equipo NexOps" muted tone="light" />
+          <LogoutClientForm tone="light" />
         </>
       }
     >

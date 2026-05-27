@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { CreateUserForm } from "@/components/forms";
+import { CreateUserForm, LogoutClientForm } from "@/components/forms";
 import { UserTable } from "@/components/tables";
 import { AppShell, NavButton, SectionCard } from "@/components/ui";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
@@ -28,6 +28,7 @@ export default async function BackofficeUsersPage() {
         <>
           <NavButton href={withActor("/backoffice", actor.id)} label="Empresas" muted tone="light" />
           <NavButton href={withActor("/backoffice/queue", actor.id)} label="Cola global" muted tone="light" />
+          <LogoutClientForm tone="light" />
         </>
       }
     >

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { CreateUserForm } from "@/components/forms";
+import { CreateUserForm, LogoutClientForm } from "@/components/forms";
 import { TicketTable, UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
@@ -55,6 +55,7 @@ export default async function BackofficeCompanyDetail({
         <>
           <NavButton href={withActor("/backoffice", actor.id)} label="Volver a empresas" muted tone="light" />
           <NavButton href={withActor(`/backoffice/queue?companyId=${company.id}`, actor.id)} label="Ver cola de la cuenta" muted tone="light" />
+          <LogoutClientForm tone="light" />
         </>
       }
     >

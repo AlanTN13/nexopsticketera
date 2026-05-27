@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { LogoutClientForm } from "@/components/forms";
 import { AppShell, NavButton, SectionCard } from "@/components/ui";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
@@ -25,6 +26,7 @@ export default async function SetupPage() {
         <>
           <NavButton href={withActor("/", actor.id)} label="Inicio" muted />
           <NavButton href={withActor("/backoffice", actor.id)} label="Backoffice" />
+          <LogoutClientForm tone="light" />
         </>
       }
     >

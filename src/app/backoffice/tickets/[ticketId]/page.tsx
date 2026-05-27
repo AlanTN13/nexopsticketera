@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { AddCommentForm, TicketWorkflowForm } from "@/components/forms";
+import { AddCommentForm, LogoutClientForm, TicketWorkflowForm } from "@/components/forms";
 import { AppShell, AreaPill, EmptyState, NavButton, PriorityPill, SectionCard, StatusPill, TimelineDate } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
@@ -55,6 +55,7 @@ export default async function BackofficeTicketDetail({
         <>
           <NavButton href={withActor("/backoffice/queue", actor.id)} label="Volver a la cola" muted tone="light" />
           <NavButton href={withActor(`/backoffice/companies/${ticket.companyId}`, actor.id)} label="Ver empresa" tone="light" />
+          <LogoutClientForm tone="light" />
         </>
       }
     >

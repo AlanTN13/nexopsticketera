@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { CreateCompanyForm } from "@/components/forms";
+import { CreateCompanyForm, LogoutClientForm } from "@/components/forms";
 import { AppShell, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
@@ -29,6 +29,7 @@ export default async function BackofficeHome() {
         <>
           <NavButton href={withActor("/backoffice/queue", actor.id)} label="Cola global" muted tone="light" />
           <NavButton href={withActor("/backoffice/users", actor.id)} label="Equipo NexOps" muted tone="light" />
+          <LogoutClientForm tone="light" />
         </>
       }
     >
