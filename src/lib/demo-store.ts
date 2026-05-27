@@ -1,6 +1,7 @@
 import "server-only";
 
 import { promises as fs } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { demoSeed } from "@/lib/demo-seed";
@@ -22,7 +23,7 @@ import {
   isClientRole,
 } from "@/lib/ticketing";
 
-const DB_PATH = path.join("/private/tmp", "nexops-ticketing-demo.json");
+const DB_PATH = path.join(tmpdir(), "nexops-ticketing-demo.json");
 
 async function ensureDbFile() {
   try {
