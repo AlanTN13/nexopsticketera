@@ -67,7 +67,7 @@ export default async function BackofficeHome({ searchParams }: BackofficeHomePro
               return (
                 <Link
                   key={company.id}
-                  href={withActor(`/backoffice/companies/${company.id}`, actor.id)}
+                  href={withActor(`/backoffice/companies/${company.slug}`, actor.id)}
                   className="rounded-[28px] border border-[rgba(91,72,199,0.12)] bg-white/78 p-5 transition hover:border-[#7c5bff] hover:bg-white"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">

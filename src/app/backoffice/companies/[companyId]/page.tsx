@@ -5,7 +5,7 @@ import { TicketTable, UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
-import { getClientUsersForCompany, getCompany, getTicketsForCompany, sortTickets } from "@/lib/queries";
+import { getClientUsersForCompany, getCompanyBySlugOrId, getTicketsForCompany, sortTickets } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 import { companyPlanLabels } from "@/lib/ticketing";
 
@@ -20,14 +20,14 @@ export default async function BackofficeCompanyDetail({
   params,
   searchParams,
 }: CompanyDetailProps) {
-  const { companyId } = await params;
+  const { companyId: companyLookup } = await params;
   const { error } = await searchParams;
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
   if (!actor) {
     redirect("/portal/login");
   }
-  const company = getCompany(db, companyId);
+  const company = getCompanyBySlugOrId(db, companyLookup);
 
   if (!company) {
     return (
@@ -41,6 +41,10 @@ export default async function BackofficeCompanyDetail({
         <EmptyState title="Nada para mostrar" detail="La empresa puede haberse eliminado o el entorno se reinició." tone="light" />
       </AppShell>
     );
+  }
+
+  if (companyLookup !== company.slug) {
+    redirect(`/backoffice/companies/${company.slug}`);
   }
 
   const companyTickets = sortTickets(getTicketsForCompany(db, company.id));
@@ -84,7 +88,7 @@ export default async function BackofficeCompanyDetail({
           <UpdateCompanyForm
             actor={actor}
             company={company}
-            returnPath={`/backoffice/companies/${company.id}`}
+            returnPath={`/backoffice/companies/${company.slug}`}
             tone="light"
           />
         </SectionCard>
@@ -97,7 +101,7 @@ export default async function BackofficeCompanyDetail({
           <CreateUserForm
             actor={actor}
             companyId={company.id}
-            returnPath={`/backoffice/companies/${company.id}`}
+            returnPath={`/backoffice/companies/${company.slug}`}
             clientOnly
             tone="light"
           />

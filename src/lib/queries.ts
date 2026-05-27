@@ -55,6 +55,17 @@ export function getCompany(db: TicketDatabase, companyId: string | null) {
   return db.companies.find((company) => company.id === companyId) ?? null;
 }
 
+export function getCompanyBySlug(db: TicketDatabase, companySlug: string | null) {
+  return db.companies.find((company) => company.slug === companySlug) ?? null;
+}
+
+export function getCompanyBySlugOrId(db: TicketDatabase, companyLookup: string | null) {
+  return (
+    getCompanyBySlug(db, companyLookup) ??
+    getCompany(db, companyLookup)
+  );
+}
+
 export function getUser(db: TicketDatabase, userId: string | null) {
   return db.users.find((user) => user.id === userId) ?? null;
 }

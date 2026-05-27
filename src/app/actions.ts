@@ -203,9 +203,10 @@ export async function updateCompanyAction(formData: FormData) {
   const actorId = getString(formData, "actorId");
   const companyId = getString(formData, "companyId");
   const returnPath = getString(formData, "returnPath") || `/backoffice/companies/${companyId}`;
+  let nextPath = returnPath;
 
   try {
-    await updateCompany({
+    const company = await updateCompany({
       actorId,
       companyId,
       name: getString(formData, "name"),
@@ -215,6 +216,8 @@ export async function updateCompanyAction(formData: FormData) {
       status: getString(formData, "status") === "active" ? "active" : "onboarding",
       primaryContact: getString(formData, "primaryContact"),
     });
+
+    nextPath = `/backoffice/companies/${company.slug}`;
   } catch (error) {
     const message =
       error instanceof Error && error.message
@@ -226,5 +229,6 @@ export async function updateCompanyAction(formData: FormData) {
 
   revalidatePath("/backoffice");
   revalidatePath(returnPath);
-  redirect(buildPostActionRedirect(returnPath, actorId));
+  revalidatePath(nextPath);
+  redirect(buildPostActionRedirect(nextPath, actorId));
 }

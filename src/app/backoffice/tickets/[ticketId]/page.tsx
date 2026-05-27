@@ -44,6 +44,7 @@ export default async function BackofficeTicketDetail({
   const assignee = getUser(db, ticket.assignedToId);
   const company = db.companies.find((item) => item.id === ticket.companyId);
   const internalUsers = getInternalUsers(db);
+  const companyPath = company?.slug ?? ticket.companyId;
 
   return (
     <AppShell
@@ -54,7 +55,7 @@ export default async function BackofficeTicketDetail({
       actions={
         <>
           <NavButton href={withActor("/backoffice/queue", actor.id)} label="Volver a la cola" muted tone="light" />
-          <NavButton href={withActor(`/backoffice/companies/${ticket.companyId}`, actor.id)} label="Ver empresa" tone="light" />
+          <NavButton href={withActor(`/backoffice/companies/${companyPath}`, actor.id)} label="Ver empresa" tone="light" />
           <LogoutClientForm tone="light" />
         </>
       }
