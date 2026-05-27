@@ -1,0 +1,166 @@
+import {
+  Company,
+  TicketComment,
+  TicketDatabase,
+  TicketHistoryEntry,
+  TicketRecord,
+  TicketStatus,
+  UserProfile,
+  areaLabels,
+  canManageGlobalCatalog,
+  canManageOperations,
+  isInternalRole,
+  isClientRole,
+} from "@/lib/ticketing";
+
+export function getActor(db: TicketDatabase, actorId: string | undefined) {
+  return (
+    db.users.find((user) => user.id === actorId) ??
+    db.users.find((user) => user.role === "platform_admin") ??
+    db.users.find((user) => user.role === "team_lead") ??
+    db.users.find((user) => user.role === "client_admin") ??
+    db.users[0]
+  );
+}
+
+export function getVisibleTickets(db: TicketDatabase, actor: UserProfile) {
+  if (isClientRole(actor.role) && actor.companyId) {
+    return db.tickets.filter((ticket) => ticket.companyId === actor.companyId);
+  }
+
+  return db.tickets;
+}
+
+export function getVisibleComments(
+  db: TicketDatabase,
+  actor: UserProfile,
+  ticketId: string,
+) {
+  return db.comments.filter((comment) => {
+    if (comment.ticketId !== ticketId) return false;
+    if (comment.visibility === "external") return true;
+    return canManageOperations(actor.role);
+  });
+}
+
+export function getTicketHistory(db: TicketDatabase, ticketId: string) {
+  return db.history.filter((entry) => entry.ticketId === ticketId);
+}
+
+export function getTicketById(db: TicketDatabase, actor: UserProfile, ticketId: string) {
+  return getVisibleTickets(db, actor).find((ticket) => ticket.id === ticketId) ?? null;
+}
+
+export function getCompany(db: TicketDatabase, companyId: string | null) {
+  return db.companies.find((company) => company.id === companyId) ?? null;
+}
+
+export function getUser(db: TicketDatabase, userId: string | null) {
+  return db.users.find((user) => user.id === userId) ?? null;
+}
+
+export function getUsersForCompany(db: TicketDatabase, companyId: string | null) {
+  if (!companyId) return [];
+  return db.users.filter((user) => user.companyId === companyId);
+}
+
+export function getClientUsersForCompany(db: TicketDatabase, companyId: string | null) {
+  if (!companyId) return [];
+  return db.users.filter((user) => user.companyId === companyId && isClientRole(user.role));
+}
+
+export function getInternalUsers(db: TicketDatabase) {
+  return db.users.filter((user) => !isClientRole(user.role));
+}
+
+export function getInternalDirectoryUsers(db: TicketDatabase) {
+  return db.users.filter((user) => isInternalRole(user.role));
+}
+
+export function getTicketsForCompany(db: TicketDatabase, companyId: string | null) {
+  if (!companyId) return [];
+  return db.tickets.filter((ticket) => ticket.companyId === companyId);
+}
+
+export function buildPortalStats(tickets: TicketRecord[]) {
+  const openStatuses: TicketStatus[] = ["new", "analysis", "in_progress", "waiting_for_client"];
+  return {
+    total: tickets.length,
+    open: tickets.filter((ticket) => openStatuses.includes(ticket.status)).length,
+    critical: tickets.filter((ticket) => ticket.priority === "critical").length,
+    areas: new Set(tickets.map((ticket) => areaLabels[ticket.area])).size,
+  };
+}
+
+export function buildBackofficeStats(tickets: TicketRecord[], companies: Company[]) {
+  return {
+    activeTickets: tickets.filter((ticket) => ticket.status !== "closed").length,
+    highPriority: tickets.filter(
+      (ticket) => ticket.priority === "high" || ticket.priority === "critical",
+    ).length,
+    waitingCustomer: tickets.filter((ticket) => ticket.status === "waiting_for_client").length,
+    companies: companies.length,
+  };
+}
+
+export function filterTickets(
+  tickets: TicketRecord[],
+  filters: {
+    status?: string;
+    area?: string;
+    priority?: string;
+    companyId?: string;
+    assignedToId?: string;
+  },
+) {
+  return tickets.filter((ticket) => {
+    if (filters.status && filters.status !== "all" && ticket.status !== filters.status) {
+      return false;
+    }
+    if (filters.area && filters.area !== "all" && ticket.area !== filters.area) {
+      return false;
+    }
+    if (
+      filters.priority &&
+      filters.priority !== "all" &&
+      ticket.priority !== filters.priority
+    ) {
+      return false;
+    }
+    if (
+      filters.companyId &&
+      filters.companyId !== "all" &&
+      ticket.companyId !== filters.companyId
+    ) {
+      return false;
+    }
+    if (
+      filters.assignedToId &&
+      filters.assignedToId !== "all" &&
+      (ticket.assignedToId ?? "unassigned") !== filters.assignedToId
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function sortTickets(tickets: TicketRecord[]) {
+  return [...tickets].sort((left, right) => {
+    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+  });
+}
+
+export function buildTicketTimeline(
+  comments: TicketComment[],
+  history: TicketHistoryEntry[],
+) {
+  return [...comments, ...history].sort((left, right) => {
+    return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+  });
+}
+
+export function canAccessCompanyUsers(actor: UserProfile, companyId: string | null) {
+  if (!companyId) return canManageGlobalCatalog(actor.role);
+  return canManageGlobalCatalog(actor.role) || (actor.role === "client_admin" && actor.companyId === companyId);
+}
