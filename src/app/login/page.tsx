@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { LoginClientForm } from "@/components/login-client-form";
 import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
-import { isSupabaseConfigured } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -75,19 +74,6 @@ export default async function LoginPage() {
               <Link href="mailto:soporte@nexops.io" className="text-[var(--brand-tertiary)] transition hover:text-[#1b1638]">
                 Contactar soporte
               </Link>
-            </div>
-
-            <div className="mt-5 rounded-[20px] border border-[rgba(67,48,166,0.14)] bg-[#f3f0ff] px-4 py-3 text-sm text-[#4f5375]">
-              {isSupabaseConfigured() ? (
-                <>
-                  Si el proyecto está recién inicializado, las cuentas demo quedan creadas con la contraseña{" "}
-                  <strong className="text-[#1b1638]">NexOps2026!</strong>
-                </>
-              ) : (
-                <>
-                  Entorno local: usá la contraseña <strong className="text-[#1b1638]">NexOps2026!</strong>
-                </>
-              )}
             </div>
           </section>
         </div>
