@@ -1,22 +1,22 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { CreateCompanyForm } from "@/components/forms";
 import { AppShell, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
-import { buildBackofficeStats, getActor, getClientUsersForCompany, getTicketsForCompany } from "@/lib/queries";
+import { getAuthenticatedInternalActor } from "@/lib/auth";
+import { buildBackofficeStats, getClientUsersForCompany, getTicketsForCompany } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 import { companyPlanLabels } from "@/lib/ticketing";
 
 export const dynamic = "force-dynamic";
 
-type BackofficeHomeProps = {
-  searchParams: Promise<{ actor?: string }>;
-};
-
-export default async function BackofficeHome({ searchParams }: BackofficeHomeProps) {
-  const { actor: actorId } = await searchParams;
+export default async function BackofficeHome() {
   const db = await getAppSnapshot();
-  const actor = getActor(db, actorId);
+  const actor = await getAuthenticatedInternalActor(db);
+  if (!actor) {
+    redirect("/portal/login");
+  }
   const stats = buildBackofficeStats(db.tickets, db.companies);
 
   return (

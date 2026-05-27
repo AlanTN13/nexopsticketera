@@ -1,23 +1,27 @@
+import { redirect } from "next/navigation";
+
 import { AddCommentForm, TicketWorkflowForm } from "@/components/forms";
 import { AppShell, AreaPill, EmptyState, NavButton, PriorityPill, SectionCard, StatusPill, TimelineDate } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
-import { getActor, getInternalUsers, getTicketById, getTicketHistory, getUser, getVisibleComments } from "@/lib/queries";
+import { getAuthenticatedInternalActor } from "@/lib/auth";
+import { getInternalUsers, getTicketById, getTicketHistory, getUser, getVisibleComments } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 
 export const dynamic = "force-dynamic";
 
 type BackofficeTicketDetailProps = {
   params: Promise<{ ticketId: string }>;
-  searchParams: Promise<{ actor?: string }>;
 };
 
 export default async function BackofficeTicketDetail({
   params,
-  searchParams,
 }: BackofficeTicketDetailProps) {
-  const [{ ticketId }, { actor: actorId }] = await Promise.all([params, searchParams]);
+  const { ticketId } = await params;
   const db = await getAppSnapshot();
-  const actor = getActor(db, actorId);
+  const actor = await getAuthenticatedInternalActor(db);
+  if (!actor) {
+    redirect("/portal/login");
+  }
   const ticket = getTicketById(db, actor, ticketId);
 
   if (!ticket) {

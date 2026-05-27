@@ -21,11 +21,19 @@ function assertInSet<T extends readonly string[]>(value: string, allowed: T): T[
 }
 
 function routeWithActor(path: string, actorId: string) {
-  return `${path}?actor=${encodeURIComponent(actorId)}`;
+  void actorId;
+  return path;
 }
 
 function buildPostActionRedirect(path: string, actorId: string) {
-  if (path === "/" || path === "/login" || path === "/portal/login" || path.startsWith("/portal")) {
+  if (
+    path === "/" ||
+    path === "/login" ||
+    path === "/portal/login" ||
+    path.startsWith("/portal") ||
+    path.startsWith("/backoffice") ||
+    path.startsWith("/setup")
+  ) {
     return path;
   }
 

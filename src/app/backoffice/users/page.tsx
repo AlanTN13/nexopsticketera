@@ -1,20 +1,21 @@
+import { redirect } from "next/navigation";
+
 import { CreateUserForm } from "@/components/forms";
 import { UserTable } from "@/components/tables";
 import { AppShell, NavButton, SectionCard } from "@/components/ui";
+import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
-import { getActor, getInternalDirectoryUsers } from "@/lib/queries";
+import { getInternalDirectoryUsers } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 
 export const dynamic = "force-dynamic";
 
-type BackofficeUsersProps = {
-  searchParams: Promise<{ actor?: string }>;
-};
-
-export default async function BackofficeUsersPage({ searchParams }: BackofficeUsersProps) {
-  const { actor: actorId } = await searchParams;
+export default async function BackofficeUsersPage() {
   const db = await getAppSnapshot();
-  const actor = getActor(db, actorId);
+  const actor = await getAuthenticatedInternalActor(db);
+  if (!actor) {
+    redirect("/portal/login");
+  }
   const internalUsers = getInternalDirectoryUsers(db);
 
   return (

@@ -12,7 +12,7 @@ export default async function LoginPage() {
   const authenticatedActor = await getAuthenticatedActor(db);
 
   if (authenticatedActor) {
-    redirect(isInternalActor(authenticatedActor) ? `/backoffice?actor=${encodeURIComponent(authenticatedActor.id)}` : "/portal");
+    redirect(isInternalActor(authenticatedActor) ? "/backoffice" : "/portal");
   }
 
   return (

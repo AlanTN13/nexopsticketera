@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
+
 import { TicketTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
-import { buildBackofficeStats, filterTickets, getActor, getInternalUsers, sortTickets } from "@/lib/queries";
+import { getAuthenticatedInternalActor } from "@/lib/auth";
+import { buildBackofficeStats, filterTickets, getInternalUsers, sortTickets } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +21,12 @@ type BackofficeQueueProps = {
 };
 
 export default async function BackofficeQueuePage({ searchParams }: BackofficeQueueProps) {
-  const { actor: actorId, status, area, priority, companyId, assignedToId } = await searchParams;
+  const { status, area, priority, companyId, assignedToId } = await searchParams;
   const db = await getAppSnapshot();
-  const actor = getActor(db, actorId);
+  const actor = await getAuthenticatedInternalActor(db);
+  if (!actor) {
+    redirect("/portal/login");
+  }
   const tickets = sortTickets(
     filterTickets(db.tickets, { status, area, priority, companyId, assignedToId }),
   );
@@ -49,7 +55,6 @@ export default async function BackofficeQueuePage({ searchParams }: BackofficeQu
 
       <SectionCard title="Cola operativa" description="Filtros por estado, área, empresa, prioridad y asignación para ordenar la ejecución del equipo." tone="light">
         <form className="mb-5 grid gap-4 lg:grid-cols-6">
-          <input type="hidden" name="actor" value={actor.id} />
           <select name="status" defaultValue={status ?? "all"} className="rounded-[20px] border border-[rgba(91,72,199,0.14)] bg-white px-4 py-3 text-sm text-[#1b1638]">
             <option value="all">Todos los estados</option>
             <option value="new">Nuevo</option>
@@ -98,7 +103,7 @@ export default async function BackofficeQueuePage({ searchParams }: BackofficeQu
         </form>
 
         {tickets.length > 0 ? (
-          <TicketTable db={db} tickets={tickets} actor={actor} basePath="/backoffice" tone="light" />
+          <TicketTable db={db} tickets={tickets} basePath="/backoffice" tone="light" />
         ) : (
           <EmptyState
             title="No hay tickets con estos filtros"

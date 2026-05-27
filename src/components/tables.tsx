@@ -7,13 +7,11 @@ import { TicketDatabase, TicketRecord, UserProfile } from "@/lib/ticketing";
 export function TicketTable({
   db,
   tickets,
-  actor,
   basePath,
   tone = "dark",
 }: {
   db: TicketDatabase;
   tickets: TicketRecord[];
-  actor: UserProfile;
   basePath: string;
   tone?: "dark" | "light";
 }) {
@@ -52,7 +50,7 @@ export function TicketTable({
               >
                 <td className="px-4 py-4 align-top">
                   <Link
-                    href={`${basePath}/tickets/${ticket.id}?actor=${actor.id}`}
+                    href={`${basePath}/tickets/${ticket.id}`}
                     className="block transition hover:text-[var(--brand-secondary)]"
                   >
                     <p className="font-semibold">{ticket.code}</p>

@@ -1,19 +1,19 @@
+import { redirect } from "next/navigation";
+
 import { AppShell, NavButton, SectionCard } from "@/components/ui";
+import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
-import { getActor } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 import { isSupabaseConfigured, SUPABASE_URL } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-type SetupPageProps = {
-  searchParams: Promise<{ actor?: string }>;
-};
-
-export default async function SetupPage({ searchParams }: SetupPageProps) {
-  const { actor: actorId } = await searchParams;
+export default async function SetupPage() {
   const db = await getAppSnapshot();
-  const actor = getActor(db, actorId);
+  const actor = await getAuthenticatedInternalActor(db);
+  if (!actor) {
+    redirect("/portal/login");
+  }
   const supabaseReady = isSupabaseConfigured();
 
   return (

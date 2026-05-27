@@ -68,3 +68,12 @@ export function findUserByEmail(db: TicketDatabase, email: string) {
 export function isInternalActor(actor: UserProfile | null) {
   return Boolean(actor && isInternalRole(actor.role));
 }
+
+export async function getAuthenticatedInternalActor(db: TicketDatabase) {
+  const actor = await getAuthenticatedActor(db);
+  if (!actor || !isInternalRole(actor.role)) {
+    return null;
+  }
+
+  return actor;
+}

@@ -13,5 +13,5 @@ export default async function Home() {
     redirect("/portal/login");
   }
 
-  redirect(isInternalActor(actor) ? `/backoffice?actor=${encodeURIComponent(actor.id)}` : "/portal");
+  redirect(isInternalActor(actor) ? "/backoffice" : "/portal");
 }

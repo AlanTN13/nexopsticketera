@@ -1,8 +1,11 @@
+import { redirect } from "next/navigation";
+
 import { CreateUserForm } from "@/components/forms";
 import { TicketTable, UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
-import { getActor, getClientUsersForCompany, getCompany, getTicketsForCompany, sortTickets } from "@/lib/queries";
+import { getAuthenticatedInternalActor } from "@/lib/auth";
+import { getClientUsersForCompany, getCompany, getTicketsForCompany, sortTickets } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 import { companyPlanLabels } from "@/lib/ticketing";
 
@@ -10,16 +13,17 @@ export const dynamic = "force-dynamic";
 
 type CompanyDetailProps = {
   params: Promise<{ companyId: string }>;
-  searchParams: Promise<{ actor?: string }>;
 };
 
 export default async function BackofficeCompanyDetail({
   params,
-  searchParams,
 }: CompanyDetailProps) {
-  const [{ companyId }, { actor: actorId }] = await Promise.all([params, searchParams]);
+  const { companyId } = await params;
   const db = await getAppSnapshot();
-  const actor = getActor(db, actorId);
+  const actor = await getAuthenticatedInternalActor(db);
+  if (!actor) {
+    redirect("/portal/login");
+  }
   const company = getCompany(db, companyId);
 
   if (!company) {
@@ -113,7 +117,7 @@ export default async function BackofficeCompanyDetail({
           tone="light"
         >
           {companyTickets.length > 0 ? (
-            <TicketTable db={db} tickets={companyTickets} actor={actor} basePath="/backoffice" tone="light" />
+            <TicketTable db={db} tickets={companyTickets} basePath="/backoffice" tone="light" />
           ) : (
             <EmptyState
               title="Esta empresa todavía no tiene tickets"
