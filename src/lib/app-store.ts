@@ -753,7 +753,12 @@ export async function getAppSnapshot() {
     return demoStore.getAppSnapshot();
   }
 
-  return getSupabaseSnapshot();
+  try {
+    return await getSupabaseSnapshot();
+  } catch (error) {
+    console.error("Falling back to demo store because Supabase snapshot failed.", error);
+    return demoStore.getAppSnapshot();
+  }
 }
 
 export async function resetDemoDb() {

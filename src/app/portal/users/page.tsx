@@ -19,7 +19,7 @@ export default async function PortalUsersPage({ searchParams }: PortalUsersProps
   const actor = await getAuthenticatedClientActor(db);
 
   if (!actor) {
-    redirect("/login");
+    redirect("/portal/login");
   }
 
   const users = getUsersForCompany(db, actor.companyId);

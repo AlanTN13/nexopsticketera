@@ -25,7 +25,7 @@ function routeWithActor(path: string, actorId: string) {
 }
 
 function buildPostActionRedirect(path: string, actorId: string) {
-  if (path === "/" || path === "/login" || path.startsWith("/portal")) {
+  if (path === "/" || path === "/login" || path === "/portal/login" || path.startsWith("/portal")) {
     return path;
   }
 
@@ -39,7 +39,7 @@ export type LoginClientState = {
 export async function resetDemoAction(formData: FormData) {
   getString(formData, "actorId");
   await resetDemoDb();
-  redirect("/login");
+  redirect("/portal/login");
 }
 
 export async function loginClientAction(
@@ -76,7 +76,7 @@ export async function loginClientAction(
 
 export async function logoutClientAction() {
   await clearClientSession();
-  redirect("/login");
+  redirect("/portal/login");
 }
 
 export async function createTicketAction(formData: FormData) {

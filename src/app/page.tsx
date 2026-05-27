@@ -9,5 +9,5 @@ export default async function Home() {
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedClientActor(db);
 
-  redirect(actor ? "/portal" : "/login");
+  redirect(actor ? "/portal" : "/portal/login");
 }

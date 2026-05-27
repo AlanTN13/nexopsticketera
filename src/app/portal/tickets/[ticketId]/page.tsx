@@ -21,7 +21,7 @@ export default async function PortalTicketDetail({ params, searchParams }: Ticke
   const actor = await getAuthenticatedClientActor(db);
 
   if (!actor) {
-    redirect("/login");
+    redirect("/portal/login");
   }
 
   const ticket = getTicketById(db, actor, ticketId);
