@@ -7,9 +7,11 @@ import {
   createUserAction,
   logoutClientAction,
   resetDemoAction,
+  updateCompanyAction,
   updateTicketWorkflowAction,
 } from "@/app/actions";
 import {
+  Company,
   COMPANY_PLANS,
   TICKET_AREAS,
   TICKET_PRIORITIES,
@@ -61,6 +63,11 @@ function textInputClasses(tone: "dark" | "light" = "dark") {
     ? "w-full rounded-[20px] border border-[rgba(91,72,199,0.14)] bg-white px-4 py-3 text-sm text-[#1b1638] outline-none transition placeholder:text-[#8f93b4] focus:border-[#7c5bff] focus:bg-white"
     : "w-full rounded-[22px] border border-[var(--border)] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:bg-white/[0.08]";
 }
+
+const COMPANY_STATUS_OPTIONS = [
+  { value: "onboarding", label: "Onboarding" },
+  { value: "active", label: "Activa" },
+] as const;
 
 export function ResetDemoForm({ actorId }: { actorId: string }) {
   return (
@@ -466,6 +473,119 @@ export function CreateCompanyForm({
         }`}
       >
         Crear empresa y admin
+      </button>
+    </form>
+  );
+}
+
+export function UpdateCompanyForm({
+  actor,
+  company,
+  returnPath,
+  tone = "dark",
+}: {
+  actor: UserProfile;
+  company: Company;
+  returnPath: string;
+  tone?: "dark" | "light";
+}) {
+  if (!canManageGlobalCatalog(actor.role)) {
+    return (
+      <div
+        className={`rounded-[28px] border border-dashed p-5 text-sm leading-6 ${
+          tone === "light"
+            ? "border-[rgba(91,72,199,0.2)] bg-[#f5f3ff] text-[#5a5d7f]"
+            : "border-[var(--border-strong)] bg-white/[0.03] text-[var(--muted)]"
+        }`}
+      >
+        Este rol puede revisar la cuenta, pero no editar la ficha de la empresa.
+      </div>
+    );
+  }
+
+  return (
+    <form action={updateCompanyAction} className="grid gap-4">
+      <input type="hidden" name="actorId" value={actor.id} />
+      <input type="hidden" name="companyId" value={company.id} />
+      <input type="hidden" name="returnPath" value={returnPath} />
+      <Field label="Empresa" name="name" tone={tone}>
+        <input
+          id="name"
+          name="name"
+          required
+          defaultValue={company.name}
+          className={textInputClasses(tone)}
+        />
+      </Field>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Slug" name="slug" tone={tone}>
+          <input
+            id="slug"
+            name="slug"
+            required
+            defaultValue={company.slug}
+            className={textInputClasses(tone)}
+          />
+        </Field>
+        <Field label="Estado" name="status" tone={tone}>
+          <select
+            id="status"
+            name="status"
+            className={textInputClasses(tone)}
+            defaultValue={company.status}
+          >
+            {COMPANY_STATUS_OPTIONS.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Industria" name="industry" tone={tone}>
+          <input
+            id="industry"
+            name="industry"
+            required
+            defaultValue={company.industry}
+            className={textInputClasses(tone)}
+          />
+        </Field>
+        <Field label="Plan" name="plan" tone={tone}>
+          <select
+            id="plan"
+            name="plan"
+            className={textInputClasses(tone)}
+            defaultValue={company.plan}
+          >
+            {COMPANY_PLANS.map((plan) => (
+              <option key={plan} value={plan}>
+                {companyPlanLabels[plan]}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <Field label="Contacto principal" name="primaryContact" tone={tone}>
+        <input
+          id="primaryContact"
+          name="primaryContact"
+          type="email"
+          required
+          defaultValue={company.primaryContact}
+          className={textInputClasses(tone)}
+        />
+      </Field>
+      <button
+        type="submit"
+        className={`rounded-[22px] px-5 py-3 text-sm font-semibold transition hover:translate-y-[-1px] ${
+          tone === "light"
+            ? "bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] text-white hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
+            : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
+        }`}
+      >
+        Guardar cambios
       </button>
     </form>
   );

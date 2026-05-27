@@ -748,6 +748,60 @@ async function createCompanyInSupabase(input: {
   }
 }
 
+async function updateCompanyInSupabase(input: {
+  actorId: string;
+  companyId: string;
+  name: string;
+  slug: string;
+  industry: string;
+  plan: CompanyPlan;
+  status: "active" | "onboarding";
+  primaryContact: string;
+}) {
+  const db = await getSupabaseSnapshot();
+  const actor = ensureActor(db, input.actorId);
+
+  if (!canManageGlobalCatalog(actor.role)) {
+    throw new Error("No tenés permisos para editar empresas.");
+  }
+
+  const company = db.companies.find((item) => item.id === input.companyId);
+  if (!company) {
+    throw new Error("No pudimos encontrar la empresa.");
+  }
+
+  if (!input.name || !input.slug || !input.industry || !input.primaryContact) {
+    throw new Error("Nombre, slug, industria y contacto principal son obligatorios.");
+  }
+
+  const normalizedSlug = slugify(input.slug) || slugify(input.name) || "empresa";
+  const duplicated = db.companies.find(
+    (item) => item.id !== company.id && item.slug === normalizedSlug,
+  );
+
+  if (duplicated) {
+    throw new Error("Ya existe otra empresa con ese slug.");
+  }
+
+  const client = getSupabaseAdminClient();
+  const { data, error } = await client
+    .from("companies")
+    .update({
+      name: input.name,
+      slug: normalizedSlug,
+      industry: input.industry,
+      plan: input.plan,
+      status: input.status,
+      primary_contact: input.primaryContact.toLowerCase(),
+    })
+    .eq("id", input.companyId)
+    .select("*")
+    .single();
+
+  assertNoError(error);
+  return mapCompany(data as CompanyRow);
+}
+
 export async function getAppSnapshot() {
   if (!shouldUseSupabase()) {
     return demoStore.getAppSnapshot();
@@ -805,4 +859,12 @@ export async function createCompany(input: Parameters<typeof demoStore.createCom
   }
 
   return createCompanyInSupabase(input);
+}
+
+export async function updateCompany(input: Parameters<typeof demoStore.updateCompany>[0]) {
+  if (!shouldUseSupabase()) {
+    return demoStore.updateCompany(input);
+  }
+
+  return updateCompanyInSupabase(input);
 }

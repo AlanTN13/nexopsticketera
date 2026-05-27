@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { LOCAL_CLIENT_PASSWORD, clearClientSession, findUserByEmail, isInternalActor, setClientSession } from "@/lib/auth";
-import { addComment, createCompany, createTicket, createUser, getAppSnapshot, resetDemoDb, updateTicketWorkflow } from "@/lib/app-store";
+import { addComment, createCompany, createTicket, createUser, getAppSnapshot, resetDemoDb, updateCompany, updateTicketWorkflow } from "@/lib/app-store";
 import { COMPANY_PLANS, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
@@ -192,6 +192,36 @@ export async function createCompanyAction(formData: FormData) {
         : "No pudimos crear la empresa. Revisá los datos e intentá de nuevo.";
 
     redirect(buildErrorRedirect(returnPath || "/backoffice", message));
+  }
+
+  revalidatePath("/backoffice");
+  revalidatePath(returnPath);
+  redirect(buildPostActionRedirect(returnPath, actorId));
+}
+
+export async function updateCompanyAction(formData: FormData) {
+  const actorId = getString(formData, "actorId");
+  const companyId = getString(formData, "companyId");
+  const returnPath = getString(formData, "returnPath") || `/backoffice/companies/${companyId}`;
+
+  try {
+    await updateCompany({
+      actorId,
+      companyId,
+      name: getString(formData, "name"),
+      slug: getString(formData, "slug"),
+      industry: getString(formData, "industry"),
+      plan: assertInSet(getString(formData, "plan"), COMPANY_PLANS),
+      status: getString(formData, "status") === "active" ? "active" : "onboarding",
+      primaryContact: getString(formData, "primaryContact"),
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "No pudimos actualizar la empresa. Revisá los datos e intentá de nuevo.";
+
+    redirect(buildErrorRedirect(returnPath, message));
   }
 
   revalidatePath("/backoffice");

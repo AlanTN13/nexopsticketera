@@ -352,3 +352,54 @@ export async function createCompany(input: {
   await writeDb(db);
   return { company, adminUser };
 }
+
+export async function updateCompany(input: {
+  actorId: string;
+  companyId: string;
+  name: string;
+  slug: string;
+  industry: string;
+  plan: CompanyPlan;
+  status: "active" | "onboarding";
+  primaryContact: string;
+}) {
+  const db = await readDemoDb();
+  const actor = db.users.find((user) => user.id === input.actorId);
+  const company = db.companies.find((item) => item.id === input.companyId);
+
+  if (!actor || !canManageGlobalCatalog(actor.role)) {
+    throw new Error("No tenés permisos para editar empresas.");
+  }
+
+  if (!company) {
+    throw new Error("No pudimos encontrar la empresa.");
+  }
+
+  if (
+    !input.name ||
+    !input.slug ||
+    !input.industry ||
+    !input.primaryContact
+  ) {
+    throw new Error("Nombre, slug, industria y contacto principal son obligatorios.");
+  }
+
+  const normalizedSlug = slugify(input.slug) || slugify(input.name) || "empresa";
+  const duplicated = db.companies.find(
+    (item) => item.id !== company.id && item.slug === normalizedSlug,
+  );
+
+  if (duplicated) {
+    throw new Error("Ya existe otra empresa con ese slug.");
+  }
+
+  company.name = input.name;
+  company.slug = normalizedSlug;
+  company.industry = input.industry;
+  company.plan = input.plan;
+  company.status = input.status;
+  company.primaryContact = input.primaryContact.toLowerCase();
+
+  await writeDb(db);
+  return company;
+}

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { CreateUserForm, LogoutClientForm } from "@/components/forms";
+import { CreateUserForm, LogoutClientForm, UpdateCompanyForm } from "@/components/forms";
 import { TicketTable, UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
@@ -13,12 +13,15 @@ export const dynamic = "force-dynamic";
 
 type CompanyDetailProps = {
   params: Promise<{ companyId: string }>;
+  searchParams: Promise<{ error?: string }>;
 };
 
 export default async function BackofficeCompanyDetail({
   params,
+  searchParams,
 }: CompanyDetailProps) {
   const { companyId } = await params;
+  const { error } = await searchParams;
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
   if (!actor) {
@@ -66,18 +69,24 @@ export default async function BackofficeCompanyDetail({
         <StatCard label="Tickets críticos" value={criticalTickets.length} detail="Casos de mayor urgencia operativa." tone="light" />
       </div>
 
+      {error ? (
+        <div className="rounded-[24px] border border-rose-300/40 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-[0_10px_30px_rgba(244,63,94,0.08)]">
+          {error}
+        </div>
+      ) : null}
+
       <div className="grid gap-8 xl:grid-cols-[1fr_0.95fr]">
         <SectionCard
           title="Ficha de la empresa"
-          description="Datos centrales de la cuenta para que NexOps opere con mejor contexto."
+          description="Actualizá los datos centrales de la cuenta para que NexOps opere con mejor contexto."
           tone="light"
         >
-          <div className="grid gap-4 md:grid-cols-2">
-            <DetailCard label="Slug" value={company.slug} />
-            <DetailCard label="Estado" value={company.status} />
-            <DetailCard label="Industria" value={company.industry} />
-            <DetailCard label="Contacto principal" value={company.primaryContact} />
-          </div>
+          <UpdateCompanyForm
+            actor={actor}
+            company={company}
+            returnPath={`/backoffice/companies/${company.id}`}
+            tone="light"
+          />
         </SectionCard>
 
         <SectionCard
@@ -129,16 +138,5 @@ export default async function BackofficeCompanyDetail({
         </SectionCard>
       </div>
     </AppShell>
-  );
-}
-
-function DetailCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[24px] border border-[rgba(91,72,199,0.12)] bg-[#faf9ff] p-5">
-      <p className="font-[family-name:var(--font-montserrat)] text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b74a6]">
-        {label}
-      </p>
-      <p className="mt-3 text-sm font-medium text-[#1b1638]">{value}</p>
-    </div>
   );
 }
