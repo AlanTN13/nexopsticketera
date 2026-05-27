@@ -421,12 +421,16 @@ async function createSupabaseUserProfile(input: {
   name: string;
   role: UserRole;
   title: string;
+  password: string;
 }) {
   const client = getSupabaseAdminClient();
-  const tempPassword = `NexOps!${crypto.randomUUID()}`;
+  if (input.password.length < 8) {
+    throw new Error("La contraseña debe tener al menos 8 caracteres.");
+  }
+
   const { data: authData, error: authError } = await client.auth.admin.createUser({
     email: input.email,
-    password: tempPassword,
+    password: input.password,
     email_confirm: true,
     user_metadata: {
       name: input.name,
@@ -449,7 +453,7 @@ async function createSupabaseUserProfile(input: {
     name: input.name,
     email: input.email.toLowerCase(),
     role: input.role,
-    status: "invited",
+    status: "active",
     title: input.title,
     avatar: avatarFromName(input.name),
   };
@@ -650,6 +654,7 @@ async function createUserInSupabase(input: {
   email: string;
   role: UserRole;
   title: string;
+  password: string;
 }) {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
@@ -676,6 +681,7 @@ async function createUserInSupabase(input: {
     name: input.name,
     role: input.role,
     title: input.title,
+    password: input.password,
   });
 }
 
@@ -687,6 +693,7 @@ async function createCompanyInSupabase(input: {
   adminName: string;
   adminEmail: string;
   adminTitle: string;
+  adminPassword: string;
 }) {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
@@ -700,7 +707,8 @@ async function createCompanyInSupabase(input: {
     !input.industry ||
     !input.adminName ||
     !input.adminEmail ||
-    !input.adminTitle
+    !input.adminTitle ||
+    !input.adminPassword
   ) {
     throw new Error("Empresa, industria y admin inicial son obligatorios.");
   }
@@ -739,6 +747,7 @@ async function createCompanyInSupabase(input: {
       name: input.adminName,
       role: "client_admin",
       title: input.adminTitle,
+      password: input.adminPassword,
     });
 
     return { company: mapCompany(companyRecord as CompanyRow), adminUser };

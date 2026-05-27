@@ -389,6 +389,17 @@ export function CreateUserForm({
       <Field label="Cargo" name="title" tone={tone}>
         <input id="title" name="title" required className={textInputClasses(tone)} />
       </Field>
+      <Field label="Contraseña inicial" name="password" tone={tone}>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          minLength={8}
+          required
+          className={textInputClasses(tone)}
+          placeholder="Mínimo 8 caracteres"
+        />
+      </Field>
       <Field label="Rol" name="role" tone={tone}>
         <select id="role" name="role" className={textInputClasses(tone)} defaultValue={roles[0]}>
           {roles.map((role) => (
@@ -463,6 +474,17 @@ export function CreateCompanyForm({
       </Field>
       <Field label="Cargo admin" name="adminTitle" tone={tone}>
         <input id="adminTitle" name="adminTitle" required className={textInputClasses(tone)} />
+      </Field>
+      <Field label="Contraseña admin" name="adminPassword" tone={tone}>
+        <input
+          id="adminPassword"
+          name="adminPassword"
+          type="password"
+          minLength={8}
+          required
+          className={textInputClasses(tone)}
+          placeholder="Mínimo 8 caracteres"
+        />
       </Field>
       <button
         type="submit"

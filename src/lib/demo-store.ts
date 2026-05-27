@@ -238,6 +238,7 @@ export async function createUser(input: {
   email: string;
   role: UserRole;
   title: string;
+  password: string;
 }) {
   const db = await readDemoDb();
   const actor = db.users.find((user) => user.id === input.actorId);
@@ -262,13 +263,17 @@ export async function createUser(input: {
     throw new Error("Los usuarios internos no deben quedar asociados a una empresa cliente.");
   }
 
+  if (input.password.length < 8) {
+    throw new Error("La contraseña debe tener al menos 8 caracteres.");
+  }
+
   const user: UserProfile = {
     id: `user-${crypto.randomUUID()}`,
     companyId: input.companyId,
     name: input.name,
     email: input.email,
     role: input.role,
-    status: "invited",
+    status: "active",
     title: input.title,
     avatar: input.name
       .split(" ")
@@ -291,6 +296,7 @@ export async function createCompany(input: {
   adminName: string;
   adminEmail: string;
   adminTitle: string;
+  adminPassword: string;
 }) {
   const db = await readDemoDb();
   const actor = db.users.find((user) => user.id === input.actorId);
@@ -304,9 +310,14 @@ export async function createCompany(input: {
     !input.industry ||
     !input.adminName ||
     !input.adminEmail ||
-    !input.adminTitle
+    !input.adminTitle ||
+    !input.adminPassword
   ) {
     throw new Error("Empresa, industria y admin inicial son obligatorios.");
+  }
+
+  if (input.adminPassword.length < 8) {
+    throw new Error("La contraseña del admin debe tener al menos 8 caracteres.");
   }
 
   const timestamp = new Date().toISOString();
@@ -337,7 +348,7 @@ export async function createCompany(input: {
     name: input.adminName,
     email: input.adminEmail,
     role: "client_admin",
-    status: "invited",
+    status: "active",
     title: input.adminTitle,
     avatar: input.adminName
       .split(" ")

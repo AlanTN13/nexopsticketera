@@ -165,6 +165,7 @@ export async function createUserAction(formData: FormData) {
     email: getString(formData, "email"),
     title: getString(formData, "title"),
     role: assertInSet(getString(formData, "role"), USER_ROLES),
+    password: getString(formData, "password"),
   });
 
   revalidatePath(returnPath);
@@ -184,6 +185,7 @@ export async function createCompanyAction(formData: FormData) {
       adminName: getString(formData, "adminName"),
       adminEmail: getString(formData, "adminEmail"),
       adminTitle: getString(formData, "adminTitle"),
+      adminPassword: getString(formData, "adminPassword"),
     });
   } catch (error) {
     const message =
