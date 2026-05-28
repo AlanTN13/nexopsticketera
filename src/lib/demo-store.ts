@@ -288,6 +288,60 @@ export async function createUser(input: {
   return user;
 }
 
+export async function updateUser(input: {
+  actorId: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  title: string;
+  password?: string;
+}) {
+  const db = await readDemoDb();
+  const actor = db.users.find((user) => user.id === input.actorId);
+  const target = db.users.find((user) => user.id === input.userId);
+
+  if (!actor || !target) {
+    throw new Error("No pudimos encontrar el usuario a editar.");
+  }
+
+  const sameCompany = actor.companyId === target.companyId;
+  const canManageClientSide = actor.role === "client_admin" && sameCompany;
+  const canManagePlatform = canManageGlobalCatalog(actor.role);
+
+  if (!canManageClientSide && !canManagePlatform) {
+    throw new Error("No tenés permisos para editar usuarios.");
+  }
+
+  if (input.password && input.password.length < 8) {
+    throw new Error("La nueva contraseña debe tener al menos 8 caracteres.");
+  }
+
+  const normalizedEmail = input.email.toLowerCase();
+  const duplicated = db.users.find(
+    (user) => user.id !== target.id && user.email.toLowerCase() === normalizedEmail,
+  );
+
+  if (duplicated) {
+    throw new Error("Ya existe otro usuario con ese email.");
+  }
+
+  target.name = input.name;
+  target.email = normalizedEmail;
+  target.role = input.role;
+  target.title = input.title;
+  target.status = "active";
+  target.avatar = input.name
+    .split(" ")
+    .map((word) => word[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  await writeDb(db);
+  return target;
+}
+
 export async function createCompany(input: {
   actorId: string;
   companyName: string;

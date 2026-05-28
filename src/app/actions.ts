@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { LOCAL_CLIENT_PASSWORD, clearClientSession, findUserByEmail, isInternalActor, setClientSession } from "@/lib/auth";
-import { addComment, createCompany, createTicket, createUser, getAppSnapshot, resetDemoDb, updateCompany, updateTicketWorkflow } from "@/lib/app-store";
+import { addComment, createCompany, createTicket, createUser, getAppSnapshot, resetDemoDb, updateCompany, updateTicketWorkflow, updateUser } from "@/lib/app-store";
 import { COMPANY_PLANS, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
@@ -43,6 +43,11 @@ function buildPostActionRedirect(path: string, actorId: string) {
 function buildErrorRedirect(path: string, message: string) {
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}error=${encodeURIComponent(message)}`;
+}
+
+function buildSuccessRedirect(path: string, message: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}success=${encodeURIComponent(message)}`;
 }
 
 export type LoginClientState = {
@@ -158,18 +163,27 @@ export async function createUserAction(formData: FormData) {
   const companyIdValue = getString(formData, "companyId");
   const returnPath = getString(formData, "returnPath");
 
-  await createUser({
-    actorId,
-    companyId: companyIdValue === "internal" ? null : companyIdValue,
-    name: getString(formData, "name"),
-    email: getString(formData, "email"),
-    title: getString(formData, "title"),
-    role: assertInSet(getString(formData, "role"), USER_ROLES),
-    password: getString(formData, "password"),
-  });
+  try {
+    await createUser({
+      actorId,
+      companyId: companyIdValue === "internal" ? null : companyIdValue,
+      name: getString(formData, "name"),
+      email: getString(formData, "email"),
+      title: getString(formData, "title"),
+      role: assertInSet(getString(formData, "role"), USER_ROLES),
+      password: getString(formData, "password"),
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "No pudimos crear el usuario. Revisá los datos e intentá de nuevo.";
+
+    redirect(buildErrorRedirect(returnPath, message));
+  }
 
   revalidatePath(returnPath);
-  redirect(buildPostActionRedirect(returnPath, actorId));
+  redirect(buildSuccessRedirect(buildPostActionRedirect(returnPath, actorId), "Usuario creado correctamente."));
 }
 
 export async function createCompanyAction(formData: FormData) {
@@ -232,5 +246,34 @@ export async function updateCompanyAction(formData: FormData) {
   revalidatePath("/backoffice");
   revalidatePath(returnPath);
   revalidatePath(nextPath);
-  redirect(buildPostActionRedirect(nextPath, actorId));
+  redirect(buildSuccessRedirect(buildPostActionRedirect(nextPath, actorId), "Empresa actualizada correctamente."));
+}
+
+export async function updateUserAction(formData: FormData) {
+  const actorId = getString(formData, "actorId");
+  const userId = getString(formData, "userId");
+  const returnPath = getString(formData, "returnPath");
+
+  try {
+    await updateUser({
+      actorId,
+      userId,
+      name: getString(formData, "name"),
+      email: getString(formData, "email"),
+      title: getString(formData, "title"),
+      role: assertInSet(getString(formData, "role"), USER_ROLES),
+      password: getString(formData, "password") || undefined,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "No pudimos actualizar el usuario. Revisá los datos e intentá de nuevo.";
+
+    redirect(buildErrorRedirect(returnPath, message));
+  }
+
+  revalidatePath("/backoffice");
+  revalidatePath(returnPath);
+  redirect(buildSuccessRedirect(buildPostActionRedirect(returnPath, actorId), "Usuario actualizado correctamente."));
 }

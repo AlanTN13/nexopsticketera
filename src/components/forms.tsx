@@ -9,6 +9,7 @@ import {
   resetDemoAction,
   updateCompanyAction,
   updateTicketWorkflowAction,
+  updateUserAction,
 } from "@/app/actions";
 import {
   Company,
@@ -608,6 +609,96 @@ export function UpdateCompanyForm({
         }`}
       >
         Guardar cambios
+      </button>
+    </form>
+  );
+}
+
+export function UpdateUserForm({
+  actor,
+  user,
+  returnPath,
+  tone = "dark",
+}: {
+  actor: UserProfile;
+  user: UserProfile;
+  returnPath: string;
+  tone?: "dark" | "light";
+}) {
+  const roles = user.companyId
+    ? USER_ROLES.filter((role) => role.startsWith("client_"))
+    : USER_ROLES.filter((role) => !role.startsWith("client_"));
+
+  return (
+    <form action={updateUserAction} className="grid gap-4">
+      <input type="hidden" name="actorId" value={actor.id} />
+      <input type="hidden" name="userId" value={user.id} />
+      <input type="hidden" name="returnPath" value={returnPath} />
+      <Field label="Nombre" name={`name-${user.id}`} tone={tone}>
+        <input
+          id={`name-${user.id}`}
+          name="name"
+          required
+          defaultValue={user.name}
+          className={textInputClasses(tone)}
+        />
+      </Field>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Email" name={`email-${user.id}`} tone={tone}>
+          <input
+            id={`email-${user.id}`}
+            name="email"
+            type="email"
+            required
+            defaultValue={user.email}
+            className={textInputClasses(tone)}
+          />
+        </Field>
+        <Field label="Rol" name={`role-${user.id}`} tone={tone}>
+          <select
+            id={`role-${user.id}`}
+            name="role"
+            className={textInputClasses(tone)}
+            defaultValue={user.role}
+          >
+            {roles.map((role) => (
+              <option key={role} value={role}>
+                {roleLabels[role]}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Cargo" name={`title-${user.id}`} tone={tone}>
+          <input
+            id={`title-${user.id}`}
+            name="title"
+            required
+            defaultValue={user.title}
+            className={textInputClasses(tone)}
+          />
+        </Field>
+        <Field label="Nueva contraseña" name={`password-${user.id}`} tone={tone}>
+          <input
+            id={`password-${user.id}`}
+            name="password"
+            type="password"
+            minLength={8}
+            className={textInputClasses(tone)}
+            placeholder="Dejá vacío para no cambiarla"
+          />
+        </Field>
+      </div>
+      <button
+        type="submit"
+        className={`rounded-[22px] px-5 py-3 text-sm font-semibold transition hover:translate-y-[-1px] ${
+          tone === "light"
+            ? "bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] text-white hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
+            : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
+        }`}
+      >
+        Guardar usuario
       </button>
     </form>
   );

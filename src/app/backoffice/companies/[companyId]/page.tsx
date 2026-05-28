@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { CreateUserForm, LogoutClientForm, UpdateCompanyForm } from "@/components/forms";
+import { CreateUserForm, LogoutClientForm, UpdateCompanyForm, UpdateUserForm } from "@/components/forms";
 import { TicketTable, UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 type CompanyDetailProps = {
   params: Promise<{ companyId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 };
 
 export default async function BackofficeCompanyDetail({
@@ -21,7 +21,7 @@ export default async function BackofficeCompanyDetail({
   searchParams,
 }: CompanyDetailProps) {
   const { companyId: companyLookup } = await params;
-  const { error } = await searchParams;
+  const { error, success } = await searchParams;
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
   if (!actor) {
@@ -79,6 +79,12 @@ export default async function BackofficeCompanyDetail({
         </div>
       ) : null}
 
+      {success ? (
+        <div className="rounded-[24px] border border-emerald-300/40 bg-emerald-50 px-5 py-4 text-sm text-emerald-700 shadow-[0_10px_30px_rgba(16,185,129,0.08)]">
+          {success}
+        </div>
+      ) : null}
+
       <div className="grid gap-8 xl:grid-cols-[1fr_0.95fr]">
         <SectionCard
           title="Ficha de la empresa"
@@ -115,7 +121,30 @@ export default async function BackofficeCompanyDetail({
           tone="light"
         >
           {companyUsers.length > 0 ? (
-            <UserTable users={companyUsers} tone="light" />
+            <div className="grid gap-6">
+              <UserTable users={companyUsers} tone="light" />
+              <div className="grid gap-6">
+                {companyUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="rounded-[28px] border border-[rgba(91,72,199,0.12)] bg-[#faf9ff] p-5"
+                  >
+                    <div className="mb-4">
+                      <p className="text-lg font-bold tracking-tight text-[#1b1638]">{user.name}</p>
+                      <p className="text-sm text-[#5a5d7f]">
+                        Editá mail, rol, cargo o definí una nueva contraseña para este acceso.
+                      </p>
+                    </div>
+                    <UpdateUserForm
+                      actor={actor}
+                      user={user}
+                      returnPath={`/backoffice/companies/${company.slug}`}
+                      tone="light"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <EmptyState
               title="Todavía no hay usuarios cliente"

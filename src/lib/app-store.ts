@@ -685,6 +685,89 @@ async function createUserInSupabase(input: {
   });
 }
 
+async function updateUserInSupabase(input: {
+  actorId: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  title: string;
+  password?: string;
+}) {
+  const db = await getSupabaseSnapshot();
+  const actor = ensureActor(db, input.actorId);
+  const target = db.users.find((user) => user.id === input.userId);
+
+  if (!target) {
+    throw new Error("No pudimos encontrar el usuario a editar.");
+  }
+
+  const sameCompany = actor.companyId === target.companyId;
+  const canManageClientSide = actor.role === "client_admin" && sameCompany;
+  const canManagePlatform = canManageGlobalCatalog(actor.role);
+
+  if (!canManageClientSide && !canManagePlatform) {
+    throw new Error("No tenés permisos para editar usuarios.");
+  }
+
+  if (input.password && input.password.length < 8) {
+    throw new Error("La nueva contraseña debe tener al menos 8 caracteres.");
+  }
+
+  const normalizedEmail = input.email.toLowerCase();
+  const duplicated = db.users.find(
+    (user) => user.id !== target.id && user.email.toLowerCase() === normalizedEmail,
+  );
+
+  if (duplicated) {
+    throw new Error("Ya existe otro usuario con ese email.");
+  }
+
+  const client = getSupabaseAdminClient();
+  const authPayload: {
+    email: string;
+    email_confirm: true;
+    password?: string;
+    user_metadata: {
+      name: string;
+      role: UserRole;
+    };
+  } = {
+    email: normalizedEmail,
+    email_confirm: true,
+    user_metadata: {
+      name: input.name,
+      role: input.role,
+    },
+  };
+
+  if (input.password) {
+    authPayload.password = input.password;
+  }
+
+  const { error: authError } = await client.auth.admin.updateUserById(target.id, authPayload);
+  if (authError) {
+    throw new Error(authError.message);
+  }
+
+  const { data, error } = await client
+    .from("users")
+    .update({
+      name: input.name,
+      email: normalizedEmail,
+      role: input.role,
+      status: "active",
+      title: input.title,
+      avatar: avatarFromName(input.name),
+    })
+    .eq("id", target.id)
+    .select("*")
+    .single();
+
+  assertNoError(error);
+  return mapUser(data as UserRow);
+}
+
 async function createCompanyInSupabase(input: {
   actorId: string;
   companyName: string;
@@ -860,6 +943,14 @@ export async function createUser(input: Parameters<typeof demoStore.createUser>[
   }
 
   return createUserInSupabase(input);
+}
+
+export async function updateUser(input: Parameters<typeof demoStore.updateUser>[0]) {
+  if (!shouldUseSupabase()) {
+    return demoStore.updateUser(input);
+  }
+
+  return updateUserInSupabase(input);
 }
 
 export async function createCompany(input: Parameters<typeof demoStore.createCompany>[0]) {
