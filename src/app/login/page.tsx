@@ -37,7 +37,7 @@ export default async function LoginPage() {
               Accedé a tu portal cliente.
             </h1>
             <p className="mt-5 max-w-lg text-base leading-8 text-[#4f5375]">
-              Ingresá para reportar incidencias, seguir tickets y mantener el contexto de tu cuenta en un solo lugar.
+              Ingresá para reportar incidencias, seguir tickets y mantener el contexto de tu operación en un solo lugar.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
