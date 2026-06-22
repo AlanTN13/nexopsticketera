@@ -17,7 +17,7 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   title: "NexOps Help Center",
-  description: "Portal cliente de NexOps para reportar incidencias y seguir tickets.",
+  description: "Portal cliente de NexOps para reportar incidencias, gestionar tickets y seguir su estado.",
 };
 
 export default function RootLayout({
