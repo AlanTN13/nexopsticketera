@@ -11,9 +11,9 @@ import {
   updateTicketWorkflowAction,
   updateUserAction,
 } from "@/app/actions";
+import { TicketEvidenceFields } from "@/components/ticket-evidence-fields";
 import {
   Company,
-  COMPANY_PLANS,
   TICKET_AREAS,
   TICKET_PRIORITIES,
   TICKET_STATUSES,
@@ -23,7 +23,6 @@ import {
   canCreateTickets,
   canManageGlobalCatalog,
   canManageOperations,
-  companyPlanLabels,
   priorityLabels,
   roleLabels,
   statusLabels,
@@ -108,9 +107,11 @@ export function LogoutClientForm({
 export function CreateTicketForm({
   actor,
   tone = "dark",
+  compact = false,
 }: {
   actor: UserProfile;
   tone?: "dark" | "light";
+  compact?: boolean;
 }) {
   if (!canCreateTickets(actor.role)) {
     return (
@@ -127,14 +128,14 @@ export function CreateTicketForm({
   }
 
   return (
-    <form action={createTicketAction} className="grid gap-5">
+    <form action={createTicketAction} className={`grid ${compact ? "gap-4" : "gap-5"}`}>
       <input type="hidden" name="actorId" value={actor.id} />
       <Field label="Tipo de solicitud" name="type" tone={tone}>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className={`grid gap-3 ${compact ? "md:grid-cols-2" : "sm:grid-cols-2"}`}>
           {TICKET_TYPES.map((type, index) => (
             <label
               key={type}
-              className={`flex cursor-pointer items-start gap-3 rounded-[20px] border p-4 transition ${
+              className={`flex cursor-pointer items-start gap-3 rounded-[18px] border ${compact ? "p-3" : "p-4"} transition ${
                 tone === "light"
                   ? "border-[rgba(91,72,199,0.14)] bg-[#faf9ff] hover:border-[#7c5bff]"
                   : "border-[var(--border)] bg-white/[0.04] hover:border-[var(--border-strong)]"
@@ -153,8 +154,12 @@ export function CreateTicketForm({
                 </p>
                 <p className={tone === "light" ? "mt-1 text-sm text-[#5a5d7f]" : "mt-1 text-sm text-[var(--muted)]"}>
                   {type === "issue"
-                    ? "Algo dejó de funcionar o funciona distinto a lo esperado."
-                    : "Querés pedir un ajuste o una mejora sobre algo existente."}
+                    ? compact
+                      ? "Algo dejó de funcionar."
+                      : "Algo dejó de funcionar o funciona distinto a lo esperado."
+                    : compact
+                      ? "Querés un ajuste puntual."
+                      : "Querés pedir un ajuste o una mejora sobre algo existente."}
                 </p>
               </div>
             </label>
@@ -175,7 +180,7 @@ export function CreateTicketForm({
           id="description"
           name="description"
           required
-          rows={5}
+          rows={compact ? 4 : 5}
           className={textInputClasses(tone)}
           placeholder="Contanos qué pasa, a quién afecta y cómo se reproduce."
         />
@@ -205,11 +210,14 @@ export function CreateTicketForm({
           </select>
         </Field>
       </div>
+      <div className={`rounded-[18px] border ${tone === "light" ? "border-[rgba(17,24,39,0.08)] bg-[#fafafa]" : "border-[var(--border)] bg-white/[0.03]"} p-4`}>
+        <TicketEvidenceFields inputClassName={textInputClasses(tone)} tone={tone} />
+      </div>
       <button
         type="submit"
-        className="rounded-[22px] bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] px-5 py-3 text-sm font-semibold text-[#120d31] transition hover:translate-y-[-1px] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
+        className="rounded-[18px] bg-[linear-gradient(135deg,#5b4ee6,#7c5bff)] px-5 py-3 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
       >
-        Enviar ticket
+        Crear ticket
       </button>
     </form>
   );
@@ -451,32 +459,55 @@ export function CreateCompanyForm({
     <form action={createCompanyAction} className="grid gap-4">
       <input type="hidden" name="actorId" value={actor.id} />
       <input type="hidden" name="returnPath" value={returnPath} />
-      <Field label="Empresa" name="companyName" tone={tone}>
-        <input id="companyName" name="companyName" required className={textInputClasses(tone)} />
+      <Field label="Nombre de la empresa" name="companyName" tone={tone}>
+        <input
+          id="companyName"
+          name="companyName"
+          required
+          className={textInputClasses(tone)}
+          placeholder="Ej. NexMart Retail"
+        />
       </Field>
       <Field label="Industria" name="industry" tone={tone}>
-        <input id="industry" name="industry" required className={textInputClasses(tone)} />
+        <input
+          id="industry"
+          name="industry"
+          required
+          className={textInputClasses(tone)}
+          placeholder="Ej. Retail omnicanal"
+        />
       </Field>
-      <Field label="Plan" name="plan" tone={tone}>
-        <select id="plan" name="plan" className={textInputClasses(tone)} defaultValue="growth">
-          {COMPANY_PLANS.map((plan) => (
-            <option key={plan} value={plan}>
-              {companyPlanLabels[plan]}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <input type="hidden" name="plan" value="growth" />
       <div className="h-px bg-[linear-gradient(90deg,rgba(196,198,255,0.4),transparent)]" />
-      <Field label="Admin inicial" name="adminName" tone={tone}>
-        <input id="adminName" name="adminName" required className={textInputClasses(tone)} />
+      <Field label="Responsable inicial" name="adminName" tone={tone}>
+        <input
+          id="adminName"
+          name="adminName"
+          required
+          className={textInputClasses(tone)}
+          placeholder="Nombre y apellido"
+        />
       </Field>
-      <Field label="Email admin" name="adminEmail" tone={tone}>
-        <input id="adminEmail" name="adminEmail" type="email" required className={textInputClasses(tone)} />
+      <Field label="Email de acceso" name="adminEmail" tone={tone}>
+        <input
+          id="adminEmail"
+          name="adminEmail"
+          type="email"
+          required
+          className={textInputClasses(tone)}
+          placeholder="nombre@empresa.com"
+        />
       </Field>
-      <Field label="Cargo admin" name="adminTitle" tone={tone}>
-        <input id="adminTitle" name="adminTitle" required className={textInputClasses(tone)} />
+      <Field label="Rol o cargo" name="adminTitle" tone={tone}>
+        <input
+          id="adminTitle"
+          name="adminTitle"
+          required
+          className={textInputClasses(tone)}
+          placeholder="Ej. Operaciones, Marketing, IT"
+        />
       </Field>
-      <Field label="Contraseña admin" name="adminPassword" tone={tone}>
+      <Field label="Contraseña temporal" name="adminPassword" tone={tone}>
         <input
           id="adminPassword"
           name="adminPassword"
@@ -484,7 +515,7 @@ export function CreateCompanyForm({
           minLength={8}
           required
           className={textInputClasses(tone)}
-          placeholder="Mínimo 8 caracteres"
+          placeholder="Definí una contraseña inicial de al menos 8 caracteres"
         />
       </Field>
       <button
@@ -495,7 +526,7 @@ export function CreateCompanyForm({
             : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
         }`}
       >
-        Crear empresa y admin
+        Crear empresa
       </button>
     </form>
   );
@@ -575,21 +606,8 @@ export function UpdateCompanyForm({
             className={textInputClasses(tone)}
           />
         </Field>
-        <Field label="Plan" name="plan" tone={tone}>
-          <select
-            id="plan"
-            name="plan"
-            className={textInputClasses(tone)}
-            defaultValue={company.plan}
-          >
-            {COMPANY_PLANS.map((plan) => (
-              <option key={plan} value={plan}>
-                {companyPlanLabels[plan]}
-              </option>
-            ))}
-          </select>
-        </Field>
       </div>
+      <input type="hidden" name="plan" value={company.plan} />
       <Field label="Contacto principal" name="primaryContact" tone={tone}>
         <input
           id="primaryContact"

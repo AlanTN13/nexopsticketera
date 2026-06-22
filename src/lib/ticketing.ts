@@ -25,6 +25,8 @@ export const USER_ROLES = [
   "team_lead",
   "platform_admin",
 ] as const;
+export const MAX_TICKET_IMAGES = 3;
+export const MAX_TICKET_CONTEXT_URLS = 3;
 
 export type TicketType = (typeof TICKET_TYPES)[number];
 export type CompanyPlan = (typeof COMPANY_PLANS)[number];
@@ -88,6 +90,7 @@ export type TicketRecord = {
   companyId: string;
   title: string;
   description: string;
+  contextUrls: string[];
   type: TicketType;
   area: TicketArea;
   priority: TicketPriority;
@@ -164,6 +167,10 @@ export function canCreateTickets(role: UserRole) {
   return role === "client_admin" || role === "client_operator";
 }
 
+export function canCommentOnTickets(role: UserRole) {
+  return canCreateTickets(role) || isInternalRole(role);
+}
+
 export function canManageCompanyUsers(role: UserRole) {
   return role === "client_admin" || role === "platform_admin";
 }
@@ -174,6 +181,10 @@ export function canManageOperations(role: UserRole) {
 
 export function canManageGlobalCatalog(role: UserRole) {
   return role === "team_lead" || role === "platform_admin";
+}
+
+export function isRoleCompatibleWithCompany(role: UserRole, companyId: string | null) {
+  return companyId ? isClientRole(role) : isInternalRole(role);
 }
 
 export function formatRelativeDate(dateString: string) {

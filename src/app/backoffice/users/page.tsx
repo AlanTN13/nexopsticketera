@@ -13,30 +13,36 @@ export const dynamic = "force-dynamic";
 export default async function BackofficeUsersPage() {
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
+
   if (!actor) {
     redirect("/portal/login");
   }
+
   const internalUsers = getInternalDirectoryUsers(db);
 
   return (
     <AppShell
-      eyebrow="Backoffice · Equipo NexOps"
-      title="Usuarios internos y operación de NexOps"
-      description="Directorio del equipo interno. Los usuarios cliente se gestionan dentro de cada empresa."
+      eyebrow="Backoffice · Usuarios"
+      title="Equipo interno"
+      description="Directorio operativo de NexOps. Los usuarios cliente se gestionan dentro de cada empresa para no mezclar contextos."
       tone="light"
+      navigation={[
+        { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
+        { href: withActor("/backoffice/companies", actor.id), label: "Empresas" },
+        { href: withActor("/backoffice/users", actor.id), label: "Usuarios", active: true, badge: internalUsers.length },
+      ]}
       actions={
         <>
-          <NavButton href={withActor("/backoffice", actor.id)} label="Empresas" muted tone="light" />
-          <NavButton href={withActor("/backoffice/queue", actor.id)} label="Cola global" muted tone="light" />
+          <NavButton href={withActor("/backoffice/queue", actor.id)} label="Ver tickets" muted tone="light" />
           <LogoutClientForm tone="light" />
         </>
       }
     >
-      <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
-        <SectionCard title="Equipo interno" description="Personas NexOps que operan soporte, delivery y administración de plataforma." tone="light">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <SectionCard title="Directorio NexOps" description="Usuarios que pueden operar tickets, liderar cuentas o administrar plataforma." tone="light">
           <UserTable users={internalUsers} tone="light" />
         </SectionCard>
-        <SectionCard title="Nuevo usuario interno" description="Alta manual de usuarios NexOps dentro del entorno demo." tone="light">
+        <SectionCard title="Nuevo usuario interno" description="Alta manual de accesos internos manteniendo la lógica actual del producto." tone="light">
           <CreateUserForm actor={actor} companyId={null} returnPath="/backoffice/users" tone="light" />
         </SectionCard>
       </div>

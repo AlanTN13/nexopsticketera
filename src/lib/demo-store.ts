@@ -6,9 +6,13 @@ import path from "node:path";
 
 import { demoSeed } from "@/lib/demo-seed";
 import {
+  canCommentOnTickets,
+  MAX_TICKET_CONTEXT_URLS,
+  MAX_TICKET_IMAGES,
   Company,
   CompanyPlan,
   TicketArea,
+  TicketAttachment,
   TicketComment,
   TicketDatabase,
   TicketPriority,
@@ -21,6 +25,7 @@ import {
   canManageOperations,
   isInternalRole,
   isClientRole,
+  isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";
 
 const DB_PATH = path.join(tmpdir(), "nexops-ticketing-demo.json");
@@ -37,6 +42,16 @@ function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function normalizeDb(data: TicketDatabase): TicketDatabase {
+  return {
+    ...data,
+    tickets: data.tickets.map((ticket) => ({
+      ...ticket,
+      contextUrls: Array.isArray(ticket.contextUrls) ? ticket.contextUrls : [],
+    })),
+  };
+}
+
 async function writeDb(data: TicketDatabase) {
   await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2), "utf8");
 }
@@ -50,10 +65,26 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function assertRoleAssignment(role: UserRole, companyId: string | null) {
+  if (!isRoleCompatibleWithCompany(role, companyId)) {
+    if (companyId) {
+      throw new Error("Los usuarios cliente deben conservar un rol cliente.");
+    }
+
+    throw new Error("Los usuarios internos no deben quedar asociados a una empresa cliente.");
+  }
+}
+
+async function fileToDataUrl(file: File) {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const mimeType = file.type || "application/octet-stream";
+  return `data:${mimeType};base64,${buffer.toString("base64")}`;
+}
+
 export async function readDemoDb() {
   await ensureDbFile();
   const raw = await fs.readFile(DB_PATH, "utf8");
-  return JSON.parse(raw) as TicketDatabase;
+  return normalizeDb(JSON.parse(raw) as TicketDatabase);
 }
 
 export async function resetDemoDb() {
@@ -69,6 +100,8 @@ export async function createTicket(input: {
   actorId: string;
   title: string;
   description: string;
+  contextUrls: string[];
+  attachments: File[];
   type: TicketType;
   area: TicketArea;
   priority: TicketPriority;
@@ -78,6 +111,14 @@ export async function createTicket(input: {
 
   if (!actor || !actor.companyId || !isClientRole(actor.role)) {
     throw new Error("Solo usuarios cliente pueden crear tickets en este entorno.");
+  }
+
+  if (input.contextUrls.length > MAX_TICKET_CONTEXT_URLS) {
+    throw new Error(`Solo podés adjuntar hasta ${MAX_TICKET_CONTEXT_URLS} links por ticket.`);
+  }
+
+  if (input.attachments.length > MAX_TICKET_IMAGES) {
+    throw new Error(`Solo podés adjuntar hasta ${MAX_TICKET_IMAGES} imágenes por ticket.`);
   }
 
   const nextNumber =
@@ -94,6 +135,7 @@ export async function createTicket(input: {
     companyId: actor.companyId,
     title: input.title,
     description: input.description,
+    contextUrls: input.contextUrls,
     type: input.type,
     area: input.area,
     priority: input.priority,
@@ -105,6 +147,22 @@ export async function createTicket(input: {
   };
 
   db.tickets.unshift(ticket);
+
+  const attachmentRecords = await Promise.all(
+    input.attachments.map(async (file): Promise<TicketAttachment> => ({
+      id: `attachment-${crypto.randomUUID()}`,
+      ticketId: ticket.id,
+      name: file.name,
+      sizeLabel: `${Math.max(1, Math.round(file.size / 1024))} KB`,
+      kind: "screenshot",
+      url: await fileToDataUrl(file),
+    })),
+  );
+
+  if (attachmentRecords.length > 0) {
+    db.attachments.push(...attachmentRecords);
+  }
+
   db.history.unshift({
     id: `history-${crypto.randomUUID()}`,
     ticketId: ticket.id,
@@ -136,6 +194,10 @@ export async function addComment(input: {
 
   if (!internalActor && !belongsToCompany) {
     throw new Error("No tenés permisos para comentar este ticket.");
+  }
+
+  if (!canCommentOnTickets(actor.role)) {
+    throw new Error("Tu rol puede ver el ticket, pero no publicar comentarios.");
   }
 
   if (isClientRole(actor.role) && input.visibility === "internal") {
@@ -259,9 +321,7 @@ export async function createUser(input: {
     throw new Error("Los usuarios cliente deben pertenecer a una empresa.");
   }
 
-  if (isInternalRole(input.role) && input.companyId) {
-    throw new Error("Los usuarios internos no deben quedar asociados a una empresa cliente.");
-  }
+  assertRoleAssignment(input.role, input.companyId);
 
   if (input.password.length < 8) {
     throw new Error("La contraseña debe tener al menos 8 caracteres.");
@@ -325,6 +385,8 @@ export async function updateUser(input: {
   if (duplicated) {
     throw new Error("Ya existe otro usuario con ese email.");
   }
+
+  assertRoleAssignment(input.role, target.companyId);
 
   target.name = input.name;
   target.email = normalizedEmail;

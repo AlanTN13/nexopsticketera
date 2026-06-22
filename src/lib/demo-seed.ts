@@ -77,12 +77,12 @@ export const demoSeed: TicketDatabase = {
     {
       id: "user-emi",
       companyId: null,
-      name: "Emilia Soto",
-      email: "emilia@nexops.io",
+      name: "NexOps Tech",
+      email: "info@nexopstech.com",
       role: "platform_admin",
       status: "active",
       title: "Platform Admin",
-      avatar: "ES",
+      avatar: "NT",
     },
   ],
   tickets: [
@@ -93,6 +93,9 @@ export const demoSeed: TicketDatabase = {
       title: "Error en sincronización de leads desde formulario web",
       description:
         "Los leads del landing principal no están entrando al CRM desde hoy a las 09:30. Necesitamos revisión del webhook y retry.",
+      contextUrls: [
+        "https://crm.nexmart.com/webhooks/leads",
+      ],
       type: "issue",
       area: "crm",
       priority: "critical",
@@ -109,6 +112,9 @@ export const demoSeed: TicketDatabase = {
       title: "Mejora para bot de recuperación de carritos",
       description:
         "Queremos sumar personalización por categoría y stock en el agente IA que opera campañas de carritos abandonados.",
+      contextUrls: [
+        "https://docs.nexmart.com/carritos-abandonados",
+      ],
       type: "improvement",
       area: "ai_agent",
       priority: "medium",
@@ -125,6 +131,7 @@ export const demoSeed: TicketDatabase = {
       title: "Ajuste en permisos del ERP para órdenes médicas",
       description:
         "Se requiere una regla nueva para que solo supervisores aprueben determinados cambios en órdenes médicas.",
+      contextUrls: [],
       type: "improvement",
       area: "erp",
       priority: "high",
@@ -206,4 +213,3 @@ export const demoSeed: TicketDatabase = {
     },
   ],
 };
-

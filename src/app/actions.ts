@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { LOCAL_CLIENT_PASSWORD, clearClientSession, findUserByEmail, isInternalActor, setClientSession } from "@/lib/auth";
+import { LOCAL_CLIENT_PASSWORD, assertAuthenticatedActorId, clearClientSession, findUserByEmail, isInternalActor, setClientSession } from "@/lib/auth";
+import { getBackendMode, isSupabaseBackend } from "@/lib/backend";
 import { addComment, createCompany, createTicket, createUser, getAppSnapshot, resetDemoDb, updateCompany, updateTicketWorkflow, updateUser } from "@/lib/app-store";
-import { COMPANY_PLANS, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { COMPANY_PLANS, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 function getString(formData: FormData, key: string) {
@@ -18,6 +18,26 @@ function assertInSet<T extends readonly string[]>(value: string, allowed: T): T[
     throw new Error(`Valor inválido para ${value}.`);
   }
   return value as T[number];
+}
+
+function getOptionalString(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+function getContextUrls(formData: FormData) {
+  const urls = Array.from({ length: MAX_TICKET_CONTEXT_URLS }, (_, index) =>
+    getOptionalString(formData, `contextUrl${index + 1}`),
+  ).filter(Boolean);
+
+  return Array.from(new Set(urls));
+}
+
+function getTicketImageFiles(formData: FormData) {
+  const files = Array.from({ length: MAX_TICKET_IMAGES }, (_, index) =>
+    formData.get(`attachment${index + 1}`),
+  ).filter((value): value is File => value instanceof File && value.size > 0);
+
+  return files;
 }
 
 function routeWithActor(path: string, actorId: string) {
@@ -55,7 +75,11 @@ export type LoginClientState = {
 };
 
 export async function resetDemoAction(formData: FormData) {
-  getString(formData, "actorId");
+  const db = await getAppSnapshot();
+  await assertAuthenticatedActorId(db, getString(formData, "actorId"));
+  if (getBackendMode() !== "demo") {
+    throw new Error("El reinicio de demo solo está disponible cuando Supabase no es el backend principal.");
+  }
   await resetDemoDb();
   redirect("/portal/login");
 }
@@ -67,24 +91,34 @@ export async function loginClientAction(
   const email = getString(formData, "email").toLowerCase();
   const password = getString(formData, "password");
   const db = await getAppSnapshot();
-  const actor = findUserByEmail(db, email);
-
-  if (!actor) {
-    return { error: "No encontramos un usuario con ese email." };
-  }
 
   if (!password) {
     return { error: "Ingresá tu contraseña para continuar." };
   }
 
-  if (isSupabaseConfigured()) {
+  if (isSupabaseBackend()) {
     const client = getSupabaseServerClient();
-    const { error } = await client.auth.signInWithPassword({ email, password });
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
 
     if (error) {
       return { error: "Credenciales inválidas. Revisá tu email y contraseña." };
     }
-  } else if (password !== LOCAL_CLIENT_PASSWORD) {
+
+    const actor = db.users.find((user) => user.id === data.user?.id) ?? null;
+    if (!actor) {
+      return { error: "La cuenta existe en Auth, pero no tiene perfil operativo en la tiketera." };
+    }
+
+    await setClientSession(actor.id);
+    redirect(isInternalActor(actor) ? routeWithActor("/backoffice", actor.id) : "/portal");
+  }
+
+  const actor = findUserByEmail(db, email);
+  if (!actor) {
+    return { error: "No encontramos un usuario con ese email." };
+  }
+
+  if (password !== LOCAL_CLIENT_PASSWORD) {
     return { error: "Credenciales inválidas. Revisá tu email y contraseña." };
   }
 
@@ -98,7 +132,8 @@ export async function logoutClientAction() {
 }
 
 export async function createTicketAction(formData: FormData) {
-  const actorId = getString(formData, "actorId");
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const title = getString(formData, "title");
   const description = getString(formData, "description");
 
@@ -107,9 +142,11 @@ export async function createTicketAction(formData: FormData) {
   }
 
   await createTicket({
-    actorId,
+    actorId: actor.id,
     title,
     description,
+    contextUrls: getContextUrls(formData),
+    attachments: getTicketImageFiles(formData),
     type: assertInSet(getString(formData, "type"), TICKET_TYPES),
     area: assertInSet(getString(formData, "area"), TICKET_AREAS),
     priority: assertInSet(getString(formData, "priority"), TICKET_PRIORITIES),
@@ -120,7 +157,8 @@ export async function createTicketAction(formData: FormData) {
 }
 
 export async function addCommentAction(formData: FormData) {
-  const actorId = getString(formData, "actorId");
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const ticketId = getString(formData, "ticketId");
   const body = getString(formData, "body");
 
@@ -129,7 +167,7 @@ export async function addCommentAction(formData: FormData) {
   }
 
   await addComment({
-    actorId,
+    actorId: actor.id,
     ticketId,
     body,
     visibility: getString(formData, "visibility") === "internal" ? "internal" : "external",
@@ -137,17 +175,18 @@ export async function addCommentAction(formData: FormData) {
 
   const returnPath = getString(formData, "returnPath");
   revalidatePath(returnPath);
-  redirect(buildPostActionRedirect(returnPath, actorId));
+  redirect(buildPostActionRedirect(returnPath, actor.id));
 }
 
 export async function updateTicketWorkflowAction(formData: FormData) {
-  const actorId = getString(formData, "actorId");
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const ticketId = getString(formData, "ticketId");
   const assignedToId = getString(formData, "assignedToId");
   const returnPath = getString(formData, "returnPath");
 
   await updateTicketWorkflow({
-    actorId,
+    actorId: actor.id,
     ticketId,
     status: assertInSet(getString(formData, "status"), TICKET_STATUSES),
     priority: assertInSet(getString(formData, "priority"), TICKET_PRIORITIES),
@@ -155,17 +194,18 @@ export async function updateTicketWorkflowAction(formData: FormData) {
   });
 
   revalidatePath(returnPath);
-  redirect(buildPostActionRedirect(returnPath, actorId));
+  redirect(buildPostActionRedirect(returnPath, actor.id));
 }
 
 export async function createUserAction(formData: FormData) {
-  const actorId = getString(formData, "actorId");
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const companyIdValue = getString(formData, "companyId");
   const returnPath = getString(formData, "returnPath");
 
   try {
     await createUser({
-      actorId,
+      actorId: actor.id,
       companyId: companyIdValue === "internal" ? null : companyIdValue,
       name: getString(formData, "name"),
       email: getString(formData, "email"),
@@ -183,16 +223,17 @@ export async function createUserAction(formData: FormData) {
   }
 
   revalidatePath(returnPath);
-  redirect(buildSuccessRedirect(buildPostActionRedirect(returnPath, actorId), "Usuario creado correctamente."));
+  redirect(buildSuccessRedirect(buildPostActionRedirect(returnPath, actor.id), "Usuario creado correctamente."));
 }
 
 export async function createCompanyAction(formData: FormData) {
-  const actorId = getString(formData, "actorId");
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const returnPath = getString(formData, "returnPath");
 
   try {
     await createCompany({
-      actorId,
+      actorId: actor.id,
       companyName: getString(formData, "companyName"),
       industry: getString(formData, "industry"),
       plan: assertInSet(getString(formData, "plan"), COMPANY_PLANS),
@@ -212,18 +253,19 @@ export async function createCompanyAction(formData: FormData) {
 
   revalidatePath("/backoffice");
   revalidatePath(returnPath);
-  redirect(buildPostActionRedirect(returnPath, actorId));
+  redirect(buildPostActionRedirect(returnPath, actor.id));
 }
 
 export async function updateCompanyAction(formData: FormData) {
-  const actorId = getString(formData, "actorId");
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const companyId = getString(formData, "companyId");
   const returnPath = getString(formData, "returnPath") || `/backoffice/companies/${companyId}`;
   let nextPath = returnPath;
 
   try {
     const company = await updateCompany({
-      actorId,
+      actorId: actor.id,
       companyId,
       name: getString(formData, "name"),
       slug: getString(formData, "slug"),
@@ -246,17 +288,18 @@ export async function updateCompanyAction(formData: FormData) {
   revalidatePath("/backoffice");
   revalidatePath(returnPath);
   revalidatePath(nextPath);
-  redirect(buildSuccessRedirect(buildPostActionRedirect(nextPath, actorId), "Empresa actualizada correctamente."));
+  redirect(buildSuccessRedirect(buildPostActionRedirect(nextPath, actor.id), "Empresa actualizada correctamente."));
 }
 
 export async function updateUserAction(formData: FormData) {
-  const actorId = getString(formData, "actorId");
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const userId = getString(formData, "userId");
   const returnPath = getString(formData, "returnPath");
 
   try {
     await updateUser({
-      actorId,
+      actorId: actor.id,
       userId,
       name: getString(formData, "name"),
       email: getString(formData, "email"),
@@ -275,5 +318,5 @@ export async function updateUserAction(formData: FormData) {
 
   revalidatePath("/backoffice");
   revalidatePath(returnPath);
-  redirect(buildSuccessRedirect(buildPostActionRedirect(returnPath, actorId), "Usuario actualizado correctamente."));
+  redirect(buildSuccessRedirect(buildPostActionRedirect(returnPath, actor.id), "Usuario actualizado correctamente."));
 }

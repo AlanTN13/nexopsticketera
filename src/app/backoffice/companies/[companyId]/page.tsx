@@ -7,7 +7,6 @@ import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getClientUsersForCompany, getCompanyBySlugOrId, getTicketsForCompany, sortTickets } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
-import { companyPlanLabels } from "@/lib/ticketing";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +23,11 @@ export default async function BackofficeCompanyDetail({
   const { error, success } = await searchParams;
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
+
   if (!actor) {
     redirect("/portal/login");
   }
+
   const company = getCompanyBySlugOrId(db, companyLookup);
 
   if (!company) {
@@ -36,7 +37,12 @@ export default async function BackofficeCompanyDetail({
         title="Empresa no encontrada"
         description="No pudimos ubicar la cuenta solicitada en el entorno actual."
         tone="light"
-        actions={<NavButton href={withActor("/backoffice", actor.id)} label="Volver a empresas" muted tone="light" />}
+        navigation={[
+          { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
+          { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true },
+          { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
+        ]}
+        actions={<NavButton href={withActor("/backoffice/companies", actor.id)} label="Volver a empresas" muted tone="light" />}
       >
         <EmptyState title="Nada para mostrar" detail="La empresa puede haberse eliminado o el entorno se reinició." tone="light" />
       </AppShell>
@@ -56,39 +62,44 @@ export default async function BackofficeCompanyDetail({
     <AppShell
       eyebrow="Backoffice · Empresa"
       title={company.name}
-      description="Vista consolidada de la cuenta: tickets compartidos, usuarios cliente y contexto operativo."
+      description="Workspace de la cuenta con vista separada para datos, tickets y usuarios cliente."
       tone="light"
+      navigation={[
+        { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
+        { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true },
+        { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
+      ]}
       actions={
         <>
-          <NavButton href={withActor("/backoffice", actor.id)} label="Volver a empresas" muted tone="light" />
-          <NavButton href={withActor(`/backoffice/queue?companyId=${company.id}`, actor.id)} label="Ver cola de la cuenta" muted tone="light" />
+          <NavButton href={withActor("/backoffice/companies", actor.id)} label="Volver a empresas" muted tone="light" />
+          <NavButton href={withActor(`/backoffice/queue?companyId=${company.id}`, actor.id)} label="Ver tickets" muted tone="light" />
           <LogoutClientForm tone="light" />
         </>
       }
     >
       <div className="grid gap-4 lg:grid-cols-4">
-        <StatCard label="Plan" value={companyPlanLabels[company.plan]} detail="Nivel comercial actual de la cuenta." tone="light" />
-        <StatCard label="Usuarios cliente" value={companyUsers.length} detail="Miembros con acceso al portal de la empresa." tone="light" />
-        <StatCard label="Tickets abiertos" value={openTickets.length} detail="Solicitudes activas o esperando respuesta." tone="light" />
-        <StatCard label="Tickets críticos" value={criticalTickets.length} detail="Casos de mayor urgencia operativa." tone="light" />
+        <StatCard label="Estado" value={company.status === "active" ? "Activa" : "Onboarding"} detail="Momento operativo actual de la cuenta." tone="light" />
+        <StatCard label="Usuarios" value={companyUsers.length} detail="Miembros cliente con acceso al portal." tone="light" />
+        <StatCard label="Abiertos" value={openTickets.length} detail="Solicitudes activas o esperando respuesta." tone="light" />
+        <StatCard label="Críticos" value={criticalTickets.length} detail="Casos de mayor urgencia operativa." tone="light" />
       </div>
 
       {error ? (
-        <div className="rounded-[24px] border border-rose-300/40 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-[0_10px_30px_rgba(244,63,94,0.08)]">
+        <div className="rounded-[20px] border border-rose-300/40 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </div>
       ) : null}
 
       {success ? (
-        <div className="rounded-[24px] border border-emerald-300/40 bg-emerald-50 px-5 py-4 text-sm text-emerald-700 shadow-[0_10px_30px_rgba(16,185,129,0.08)]">
+        <div className="rounded-[20px] border border-emerald-300/40 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {success}
         </div>
       ) : null}
 
-      <div className="grid gap-8 xl:grid-cols-[1fr_0.95fr]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <SectionCard
-          title="Ficha de la empresa"
-          description="Actualizá los datos centrales de la cuenta para que NexOps opere con mejor contexto."
+          title="Overview"
+          description="Información estructural de la cuenta. Acá vive la configuración central, no la operación diaria."
           tone="light"
         >
           <UpdateCompanyForm
@@ -100,8 +111,8 @@ export default async function BackofficeCompanyDetail({
         </SectionCard>
 
         <SectionCard
-          title="Sumar usuario cliente"
-          description="Alta de miembros para esta empresa. Todos verán los tickets compartidos de la cuenta según su rol."
+          title="Nuevo usuario cliente"
+          description="Alta rápida de miembros de esta cuenta sin salir del workspace de empresa."
           tone="light"
         >
           <CreateUserForm
@@ -114,62 +125,41 @@ export default async function BackofficeCompanyDetail({
         </SectionCard>
       </div>
 
-      <div className="grid gap-8">
-        <SectionCard
-          title="Usuarios de la empresa"
-          description="Miembros cliente asociados a esta cuenta. El rol define acciones, no lectura base de tickets."
-          tone="light"
-        >
-          {companyUsers.length > 0 ? (
-            <div className="grid gap-6">
-              <UserTable users={companyUsers} tone="light" />
-              <div className="grid gap-6">
-                {companyUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="rounded-[28px] border border-[rgba(91,72,199,0.12)] bg-[#faf9ff] p-5"
-                  >
-                    <div className="mb-4">
-                      <p className="text-lg font-bold tracking-tight text-[#1b1638]">{user.name}</p>
-                      <p className="text-sm text-[#5a5d7f]">
-                        Editá mail, rol, cargo o definí una nueva contraseña para este acceso.
-                      </p>
-                    </div>
-                    <UpdateUserForm
-                      actor={actor}
-                      user={user}
-                      returnPath={`/backoffice/companies/${company.slug}`}
-                      tone="light"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <EmptyState
-              title="Todavía no hay usuarios cliente"
-              detail="Creá el admin inicial o sumá miembros desde el panel lateral."
-              tone="light"
-            />
-          )}
-        </SectionCard>
+      <SectionCard title="Tickets de la empresa" description="Cola específica de esta cuenta, sin perder consistencia con la tabla global." tone="light">
+        {companyTickets.length > 0 ? (
+          <TicketTable db={db} tickets={companyTickets} basePath="/backoffice" tone="light" />
+        ) : (
+          <EmptyState title="Esta empresa todavía no tiene tickets" detail="Cuando el cliente cree su primera incidencia o mejora, va a aparecer acá." tone="light" />
+        )}
+      </SectionCard>
 
-        <SectionCard
-          title="Tickets de la empresa"
-          description="Todos los tickets compartidos por esta cuenta, visibles para los usuarios cliente de la empresa."
-          tone="light"
-        >
-          {companyTickets.length > 0 ? (
-            <TicketTable db={db} tickets={companyTickets} basePath="/backoffice" tone="light" />
-          ) : (
-            <EmptyState
-              title="Esta empresa todavía no tiene tickets"
-              detail="Cuando el cliente cree su primera incidencia o mejora, va a aparecer acá."
-              tone="light"
-            />
-          )}
-        </SectionCard>
-      </div>
+      <SectionCard title="Usuarios cliente" description="Directorio de accesos de la cuenta. La edición detallada queda abajo de la tabla." tone="light">
+        {companyUsers.length > 0 ? (
+          <div className="grid gap-5">
+            <UserTable users={companyUsers} tone="light" />
+            <div className="grid gap-4 xl:grid-cols-2">
+              {companyUsers.map((user) => (
+                <div key={user.id} className="rounded-[22px] border border-[rgba(17,24,39,0.08)] bg-[#fafafa] p-4">
+                  <div className="mb-4">
+                    <p className="font-semibold text-[#111827]">{user.name}</p>
+                    <p className="text-sm text-[#6b7280]">
+                      Ajustá mail, rol, cargo o definí una nueva contraseña.
+                    </p>
+                  </div>
+                  <UpdateUserForm
+                    actor={actor}
+                    user={user}
+                    returnPath={`/backoffice/companies/${company.slug}`}
+                    tone="light"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <EmptyState title="Todavía no hay usuarios cliente" detail="Creá el admin inicial o sumá miembros desde el panel lateral." tone="light" />
+        )}
+      </SectionCard>
     </AppShell>
   );
 }

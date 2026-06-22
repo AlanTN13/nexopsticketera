@@ -3,13 +3,17 @@ import "server-only";
 import { PostgrestError } from "@supabase/supabase-js";
 
 import { LOCAL_CLIENT_PASSWORD } from "@/lib/auth";
+import { isSupabaseBackend } from "@/lib/backend";
 import * as demoStore from "@/lib/demo-store";
 import { demoSeed } from "@/lib/demo-seed";
 import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase-server";
 import {
   Company,
   CompanyPlan,
+  MAX_TICKET_CONTEXT_URLS,
+  MAX_TICKET_IMAGES,
   TicketArea,
+  TicketAttachment,
   TicketComment,
   TicketDatabase,
   TicketHistoryEntry,
@@ -21,8 +25,10 @@ import {
   UserRole,
   canManageGlobalCatalog,
   canManageOperations,
+  canCommentOnTickets,
   isClientRole,
   isInternalRole,
+  isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";
 
 type CompanyRow = {
@@ -53,6 +59,7 @@ type TicketRow = {
   company_id: string;
   title: string;
   description: string;
+  context_urls: string[] | null;
   type: string;
   area: string;
   priority: string;
@@ -79,6 +86,7 @@ type AttachmentRow = {
   size_bytes: number;
   kind: "brief" | "screenshot" | "log";
   storage_path: string;
+  created_at?: string;
 };
 
 type HistoryRow = {
@@ -89,10 +97,6 @@ type HistoryRow = {
   message: string;
   created_at: string;
 };
-
-function shouldUseSupabase() {
-  return isSupabaseAdminConfigured();
-}
 
 function ensureActor(db: TicketDatabase, actorId: string) {
   const actor = db.users.find((user) => user.id === actorId);
@@ -170,6 +174,7 @@ function mapTicket(row: TicketRow): TicketRecord {
     companyId: row.company_id,
     title: row.title,
     description: row.description,
+    contextUrls: Array.isArray(row.context_urls) ? row.context_urls : [],
     type: row.type as TicketType,
     area: row.area as TicketArea,
     priority: row.priority as TicketPriority,
@@ -222,6 +227,98 @@ function mapAttachment(row: AttachmentRow) {
   };
 }
 
+async function getSignedAttachmentUrl(storagePath: string) {
+  if (!storagePath || storagePath.startsWith("seed/")) {
+    return "#";
+  }
+
+  const client = getSupabaseAdminClient();
+  const { data, error } = await client.storage
+    .from("ticket-attachments")
+    .createSignedUrl(storagePath, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    return "#";
+  }
+
+  return data.signedUrl;
+}
+
+function sanitizeFileName(fileName: string) {
+  const trimmed = fileName.trim();
+  const dotIndex = trimmed.lastIndexOf(".");
+  const baseName = dotIndex > 0 ? trimmed.slice(0, dotIndex) : trimmed;
+  const extension = dotIndex > 0 ? trimmed.slice(dotIndex).toLowerCase() : "";
+
+  const safeBaseName =
+    slugify(baseName).replace(/(^-|-$)/g, "") || "archivo";
+
+  return `${safeBaseName}${extension}`;
+}
+
+async function uploadTicketImages(input: {
+  ticketId: string;
+  actorId: string;
+  attachments: File[];
+}): Promise<TicketAttachment[]> {
+  if (input.attachments.length === 0) {
+    return [];
+  }
+
+  if (input.attachments.length > MAX_TICKET_IMAGES) {
+    throw new Error(`Solo podés adjuntar hasta ${MAX_TICKET_IMAGES} imágenes por ticket.`);
+  }
+
+  const client = getSupabaseAdminClient();
+  const createdAttachments: TicketAttachment[] = [];
+
+  for (const file of input.attachments) {
+    const safeFileName = sanitizeFileName(file.name);
+    const storagePath = `tickets/${input.ticketId}/${crypto.randomUUID()}-${safeFileName}`;
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+    const { error: uploadError } = await client.storage
+      .from("ticket-attachments")
+      .upload(storagePath, fileBuffer, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    const { data, error } = await client
+      .from("ticket_attachments")
+      .insert({
+        ticket_id: input.ticketId,
+        uploaded_by_id: input.actorId,
+        storage_path: storagePath,
+        file_name: file.name,
+        size_bytes: file.size,
+        kind: "screenshot",
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      await client.storage.from("ticket-attachments").remove([storagePath]);
+      throw new Error(error.message);
+    }
+
+    createdAttachments.push({
+      id: String(data.id),
+      ticketId: String(data.ticket_id),
+      name: String(data.file_name),
+      sizeLabel: formatBytes(Number(data.size_bytes ?? 0)),
+      kind: "screenshot",
+      url: await getSignedAttachmentUrl(String(data.storage_path)),
+    });
+  }
+
+  return createdAttachments;
+}
+
 function assertNoError(error: PostgrestError | null) {
   if (error) {
     throw new Error(error.message);
@@ -234,6 +331,16 @@ function assertData<T>(data: T | null, message: string): T {
   }
 
   return data;
+}
+
+function assertRoleAssignment(role: UserRole, companyId: string | null) {
+  if (!isRoleCompatibleWithCompany(role, companyId)) {
+    if (companyId) {
+      throw new Error("Los usuarios cliente deben conservar un rol cliente.");
+    }
+
+    throw new Error("Los usuarios internos no deben quedar asociados a una empresa cliente.");
+  }
 }
 
 async function getSupabaseSnapshot(): Promise<TicketDatabase> {
@@ -260,24 +367,163 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
     return getSupabaseSnapshot();
   }
 
+  const attachmentRows = (attachmentsResult.data ?? []) as AttachmentRow[];
+  const signedAttachmentUrls = await Promise.all(
+    attachmentRows.map((row) => getSignedAttachmentUrl(row.storage_path)),
+  );
+
   return {
     companies: (companiesResult.data ?? []).map((row) => mapCompany(row as CompanyRow)),
     users: (usersResult.data ?? []).map((row) => mapUser(row as UserRow)),
     tickets: (ticketsResult.data ?? []).map((row) => mapTicket(row as TicketRow)),
     comments: (commentsResult.data ?? []).map((row) => mapComment(row as CommentRow)),
-    attachments: (attachmentsResult.data ?? []).map((row) =>
-      mapAttachment(row as AttachmentRow),
-    ),
+    attachments: attachmentRows.map((row, index) => ({
+      ...mapAttachment(row),
+      url: signedAttachmentUrls[index] ?? "#",
+    })),
     history: (historyResult.data ?? []).map((row) => mapHistory(row as HistoryRow)),
   };
+}
+
+function assertContextUrls(contextUrls: string[]) {
+  if (contextUrls.length > MAX_TICKET_CONTEXT_URLS) {
+    throw new Error(`Solo podés adjuntar hasta ${MAX_TICKET_CONTEXT_URLS} links por ticket.`);
+  }
+
+  for (const item of contextUrls) {
+    if (!item) {
+      continue;
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(item);
+    } catch {
+      throw new Error("Uno de los links asociados al ticket no es una URL válida.");
+    }
+
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      throw new Error("Los links del ticket deben comenzar con http:// o https://.");
+    }
+  }
+}
+
+async function createTicketHistoryEntry(input: {
+  ticketId: string;
+  actorId: string;
+  message: string;
+}) {
+  const client = getSupabaseAdminClient();
+  const { error } = await client.from("ticket_history").insert({
+    ticket_id: input.ticketId,
+    actor_id: input.actorId,
+    event_type: "created",
+    message: input.message,
+  });
+
+  assertNoError(error);
+}
+
+async function cleanupTicketCreation(ticketId: string) {
+  const client = getSupabaseAdminClient();
+  const { data: attachments, error: attachmentsError } = await client
+    .from("ticket_attachments")
+    .select("storage_path")
+    .eq("ticket_id", ticketId);
+
+  if (!attachmentsError) {
+    const storagePaths = (attachments ?? [])
+      .map((item) => String(item.storage_path ?? ""))
+      .filter(Boolean);
+
+    if (storagePaths.length > 0) {
+      await client.storage.from("ticket-attachments").remove(storagePaths);
+    }
+  }
+
+  await client.from("tickets").delete().eq("id", ticketId);
+}
+
+async function createTicketResources(input: {
+  ticketId: string;
+  actorId: string;
+  actorName: string;
+  ticketCode: string;
+  contextUrls: string[];
+  attachments: File[];
+}) {
+  assertContextUrls(input.contextUrls);
+
+  const uploadedAttachments = await uploadTicketImages({
+    ticketId: input.ticketId,
+    actorId: input.actorId,
+    attachments: input.attachments,
+  });
+
+  const resourceNotes = [];
+  if (input.contextUrls.length > 0) {
+    resourceNotes.push(
+      `${input.contextUrls.length} link${input.contextUrls.length === 1 ? "" : "s"} de contexto`,
+    );
+  }
+  if (uploadedAttachments.length > 0) {
+    resourceNotes.push(
+      `${uploadedAttachments.length} imagen${uploadedAttachments.length === 1 ? "" : "es"} adjunta${uploadedAttachments.length === 1 ? "" : "s"}`,
+    );
+  }
+
+  const baseMessage = `${input.actorName} creó el ticket ${input.ticketCode}`;
+  const resourceMessage =
+    resourceNotes.length > 0 ? ` y sumó ${resourceNotes.join(" y ")}` : "";
+
+  await createTicketHistoryEntry({
+    ticketId: input.ticketId,
+    actorId: input.actorId,
+    message: `${baseMessage}${resourceMessage}.`,
+  });
 }
 
 async function bootstrapSupabaseFromDemoSeed() {
   const client = getSupabaseAdminClient();
   const companyIdMap = new Map<string, string>();
   const userIdMap = new Map<string, string>();
+  const existingCompaniesResult = await client
+    .from("companies")
+    .select("id, slug");
+  assertNoError(existingCompaniesResult.error);
+  const existingCompanies = new Map(
+    (existingCompaniesResult.data ?? []).map((company) => [String(company.slug), String(company.id)]),
+  );
+
+  const {
+    data: authUsersData,
+    error: authUsersError,
+  } = await client.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+  if (authUsersError) {
+    throw new Error(authUsersError.message);
+  }
+  const existingAuthUsers = new Map(
+    (authUsersData.users ?? []).map((user) => [user.email?.toLowerCase() ?? "", user]),
+  );
+
+  const existingProfilesResult = await client
+    .from("users")
+    .select("id, email");
+  assertNoError(existingProfilesResult.error);
+  const existingProfiles = new Map(
+    (existingProfilesResult.data ?? []).map((user) => [String(user.email).toLowerCase(), String(user.id)]),
+  );
 
   for (const company of demoSeed.companies) {
+    const existingCompanyId = existingCompanies.get(company.slug);
+    if (existingCompanyId) {
+      companyIdMap.set(company.id, existingCompanyId);
+      continue;
+    }
+
     const { data, error } = await client
       .from("companies")
       .insert({
@@ -289,59 +535,89 @@ async function bootstrapSupabaseFromDemoSeed() {
         primary_contact: company.primaryContact,
         created_at: company.createdAt,
       })
-      .select("id")
+      .select("id, slug")
       .single();
 
     assertNoError(error);
-    companyIdMap.set(company.id, assertData(data, "No pudimos crear la empresa base.").id);
+    const createdCompany = assertData(data, "No pudimos crear la empresa base.");
+    companyIdMap.set(company.id, createdCompany.id);
+    existingCompanies.set(createdCompany.slug, createdCompany.id);
   }
 
   for (const user of demoSeed.users) {
-    const { data: authData, error: authError } = await client.auth.admin.createUser({
-      email: user.email,
-      password: LOCAL_CLIENT_PASSWORD,
-      email_confirm: true,
-      user_metadata: {
-        name: user.name,
-        role: user.role,
-      },
-    });
+    const normalizedEmail = user.email.toLowerCase();
+    let authUser = existingAuthUsers.get(normalizedEmail) ?? null;
 
-    if (authError) {
-      throw new Error(authError.message);
-    }
-
-    const authUser = authData.user;
     if (!authUser) {
-      throw new Error("Supabase no devolvió el usuario del seed.");
+      const { data: authData, error: authError } = await client.auth.admin.createUser({
+        email: user.email,
+        password: LOCAL_CLIENT_PASSWORD,
+        email_confirm: true,
+        user_metadata: {
+          name: user.name,
+          role: user.role,
+        },
+      });
+
+      if (authError) {
+        throw new Error(authError.message);
+      }
+
+      authUser = authData.user;
+      if (!authUser) {
+        throw new Error("Supabase no devolvió el usuario del seed.");
+      }
+
+      existingAuthUsers.set(normalizedEmail, authUser);
     }
 
-    const { error: profileError } = await client.from("users").insert({
-      id: authUser.id,
-      company_id: user.companyId ? companyIdMap.get(user.companyId) ?? null : null,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      title: user.title,
-      avatar: user.avatar,
-      created_at: new Date().toISOString(),
-    });
+    const existingProfileId = existingProfiles.get(normalizedEmail);
+    if (existingProfileId && existingProfileId !== authUser.id) {
+      throw new Error(`El perfil ${user.email} quedó asociado a un auth user distinto.`);
+    }
 
-    if (profileError) {
-      await client.auth.admin.deleteUser(authUser.id);
-      throw new Error(profileError.message);
+    if (!existingProfileId) {
+      const { error: profileError } = await client.from("users").insert({
+        id: authUser.id,
+        company_id: user.companyId ? companyIdMap.get(user.companyId) ?? null : null,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        title: user.title,
+        avatar: user.avatar,
+        created_at: new Date().toISOString(),
+      });
+
+      if (profileError) {
+        throw new Error(profileError.message);
+      }
+
+      existingProfiles.set(normalizedEmail, authUser.id);
     }
 
     userIdMap.set(user.id, authUser.id);
   }
 
+  const existingTicketsResult = await client
+    .from("tickets")
+    .select("id, code");
+  assertNoError(existingTicketsResult.error);
+  const existingTickets = new Map(
+    (existingTicketsResult.data ?? []).map((ticket) => [String(ticket.code), String(ticket.id)]),
+  );
+
   for (const ticket of demoSeed.tickets) {
+    if (existingTickets.has(ticket.code)) {
+      continue;
+    }
+
     const { error } = await client.from("tickets").insert({
       code: ticket.code,
       company_id: companyIdMap.get(ticket.companyId),
       title: ticket.title,
       description: ticket.description,
+      context_urls: ticket.contextUrls,
       type: ticket.type,
       area: ticket.area,
       priority: ticket.priority,
@@ -368,32 +644,128 @@ async function bootstrapSupabaseFromDemoSeed() {
     }
   }
 
+  const existingCommentsResult = await client
+    .from("ticket_comments")
+    .select("ticket_id, author_id, body, created_at");
+  assertNoError(existingCommentsResult.error);
+  const existingComments = new Set(
+    (existingCommentsResult.data ?? []).map((comment) =>
+      [
+        String(comment.ticket_id),
+        String(comment.author_id),
+        String(comment.body),
+        String(comment.created_at),
+      ].join("::"),
+    ),
+  );
+
   if (demoSeed.comments.length > 0) {
-    const { error } = await client.from("ticket_comments").insert(
-      demoSeed.comments.map((comment) => ({
+    const missingComments = demoSeed.comments
+      .map((comment) => ({
         ticket_id: ticketIdMap.get(comment.ticketId),
         author_id: userIdMap.get(comment.authorId),
         visibility: comment.visibility,
         body: comment.body,
         created_at: comment.createdAt,
-      })),
-    );
+      }))
+      .filter((comment) => {
+        const key = [
+          comment.ticket_id,
+          comment.author_id,
+          comment.body,
+          comment.created_at,
+        ].join("::");
+        return !existingComments.has(key);
+      });
 
-    assertNoError(error);
+    if (missingComments.length > 0) {
+      const { error } = await client.from("ticket_comments").insert(missingComments);
+      assertNoError(error);
+    }
   }
 
+  const existingAttachmentsResult = await client
+    .from("ticket_attachments")
+    .select("ticket_id, file_name, storage_path");
+  assertNoError(existingAttachmentsResult.error);
+  const existingAttachments = new Set(
+    (existingAttachmentsResult.data ?? []).map((attachment) =>
+      [
+        String(attachment.ticket_id),
+        String(attachment.file_name),
+        String(attachment.storage_path),
+      ].join("::"),
+    ),
+  );
+
+  if (demoSeed.attachments.length > 0) {
+    const missingAttachments = demoSeed.attachments
+      .map((attachment) => ({
+        ticket_id: ticketIdMap.get(attachment.ticketId),
+        uploaded_by_id: userIdMap.get(
+          demoSeed.tickets.find((ticket) => ticket.id === attachment.ticketId)?.createdById ?? "",
+        ),
+        storage_path: attachment.url === "#" ? `seed/${attachment.name}` : attachment.url,
+        file_name: attachment.name,
+        size_bytes: 0,
+        kind: attachment.kind,
+      }))
+      .filter((attachment) => attachment.ticket_id && attachment.uploaded_by_id)
+      .filter((attachment) => {
+        const key = [
+          attachment.ticket_id,
+          attachment.file_name,
+          attachment.storage_path,
+        ].join("::");
+        return !existingAttachments.has(key);
+      });
+
+    if (missingAttachments.length > 0) {
+      const { error } = await client.from("ticket_attachments").insert(missingAttachments);
+      assertNoError(error);
+    }
+  }
+
+  const existingHistoryResult = await client
+    .from("ticket_history")
+    .select("ticket_id, actor_id, event_type, message, created_at");
+  assertNoError(existingHistoryResult.error);
+  const existingHistory = new Set(
+    (existingHistoryResult.data ?? []).map((entry) =>
+      [
+        String(entry.ticket_id),
+        String(entry.actor_id),
+        String(entry.event_type),
+        String(entry.message),
+        String(entry.created_at),
+      ].join("::"),
+    ),
+  );
+
   if (demoSeed.history.length > 0) {
-    const { error } = await client.from("ticket_history").insert(
-      demoSeed.history.map((entry) => ({
+    const missingHistory = demoSeed.history
+      .map((entry) => ({
         ticket_id: ticketIdMap.get(entry.ticketId),
         actor_id: userIdMap.get(entry.actorId),
         event_type: entry.type,
         message: entry.message,
         created_at: entry.createdAt,
-      })),
-    );
+      }))
+      .filter((entry) => {
+        const key = [
+          entry.ticket_id,
+          entry.actor_id,
+          entry.event_type,
+          entry.message,
+          entry.created_at,
+        ].join("::");
+        return !existingHistory.has(key);
+      });
 
-    assertNoError(error);
+    if (missingHistory.length > 0) {
+      const { error } = await client.from("ticket_history").insert(missingHistory);
+      assertNoError(error);
+    }
   }
 }
 
@@ -476,6 +848,8 @@ async function createTicketInSupabase(input: {
   actorId: string;
   title: string;
   description: string;
+  contextUrls: string[];
+  attachments: File[];
   type: TicketType;
   area: TicketArea;
   priority: TicketPriority;
@@ -487,6 +861,8 @@ async function createTicketInSupabase(input: {
     throw new Error("Solo usuarios cliente pueden crear tickets en este entorno.");
   }
 
+  assertContextUrls(input.contextUrls);
+
   const client = getSupabaseAdminClient();
   const code = await getNextTicketCode();
   const payload = {
@@ -494,6 +870,7 @@ async function createTicketInSupabase(input: {
     company_id: actor.companyId,
     title: input.title,
     description: input.description,
+    context_urls: input.contextUrls,
     type: input.type,
     area: input.area,
     priority: input.priority,
@@ -510,14 +887,19 @@ async function createTicketInSupabase(input: {
 
   assertNoError(ticketError);
 
-  const { error: historyError } = await client.from("ticket_history").insert({
-    ticket_id: ticketData.id,
-    actor_id: actor.id,
-    event_type: "created",
-    message: `${actor.name} creó el ticket ${ticketData.code}.`,
-  });
-
-  assertNoError(historyError);
+  try {
+    await createTicketResources({
+      ticketId: String(ticketData.id),
+      actorId: actor.id,
+      actorName: actor.name,
+      ticketCode: String(ticketData.code),
+      contextUrls: input.contextUrls,
+      attachments: input.attachments,
+    });
+  } catch (error) {
+    await cleanupTicketCreation(String(ticketData.id));
+    throw error;
+  }
 
   return mapTicket(ticketData as TicketRow);
 }
@@ -541,6 +923,10 @@ async function addCommentInSupabase(input: {
 
   if (!internalActor && !belongsToCompany) {
     throw new Error("No tenés permisos para comentar este ticket.");
+  }
+
+  if (!canCommentOnTickets(actor.role)) {
+    throw new Error("Tu rol puede ver el ticket, pero no publicar comentarios.");
   }
 
   if (isClientRole(actor.role) && input.visibility === "internal") {
@@ -671,9 +1057,7 @@ async function createUserInSupabase(input: {
     throw new Error("Los usuarios cliente deben pertenecer a una empresa.");
   }
 
-  if (isInternalRole(input.role) && input.companyId) {
-    throw new Error("Los usuarios internos no deben quedar asociados a una empresa cliente.");
-  }
+  assertRoleAssignment(input.role, input.companyId);
 
   return createSupabaseUserProfile({
     companyId: input.companyId,
@@ -722,6 +1106,8 @@ async function updateUserInSupabase(input: {
   if (duplicated) {
     throw new Error("Ya existe otro usuario con ese email.");
   }
+
+  assertRoleAssignment(input.role, target.companyId);
 
   const client = getSupabaseAdminClient();
   const authPayload: {
@@ -895,24 +1281,23 @@ async function updateCompanyInSupabase(input: {
 }
 
 export async function getAppSnapshot() {
-  if (!shouldUseSupabase()) {
+  if (!isSupabaseBackend()) {
     return demoStore.getAppSnapshot();
   }
 
-  try {
-    return await getSupabaseSnapshot();
-  } catch (error) {
-    console.error("Falling back to demo store because Supabase snapshot failed.", error);
-    return demoStore.getAppSnapshot();
-  }
+  return getSupabaseSnapshot();
 }
 
 export async function resetDemoDb() {
+  if (isSupabaseBackend()) {
+    throw new Error("El modo demo no puede reiniciarse cuando Supabase es el backend principal.");
+  }
+
   return demoStore.resetDemoDb();
 }
 
 export async function createTicket(input: Parameters<typeof demoStore.createTicket>[0]) {
-  if (!shouldUseSupabase()) {
+  if (!isSupabaseBackend()) {
     return demoStore.createTicket(input);
   }
 
@@ -920,7 +1305,7 @@ export async function createTicket(input: Parameters<typeof demoStore.createTick
 }
 
 export async function addComment(input: Parameters<typeof demoStore.addComment>[0]) {
-  if (!shouldUseSupabase()) {
+  if (!isSupabaseBackend()) {
     return demoStore.addComment(input);
   }
 
@@ -930,7 +1315,7 @@ export async function addComment(input: Parameters<typeof demoStore.addComment>[
 export async function updateTicketWorkflow(
   input: Parameters<typeof demoStore.updateTicketWorkflow>[0],
 ) {
-  if (!shouldUseSupabase()) {
+  if (!isSupabaseBackend()) {
     return demoStore.updateTicketWorkflow(input);
   }
 
@@ -938,7 +1323,7 @@ export async function updateTicketWorkflow(
 }
 
 export async function createUser(input: Parameters<typeof demoStore.createUser>[0]) {
-  if (!shouldUseSupabase()) {
+  if (!isSupabaseBackend()) {
     return demoStore.createUser(input);
   }
 
@@ -946,7 +1331,7 @@ export async function createUser(input: Parameters<typeof demoStore.createUser>[
 }
 
 export async function updateUser(input: Parameters<typeof demoStore.updateUser>[0]) {
-  if (!shouldUseSupabase()) {
+  if (!isSupabaseBackend()) {
     return demoStore.updateUser(input);
   }
 
@@ -954,7 +1339,7 @@ export async function updateUser(input: Parameters<typeof demoStore.updateUser>[
 }
 
 export async function createCompany(input: Parameters<typeof demoStore.createCompany>[0]) {
-  if (!shouldUseSupabase()) {
+  if (!isSupabaseBackend()) {
     return demoStore.createCompany(input);
   }
 
@@ -962,7 +1347,7 @@ export async function createCompany(input: Parameters<typeof demoStore.createCom
 }
 
 export async function updateCompany(input: Parameters<typeof demoStore.updateCompany>[0]) {
-  if (!shouldUseSupabase()) {
+  if (!isSupabaseBackend()) {
     return demoStore.updateCompany(input);
   }
 
