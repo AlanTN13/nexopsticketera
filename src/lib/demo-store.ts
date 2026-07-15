@@ -23,7 +23,6 @@ import {
   UserRole,
   canManageGlobalCatalog,
   canManageOperations,
-  isInternalRole,
   isClientRole,
   isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";

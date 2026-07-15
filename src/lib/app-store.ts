@@ -6,7 +6,7 @@ import { LOCAL_CLIENT_PASSWORD } from "@/lib/auth";
 import { isSupabaseBackend } from "@/lib/backend";
 import * as demoStore from "@/lib/demo-store";
 import { demoSeed } from "@/lib/demo-seed";
-import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase-server";
+import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import {
   Company,
   CompanyPlan,
@@ -27,7 +27,6 @@ import {
   canManageOperations,
   canCommentOnTickets,
   isClientRole,
-  isInternalRole,
   isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";
 

@@ -19,11 +19,6 @@ export function AppModal({
   maxWidthClassName = "max-w-4xl",
 }: AppModalProps) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -56,7 +51,7 @@ export function AppModal({
         {triggerLabel}
       </button>
 
-      {mounted && open
+      {open && typeof document !== "undefined"
         ? createPortal(
             <div
               className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-[rgba(15,23,42,0.48)] p-4 backdrop-blur-md sm:p-6"
