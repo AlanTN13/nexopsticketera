@@ -2,11 +2,8 @@ import "server-only";
 
 import { PostgrestError } from "@supabase/supabase-js";
 
-import { LOCAL_CLIENT_PASSWORD } from "@/lib/auth";
-import { isSupabaseBackend } from "@/lib/backend";
-import * as demoStore from "@/lib/demo-store";
-import { demoSeed } from "@/lib/demo-seed";
-import { getSupabaseAdminClient } from "@/lib/supabase-server";
+import { canCommentOnTicket, canCreateCompanyTicket, canUpdateTicketWorkflow } from "@/lib/authorization";
+import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
 import {
   Company,
   CompanyPlan,
@@ -24,11 +21,77 @@ import {
   UserProfile,
   UserRole,
   canManageGlobalCatalog,
-  canManageOperations,
-  canCommentOnTickets,
   isClientRole,
   isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";
+
+export type CreateTicketInput = {
+  actorId: string;
+  title: string;
+  description: string;
+  contextUrls: string[];
+  attachments: File[];
+  type: TicketType;
+  area: TicketArea;
+  priority: TicketPriority;
+};
+
+export type AddCommentInput = {
+  actorId: string;
+  ticketId: string;
+  body: string;
+  visibility: "external" | "internal";
+};
+
+export type UpdateTicketWorkflowInput = {
+  actorId: string;
+  ticketId: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  assignedToId: string | null;
+};
+
+export type CreateUserInput = {
+  actorId: string;
+  companyId: string | null;
+  name: string;
+  email: string;
+  role: UserRole;
+  title: string;
+  password: string;
+};
+
+export type UpdateUserInput = {
+  actorId: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  title: string;
+  password?: string;
+};
+
+export type CreateCompanyInput = {
+  actorId: string;
+  companyName: string;
+  industry: string;
+  plan: CompanyPlan;
+  adminName: string;
+  adminEmail: string;
+  adminTitle: string;
+  adminPassword: string;
+};
+
+export type UpdateCompanyInput = {
+  actorId: string;
+  companyId: string;
+  name: string;
+  slug: string;
+  industry: string;
+  plan: CompanyPlan;
+  status: "active" | "onboarding";
+  primaryContact: string;
+};
 
 type CompanyRow = {
   id: string;
@@ -231,7 +294,7 @@ async function getSignedAttachmentUrl(storagePath: string) {
     return "#";
   }
 
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
   const { data, error } = await client.storage
     .from("ticket-attachments")
     .createSignedUrl(storagePath, 60 * 60);
@@ -268,7 +331,7 @@ async function uploadTicketImages(input: {
     throw new Error(`Solo podés adjuntar hasta ${MAX_TICKET_IMAGES} imágenes por ticket.`);
   }
 
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
   const createdAttachments: TicketAttachment[] = [];
 
   for (const file of input.attachments) {
@@ -343,7 +406,19 @@ function assertRoleAssignment(role: UserRole, companyId: string | null) {
 }
 
 async function getSupabaseSnapshot(): Promise<TicketDatabase> {
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
+  const { data: authData, error: authError } = await client.auth.getUser();
+  if (authError || !authData.user) {
+    return {
+      companies: [],
+      users: [],
+      tickets: [],
+      comments: [],
+      attachments: [],
+      history: [],
+    };
+  }
+
   const [companiesResult, usersResult, ticketsResult, commentsResult, attachmentsResult, historyResult] =
     await Promise.all([
       client.from("companies").select("*").order("created_at", { ascending: false }),
@@ -360,11 +435,6 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
   assertNoError(commentsResult.error);
   assertNoError(attachmentsResult.error);
   assertNoError(historyResult.error);
-
-  if ((usersResult.data ?? []).length === 0) {
-    await bootstrapSupabaseFromDemoSeed();
-    return getSupabaseSnapshot();
-  }
 
   const attachmentRows = (attachmentsResult.data ?? []) as AttachmentRow[];
   const signedAttachmentUrls = await Promise.all(
@@ -412,7 +482,7 @@ async function createTicketHistoryEntry(input: {
   actorId: string;
   message: string;
 }) {
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
   const { error } = await client.from("ticket_history").insert({
     ticket_id: input.ticketId,
     actor_id: input.actorId,
@@ -421,26 +491,6 @@ async function createTicketHistoryEntry(input: {
   });
 
   assertNoError(error);
-}
-
-async function cleanupTicketCreation(ticketId: string) {
-  const client = getSupabaseAdminClient();
-  const { data: attachments, error: attachmentsError } = await client
-    .from("ticket_attachments")
-    .select("storage_path")
-    .eq("ticket_id", ticketId);
-
-  if (!attachmentsError) {
-    const storagePaths = (attachments ?? [])
-      .map((item) => String(item.storage_path ?? ""))
-      .filter(Boolean);
-
-    if (storagePaths.length > 0) {
-      await client.storage.from("ticket-attachments").remove(storagePaths);
-    }
-  }
-
-  await client.from("tickets").delete().eq("id", ticketId);
 }
 
 async function createTicketResources(input: {
@@ -482,310 +532,6 @@ async function createTicketResources(input: {
   });
 }
 
-async function bootstrapSupabaseFromDemoSeed() {
-  const client = getSupabaseAdminClient();
-  const companyIdMap = new Map<string, string>();
-  const userIdMap = new Map<string, string>();
-  const existingCompaniesResult = await client
-    .from("companies")
-    .select("id, slug");
-  assertNoError(existingCompaniesResult.error);
-  const existingCompanies = new Map(
-    (existingCompaniesResult.data ?? []).map((company) => [String(company.slug), String(company.id)]),
-  );
-
-  const {
-    data: authUsersData,
-    error: authUsersError,
-  } = await client.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-  if (authUsersError) {
-    throw new Error(authUsersError.message);
-  }
-  const existingAuthUsers = new Map(
-    (authUsersData.users ?? []).map((user) => [user.email?.toLowerCase() ?? "", user]),
-  );
-
-  const existingProfilesResult = await client
-    .from("users")
-    .select("id, email");
-  assertNoError(existingProfilesResult.error);
-  const existingProfiles = new Map(
-    (existingProfilesResult.data ?? []).map((user) => [String(user.email).toLowerCase(), String(user.id)]),
-  );
-
-  for (const company of demoSeed.companies) {
-    const existingCompanyId = existingCompanies.get(company.slug);
-    if (existingCompanyId) {
-      companyIdMap.set(company.id, existingCompanyId);
-      continue;
-    }
-
-    const { data, error } = await client
-      .from("companies")
-      .insert({
-        name: company.name,
-        slug: company.slug,
-        plan: company.plan,
-        industry: company.industry,
-        status: company.status,
-        primary_contact: company.primaryContact,
-        created_at: company.createdAt,
-      })
-      .select("id, slug")
-      .single();
-
-    assertNoError(error);
-    const createdCompany = assertData(data, "No pudimos crear la empresa base.");
-    companyIdMap.set(company.id, createdCompany.id);
-    existingCompanies.set(createdCompany.slug, createdCompany.id);
-  }
-
-  for (const user of demoSeed.users) {
-    const normalizedEmail = user.email.toLowerCase();
-    let authUser = existingAuthUsers.get(normalizedEmail) ?? null;
-
-    if (!authUser) {
-      const { data: authData, error: authError } = await client.auth.admin.createUser({
-        email: user.email,
-        password: LOCAL_CLIENT_PASSWORD,
-        email_confirm: true,
-        user_metadata: {
-          name: user.name,
-          role: user.role,
-        },
-      });
-
-      if (authError) {
-        throw new Error(authError.message);
-      }
-
-      authUser = authData.user;
-      if (!authUser) {
-        throw new Error("Supabase no devolvió el usuario del seed.");
-      }
-
-      existingAuthUsers.set(normalizedEmail, authUser);
-    }
-
-    const existingProfileId = existingProfiles.get(normalizedEmail);
-    if (existingProfileId && existingProfileId !== authUser.id) {
-      throw new Error(`El perfil ${user.email} quedó asociado a un auth user distinto.`);
-    }
-
-    if (!existingProfileId) {
-      const { error: profileError } = await client.from("users").insert({
-        id: authUser.id,
-        company_id: user.companyId ? companyIdMap.get(user.companyId) ?? null : null,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        title: user.title,
-        avatar: user.avatar,
-        created_at: new Date().toISOString(),
-      });
-
-      if (profileError) {
-        throw new Error(profileError.message);
-      }
-
-      existingProfiles.set(normalizedEmail, authUser.id);
-    }
-
-    userIdMap.set(user.id, authUser.id);
-  }
-
-  const existingTicketsResult = await client
-    .from("tickets")
-    .select("id, code");
-  assertNoError(existingTicketsResult.error);
-  const existingTickets = new Map(
-    (existingTicketsResult.data ?? []).map((ticket) => [String(ticket.code), String(ticket.id)]),
-  );
-
-  for (const ticket of demoSeed.tickets) {
-    if (existingTickets.has(ticket.code)) {
-      continue;
-    }
-
-    const { error } = await client.from("tickets").insert({
-      code: ticket.code,
-      company_id: companyIdMap.get(ticket.companyId),
-      title: ticket.title,
-      description: ticket.description,
-      context_urls: ticket.contextUrls,
-      type: ticket.type,
-      area: ticket.area,
-      priority: ticket.priority,
-      status: ticket.status,
-      created_by_id: userIdMap.get(ticket.createdById),
-      assigned_to_id: ticket.assignedToId ? userIdMap.get(ticket.assignedToId) ?? null : null,
-      created_at: ticket.createdAt,
-      updated_at: ticket.updatedAt,
-    });
-
-    assertNoError(error);
-  }
-
-  const { data: ticketsData, error: ticketsFetchError } = await client
-    .from("tickets")
-    .select("id, code");
-  assertNoError(ticketsFetchError);
-
-  const ticketIdMap = new Map<string, string>();
-  for (const seedTicket of demoSeed.tickets) {
-    const match = (ticketsData ?? []).find((ticket) => ticket.code === seedTicket.code);
-    if (match) {
-      ticketIdMap.set(seedTicket.id, match.id);
-    }
-  }
-
-  const existingCommentsResult = await client
-    .from("ticket_comments")
-    .select("ticket_id, author_id, body, created_at");
-  assertNoError(existingCommentsResult.error);
-  const existingComments = new Set(
-    (existingCommentsResult.data ?? []).map((comment) =>
-      [
-        String(comment.ticket_id),
-        String(comment.author_id),
-        String(comment.body),
-        String(comment.created_at),
-      ].join("::"),
-    ),
-  );
-
-  if (demoSeed.comments.length > 0) {
-    const missingComments = demoSeed.comments
-      .map((comment) => ({
-        ticket_id: ticketIdMap.get(comment.ticketId),
-        author_id: userIdMap.get(comment.authorId),
-        visibility: comment.visibility,
-        body: comment.body,
-        created_at: comment.createdAt,
-      }))
-      .filter((comment) => {
-        const key = [
-          comment.ticket_id,
-          comment.author_id,
-          comment.body,
-          comment.created_at,
-        ].join("::");
-        return !existingComments.has(key);
-      });
-
-    if (missingComments.length > 0) {
-      const { error } = await client.from("ticket_comments").insert(missingComments);
-      assertNoError(error);
-    }
-  }
-
-  const existingAttachmentsResult = await client
-    .from("ticket_attachments")
-    .select("ticket_id, file_name, storage_path");
-  assertNoError(existingAttachmentsResult.error);
-  const existingAttachments = new Set(
-    (existingAttachmentsResult.data ?? []).map((attachment) =>
-      [
-        String(attachment.ticket_id),
-        String(attachment.file_name),
-        String(attachment.storage_path),
-      ].join("::"),
-    ),
-  );
-
-  if (demoSeed.attachments.length > 0) {
-    const missingAttachments = demoSeed.attachments
-      .map((attachment) => ({
-        ticket_id: ticketIdMap.get(attachment.ticketId),
-        uploaded_by_id: userIdMap.get(
-          demoSeed.tickets.find((ticket) => ticket.id === attachment.ticketId)?.createdById ?? "",
-        ),
-        storage_path: attachment.url === "#" ? `seed/${attachment.name}` : attachment.url,
-        file_name: attachment.name,
-        size_bytes: 0,
-        kind: attachment.kind,
-      }))
-      .filter((attachment) => attachment.ticket_id && attachment.uploaded_by_id)
-      .filter((attachment) => {
-        const key = [
-          attachment.ticket_id,
-          attachment.file_name,
-          attachment.storage_path,
-        ].join("::");
-        return !existingAttachments.has(key);
-      });
-
-    if (missingAttachments.length > 0) {
-      const { error } = await client.from("ticket_attachments").insert(missingAttachments);
-      assertNoError(error);
-    }
-  }
-
-  const existingHistoryResult = await client
-    .from("ticket_history")
-    .select("ticket_id, actor_id, event_type, message, created_at");
-  assertNoError(existingHistoryResult.error);
-  const existingHistory = new Set(
-    (existingHistoryResult.data ?? []).map((entry) =>
-      [
-        String(entry.ticket_id),
-        String(entry.actor_id),
-        String(entry.event_type),
-        String(entry.message),
-        String(entry.created_at),
-      ].join("::"),
-    ),
-  );
-
-  if (demoSeed.history.length > 0) {
-    const missingHistory = demoSeed.history
-      .map((entry) => ({
-        ticket_id: ticketIdMap.get(entry.ticketId),
-        actor_id: userIdMap.get(entry.actorId),
-        event_type: entry.type,
-        message: entry.message,
-        created_at: entry.createdAt,
-      }))
-      .filter((entry) => {
-        const key = [
-          entry.ticket_id,
-          entry.actor_id,
-          entry.event_type,
-          entry.message,
-          entry.created_at,
-        ].join("::");
-        return !existingHistory.has(key);
-      });
-
-    if (missingHistory.length > 0) {
-      const { error } = await client.from("ticket_history").insert(missingHistory);
-      assertNoError(error);
-    }
-  }
-}
-
-async function getNextTicketCode() {
-  const client = getSupabaseAdminClient();
-  const { data, error } = await client
-    .from("tickets")
-    .select("code")
-    .like("code", "NEX-%");
-
-  assertNoError(error);
-
-  const nextNumber =
-    (data ?? []).reduce((max, ticket) => {
-      const value = Number(String(ticket.code ?? "").split("-")[1] ?? 0);
-      return Number.isFinite(value) ? Math.max(max, value) : max;
-    }, 1000) + 1;
-
-  return `NEX-${nextNumber}`;
-}
-
 async function createSupabaseUserProfile(input: {
   companyId: string | null;
   email: string;
@@ -794,17 +540,20 @@ async function createSupabaseUserProfile(input: {
   title: string;
   password: string;
 }) {
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
+  const adminClient = getSupabaseAdminClient();
   if (input.password.length < 8) {
     throw new Error("La contraseña debe tener al menos 8 caracteres.");
   }
 
-  const { data: authData, error: authError } = await client.auth.admin.createUser({
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
     email: input.email,
     password: input.password,
     email_confirm: true,
     user_metadata: {
       name: input.name,
+    },
+    app_metadata: {
       role: input.role,
     },
   });
@@ -836,7 +585,7 @@ async function createSupabaseUserProfile(input: {
     .single();
 
   if (error) {
-    await client.auth.admin.deleteUser(authUser.id);
+    await adminClient.auth.admin.deleteUser(authUser.id);
     throw new Error(error.message);
   }
 
@@ -856,16 +605,14 @@ async function createTicketInSupabase(input: {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
 
-  if (!actor.companyId || !isClientRole(actor.role)) {
+  if (!actor.companyId || !canCreateCompanyTicket(actor, actor.companyId)) {
     throw new Error("Solo usuarios cliente pueden crear tickets en este entorno.");
   }
 
   assertContextUrls(input.contextUrls);
 
-  const client = getSupabaseAdminClient();
-  const code = await getNextTicketCode();
+  const client = await getSupabaseServerClient();
   const payload = {
-    code,
     company_id: actor.companyId,
     title: input.title,
     description: input.description,
@@ -886,19 +633,14 @@ async function createTicketInSupabase(input: {
 
   assertNoError(ticketError);
 
-  try {
-    await createTicketResources({
-      ticketId: String(ticketData.id),
-      actorId: actor.id,
-      actorName: actor.name,
-      ticketCode: String(ticketData.code),
-      contextUrls: input.contextUrls,
-      attachments: input.attachments,
-    });
-  } catch (error) {
-    await cleanupTicketCreation(String(ticketData.id));
-    throw error;
-  }
+  await createTicketResources({
+    ticketId: String(ticketData.id),
+    actorId: actor.id,
+    actorName: actor.name,
+    ticketCode: String(ticketData.code),
+    contextUrls: input.contextUrls,
+    attachments: input.attachments,
+  });
 
   return mapTicket(ticketData as TicketRow);
 }
@@ -917,22 +659,11 @@ async function addCommentInSupabase(input: {
     throw new Error("No pudimos encontrar el ticket.");
   }
 
-  const belongsToCompany = actor.companyId === ticket.companyId;
-  const internalActor = !isClientRole(actor.role);
-
-  if (!internalActor && !belongsToCompany) {
-    throw new Error("No tenés permisos para comentar este ticket.");
-  }
-
-  if (!canCommentOnTickets(actor.role)) {
+  if (!canCommentOnTicket(actor, ticket, input.visibility)) {
     throw new Error("Tu rol puede ver el ticket, pero no publicar comentarios.");
   }
 
-  if (isClientRole(actor.role) && input.visibility === "internal") {
-    throw new Error("Los clientes no pueden enviar notas internas.");
-  }
-
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
   const { error: commentError } = await client.from("ticket_comments").insert({
     ticket_id: ticket.id,
     author_id: actor.id,
@@ -940,12 +671,6 @@ async function addCommentInSupabase(input: {
     visibility: input.visibility,
   });
   assertNoError(commentError);
-
-  const { error: ticketError } = await client
-    .from("tickets")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", ticket.id);
-  assertNoError(ticketError);
 
   const { error: historyError } = await client.from("ticket_history").insert({
     ticket_id: ticket.id,
@@ -969,7 +694,7 @@ async function updateTicketWorkflowInSupabase(input: {
   const actor = ensureActor(db, input.actorId);
   const ticket = db.tickets.find((item) => item.id === input.ticketId);
 
-  if (!ticket || !canManageOperations(actor.role)) {
+  if (!ticket || !canUpdateTicketWorkflow(actor)) {
     throw new Error("No tenés permisos para actualizar el workflow.");
   }
 
@@ -977,7 +702,7 @@ async function updateTicketWorkflowInSupabase(input: {
   const previousPriority = ticket.priority;
   const previousAssignee = ticket.assignedToId;
 
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
   const { error: updateError } = await client
     .from("tickets")
     .update({
@@ -1108,13 +833,16 @@ async function updateUserInSupabase(input: {
 
   assertRoleAssignment(input.role, target.companyId);
 
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
+  const adminClient = getSupabaseAdminClient();
   const authPayload: {
     email: string;
     email_confirm: true;
     password?: string;
     user_metadata: {
       name: string;
+    };
+    app_metadata: {
       role: UserRole;
     };
   } = {
@@ -1122,6 +850,8 @@ async function updateUserInSupabase(input: {
     email_confirm: true,
     user_metadata: {
       name: input.name,
+    },
+    app_metadata: {
       role: input.role,
     },
   };
@@ -1130,7 +860,7 @@ async function updateUserInSupabase(input: {
     authPayload.password = input.password;
   }
 
-  const { error: authError } = await client.auth.admin.updateUserById(target.id, authPayload);
+  const { error: authError } = await adminClient.auth.admin.updateUserById(target.id, authPayload);
   if (authError) {
     throw new Error(authError.message);
   }
@@ -1181,7 +911,7 @@ async function createCompanyInSupabase(input: {
     throw new Error("Empresa, industria y admin inicial son obligatorios.");
   }
 
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
   const baseSlug = slugify(input.companyName) || "empresa";
   const existingSlugs = new Set(db.companies.map((company) => company.slug));
   let slug = baseSlug;
@@ -1260,7 +990,7 @@ async function updateCompanyInSupabase(input: {
     throw new Error("Ya existe otra empresa con ese slug.");
   }
 
-  const client = getSupabaseAdminClient();
+  const client = await getSupabaseServerClient();
   const { data, error } = await client
     .from("companies")
     .update({
@@ -1280,75 +1010,33 @@ async function updateCompanyInSupabase(input: {
 }
 
 export async function getAppSnapshot() {
-  if (!isSupabaseBackend()) {
-    return demoStore.getAppSnapshot();
-  }
-
   return getSupabaseSnapshot();
 }
 
-export async function resetDemoDb() {
-  if (isSupabaseBackend()) {
-    throw new Error("El modo demo no puede reiniciarse cuando Supabase es el backend principal.");
-  }
-
-  return demoStore.resetDemoDb();
-}
-
-export async function createTicket(input: Parameters<typeof demoStore.createTicket>[0]) {
-  if (!isSupabaseBackend()) {
-    return demoStore.createTicket(input);
-  }
-
+export async function createTicket(input: CreateTicketInput) {
   return createTicketInSupabase(input);
 }
 
-export async function addComment(input: Parameters<typeof demoStore.addComment>[0]) {
-  if (!isSupabaseBackend()) {
-    return demoStore.addComment(input);
-  }
-
+export async function addComment(input: AddCommentInput) {
   return addCommentInSupabase(input);
 }
 
-export async function updateTicketWorkflow(
-  input: Parameters<typeof demoStore.updateTicketWorkflow>[0],
-) {
-  if (!isSupabaseBackend()) {
-    return demoStore.updateTicketWorkflow(input);
-  }
-
+export async function updateTicketWorkflow(input: UpdateTicketWorkflowInput) {
   return updateTicketWorkflowInSupabase(input);
 }
 
-export async function createUser(input: Parameters<typeof demoStore.createUser>[0]) {
-  if (!isSupabaseBackend()) {
-    return demoStore.createUser(input);
-  }
-
+export async function createUser(input: CreateUserInput) {
   return createUserInSupabase(input);
 }
 
-export async function updateUser(input: Parameters<typeof demoStore.updateUser>[0]) {
-  if (!isSupabaseBackend()) {
-    return demoStore.updateUser(input);
-  }
-
+export async function updateUser(input: UpdateUserInput) {
   return updateUserInSupabase(input);
 }
 
-export async function createCompany(input: Parameters<typeof demoStore.createCompany>[0]) {
-  if (!isSupabaseBackend()) {
-    return demoStore.createCompany(input);
-  }
-
+export async function createCompany(input: CreateCompanyInput) {
   return createCompanyInSupabase(input);
 }
 
-export async function updateCompany(input: Parameters<typeof demoStore.updateCompany>[0]) {
-  if (!isSupabaseBackend()) {
-    return demoStore.updateCompany(input);
-  }
-
+export async function updateCompany(input: UpdateCompanyInput) {
   return updateCompanyInSupabase(input);
 }

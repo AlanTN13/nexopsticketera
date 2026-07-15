@@ -3,9 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { LOCAL_CLIENT_PASSWORD, assertAuthenticatedActorId, clearClientSession, findUserByEmail, isInternalActor, setClientSession } from "@/lib/auth";
-import { getBackendMode, isSupabaseBackend } from "@/lib/backend";
-import { addComment, createCompany, createTicket, createUser, getAppSnapshot, resetDemoDb, updateCompany, updateTicketWorkflow, updateUser } from "@/lib/app-store";
+import { assertAuthenticatedActorId, clearClientSession, isInternalActor } from "@/lib/auth";
+import { addComment, createCompany, createTicket, createUser, getAppSnapshot, updateCompany, updateTicketWorkflow, updateUser } from "@/lib/app-store";
 import { COMPANY_PLANS, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
@@ -74,55 +73,29 @@ export type LoginClientState = {
   error: string | null;
 };
 
-export async function resetDemoAction(formData: FormData) {
-  const db = await getAppSnapshot();
-  await assertAuthenticatedActorId(db, getString(formData, "actorId"));
-  if (getBackendMode() !== "demo") {
-    throw new Error("El reinicio de demo solo está disponible cuando Supabase no es el backend principal.");
-  }
-  await resetDemoDb();
-  redirect("/portal/login");
-}
-
 export async function loginClientAction(
   _prevState: LoginClientState,
   formData: FormData,
 ): Promise<LoginClientState> {
   const email = getString(formData, "email").toLowerCase();
   const password = getString(formData, "password");
-  const db = await getAppSnapshot();
-
   if (!password) {
     return { error: "Ingresá tu contraseña para continuar." };
   }
 
-  if (isSupabaseBackend()) {
-    const client = getSupabaseServerClient();
-    const { data, error } = await client.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      return { error: "Credenciales inválidas. Revisá tu email y contraseña." };
-    }
-
-    const actor = db.users.find((user) => user.id === data.user?.id) ?? null;
-    if (!actor) {
-      return { error: "La cuenta existe en Auth, pero no tiene perfil operativo en la tiketera." };
-    }
-
-    await setClientSession(actor.id);
-    redirect(isInternalActor(actor) ? routeWithActor("/backoffice", actor.id) : "/portal");
-  }
-
-  const actor = findUserByEmail(db, email);
-  if (!actor) {
-    return { error: "No encontramos un usuario con ese email." };
-  }
-
-  if (password !== LOCAL_CLIENT_PASSWORD) {
+  const client = await getSupabaseServerClient();
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if (error || !data.user) {
     return { error: "Credenciales inválidas. Revisá tu email y contraseña." };
   }
 
-  await setClientSession(actor.id);
+  const db = await getAppSnapshot();
+  const actor = db.users.find((user) => user.id === data.user.id) ?? null;
+  if (!actor) {
+    await client.auth.signOut();
+    return { error: "La cuenta existe en Auth, pero no tiene perfil operativo en la tiketera." };
+  }
+
   redirect(isInternalActor(actor) ? routeWithActor("/backoffice", actor.id) : "/portal");
 }
 

@@ -1,5 +1,7 @@
 # Auditoría y consolidación de NexOps Ticketing
 
+> Documento histórico de la etapa 1. Los hallazgos de demo, cookie propia y uso amplio de `service_role` fueron abordados en `codex/harden-ticketing-v1`; consultar `ESTADO_ACTUAL.md` para el estado vigente.
+
 Fecha: 2026-07-15
 
 ## Fuente de verdad
