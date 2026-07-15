@@ -40,7 +40,7 @@ export default async function BackofficeTicketDetail({
         ]}
         actions={<NavButton href={withActor("/backoffice/queue", actor.id)} label="Volver a tickets" muted tone="light" />}
       >
-        <EmptyState title="Nada para mostrar" detail="Puede haberse reseteado la demo o cambiado el actor actual." tone="light" />
+        <EmptyState title="Nada para mostrar" detail="El ticket no existe o tu sesión no tiene acceso." tone="light" />
       </AppShell>
     );
   }

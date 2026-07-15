@@ -6,7 +6,6 @@ import {
   createTicketAction,
   createUserAction,
   logoutClientAction,
-  resetDemoAction,
   updateCompanyAction,
   updateTicketWorkflowAction,
   updateUserAction,
@@ -68,20 +67,6 @@ const COMPANY_STATUS_OPTIONS = [
   { value: "onboarding", label: "Onboarding" },
   { value: "active", label: "Activa" },
 ] as const;
-
-export function ResetDemoForm({ actorId }: { actorId: string }) {
-  return (
-    <form action={resetDemoAction}>
-      <input type="hidden" name="actorId" value={actorId} />
-      <button
-        type="submit"
-        className="rounded-full border border-[var(--border)] bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-[var(--muted-strong)] transition hover:border-[var(--border-strong)] hover:bg-white/[0.08]"
-      >
-        Reiniciar demo
-      </button>
-    </form>
-  );
-}
 
 export function LogoutClientForm({
   tone = "dark",

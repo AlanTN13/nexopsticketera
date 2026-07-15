@@ -1,70 +1,84 @@
 # NexOps Ticketing
 
-Aplicación multiempresa en Next.js para el portal de clientes y el backoffice operativo de NexOps.
+Ticketera multiempresa en Next.js 16 con Supabase como único backend de ejecución.
 
-## Estado del producto
+## Arquitectura V1
 
-El backend se selecciona de forma explícita:
+- Supabase Auth con sesión SSR en cookies gestionadas por `@supabase/ssr`.
+- Postgres y Data API bajo la identidad JWT del usuario autenticado.
+- RLS como barrera principal de aislamiento entre empresas.
+- Storage privado para adjuntos, también protegido por RLS.
+- `service_role` limitado a creación y actualización explícita de cuentas en `auth.admin`.
+- Sin JSON local, contraseña demo, seed automático ni fallback silencioso.
 
-- **Supabase:** se activa cuando están presentes las credenciales públicas y `SUPABASE_SERVICE_ROLE_KEY`.
-- **Demo:** si falta alguna de esas credenciales, usa un JSON temporal en el directorio del sistema (`/private/tmp/nexops-ticketing-demo.json` en macOS).
+Más detalle: `docs/AUTHORIZATION.md`.
 
-No se mezclan datos de ambos modos durante una misma ejecución. El modo Supabase cubre autenticación, tickets, comentarios, historial, empresas, usuarios y adjuntos. El recorrido end-to-end y el aislamiento multiempresa todavía requieren validación manual contra un proyecto Supabase no productivo.
+## Configuración
 
-## Desarrollo local
-
-Requisitos: Node.js compatible con Next.js 16 y npm.
+Requisitos: Node.js 20/22/24+, npm y un proyecto Supabase no productivo para desarrollo.
 
 ```bash
 npm ci
 cp .env.example .env.local
-npm run dev
 ```
 
-La aplicación se sirve sin `basePath`:
-
-- login: `http://localhost:3000/portal/login`
-- portal cliente: `http://localhost:3000/portal`
-- backoffice: `http://localhost:3000/backoffice`
-- diagnóstico de backend: `http://localhost:3000/setup`
-
-Sin variables completas se inicia en modo demo. La contraseña demo está destinada exclusivamente al desarrollo local.
-
-## Variables de entorno
+Variables:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` es un secreto de servidor: nunca debe exponerse en variables `NEXT_PUBLIC_*`, logs ni clientes. `.env.local` permanece ignorado; `.env.example` documenta únicamente nombres y valores vacíos.
+La clave publicable puede estar en el frontend y queda limitada por grants y RLS. `SUPABASE_SERVICE_ROLE_KEY` es server-only y solo es necesaria para crear o editar usuarios desde acciones administrativas. Nunca debe llevar prefijo `NEXT_PUBLIC_`.
 
-## Base de datos
+La variable legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` sigue aceptada durante la migración, pero los proyectos nuevos deben usar la clave publicable.
 
-Las migraciones versionadas están en `supabase/migrations/`:
+## Base de datos local o staging
 
-1. `001_initial_schema.sql`: esquema, funciones, RLS y bucket privado.
-2. `002_rls_hardening.sql`: endurecimiento de permisos para empresas, comentarios, adjuntos e historial.
-3. `003_ticket_context_urls.sql`: hasta tres URLs de contexto por ticket.
+Las migraciones viven en `supabase/migrations/`. Para una base vacía se aplican en orden; la migración `harden_ticketing_v1` reemplaza las políticas antiguas, agrega grants explícitos, helpers privados con `search_path` fijo, constraints, índices y generación atómica de códigos.
 
-No apliques estas migraciones directamente en producción sin revisar el historial del proyecto y probarlas primero en un entorno aislado. La exposición a Data API, los `GRANT`, las políticas efectivas y el estado real del bucket deben verificarse en Supabase; los archivos locales no demuestran por sí solos que estén aplicados.
+No ejecutes comandos de link/push/reset contra producción. En un proyecto local o staging identificado:
+
+```bash
+npx supabase migration list
+npx supabase db push --dry-run
+```
+
+Luego seguí `SUPABASE_MVP_CHECKLIST.md`. Este repositorio no incluye seed automático. Las cuentas y empresas de staging se crean deliberadamente para las pruebas y se eliminan según la política del entorno.
+
+## Desarrollo
+
+```bash
+npm run dev
+```
+
+- Login: `http://localhost:3000/portal/login`
+- Portal: `http://localhost:3000/portal`
+- Backoffice: `http://localhost:3000/backoffice`
+- Diagnóstico: `http://localhost:3000/setup`
+
+Si Supabase no está configurado, la aplicación falla explícitamente. No existe modo demo.
 
 ## Validaciones
 
 ```bash
 npm run lint
-npx tsc --noEmit
+npm run typecheck
+npm test
 npm run build
 git diff --check
+npm audit
 ```
 
-No hay todavía una suite automatizada. El recorrido manual recomendado está en `SUPABASE_MVP_CHECKLIST.md` y la auditoría de consolidación en `AUDITORIA_CONSOLIDACION.md`.
+Las pruebas locales cubren roles, rutas protegidas a nivel de autorización, aislamiento A/B, IDs directos, comentarios, workflow y métricas. Las políticas reales deben validarse adicionalmente sobre Supabase local o staging.
+
+## Invitaciones
+
+La V1 conserva creación administrativa directa con contraseña y `email_confirm`. No existe todavía aceptación por email, expiración de invitaciones ni recuperación visual de contraseña. Es deuda explícita y no debe presentarse como un flujo de invitación completo.
 
 ## Fuente de verdad
 
-- checkout canónico: `/Users/alanfernandez/Desktop/nexops-tiketera`
-- repositorio: `https://github.com/AlanTN13/nexopsticketera`
-- rama canónica: `main`
-
-La copia histórica del 26 de mayo de 2026 bajo `Documents/Codex` es anterior, no contiene Git y no debe usarse para desarrollo.
+- Local: `/Users/alanfernandez/Desktop/nexops-tiketera`
+- GitHub: `https://github.com/AlanTN13/nexopsticketera`
+- Rama canónica: `main`

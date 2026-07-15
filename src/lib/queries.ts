@@ -13,19 +13,11 @@ import {
   isClientRole,
 } from "@/lib/ticketing";
 
-export function getActor(db: TicketDatabase, actorId: string | undefined) {
-  return (
-    db.users.find((user) => user.id === actorId) ??
-    db.users.find((user) => user.role === "platform_admin") ??
-    db.users.find((user) => user.role === "team_lead") ??
-    db.users.find((user) => user.role === "client_admin") ??
-    db.users[0]
-  );
-}
-
 export function getVisibleTickets(db: TicketDatabase, actor: UserProfile) {
-  if (isClientRole(actor.role) && actor.companyId) {
-    return db.tickets.filter((ticket) => ticket.companyId === actor.companyId);
+  if (isClientRole(actor.role)) {
+    return actor.companyId
+      ? db.tickets.filter((ticket) => ticket.companyId === actor.companyId)
+      : [];
   }
 
   return db.tickets;
@@ -36,6 +28,10 @@ export function getVisibleComments(
   actor: UserProfile,
   ticketId: string,
 ) {
+  if (!getTicketById(db, actor, ticketId)) {
+    return [];
+  }
+
   return db.comments.filter((comment) => {
     if (comment.ticketId !== ticketId) return false;
     if (comment.visibility === "external") return true;

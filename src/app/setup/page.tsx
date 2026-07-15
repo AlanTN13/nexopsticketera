@@ -7,7 +7,7 @@ import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
 import { buildBackofficeStats, getInternalDirectoryUsers } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
-import { SUPABASE_URL, isSupabaseConfigured } from "@/lib/supabase";
+import { SUPABASE_URL } from "@/lib/supabase";
 import { roleLabels } from "@/lib/ticketing";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +50,6 @@ export default async function SetupPage() {
     redirect("/portal/login");
   }
 
-  const supabaseReady = isSupabaseConfigured();
   const stats = buildBackofficeStats(db.tickets, db.companies);
   const internalUsers = getInternalDirectoryUsers(db);
   const clientUsers = db.users.filter((user) => user.companyId);
@@ -83,8 +82,8 @@ export default async function SetupPage() {
       <div className="grid gap-4 lg:grid-cols-4">
         <StatCard
           label="Backend activo"
-          value={supabaseReady ? "Supabase" : "Demo local"}
-          detail={supabaseReady ? "Persistencia real habilitada." : "Fallback local para desarrollo."}
+          value="Supabase"
+          detail="Persistencia real obligatoria. No existe fallback local."
           tone="light"
         />
         <StatCard
@@ -110,7 +109,7 @@ export default async function SetupPage() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
         <SectionCard
           title="Estado del entorno"
-          description="Esta vista ya no es una checklist técnica. Ahora resume si el producto está corriendo en modo real o demo y cómo está distribuida la operación."
+          description="Resumen del backend Supabase obligatorio y de cómo está distribuida la operación."
           tone="light"
         >
           <div className="grid gap-4 md:grid-cols-2">
@@ -119,12 +118,10 @@ export default async function SetupPage() {
                 Fuente principal
               </p>
               <p className="mt-2 text-lg font-bold tracking-[-0.03em] text-[#111827]">
-                {supabaseReady ? "Supabase como backend activo" : "Store demo persistente"}
+                Supabase como backend único
               </p>
               <p className="mt-2 text-sm leading-6 text-[#6b7280]">
-                {supabaseReady
-                  ? "La app puede operar con persistencia real, auth y datos multiempresa."
-                  : "Sin variables de entorno completas, la app sigue funcionando con el modo demo local."}
+                La app opera con Auth, Postgres, RLS y Storage. Sin configuración válida falla de forma explícita.
               </p>
             </div>
             <div className="rounded-[22px] border border-[rgba(17,24,39,0.08)] bg-[#fcfcff] p-4">
@@ -154,10 +151,10 @@ export default async function SetupPage() {
                 Conexión detectada
               </p>
               <p className="mt-2 text-lg font-bold tracking-[-0.03em] text-[#111827]">
-                {supabaseReady ? "Proyecto enlazado" : "Sin enlace completo"}
+                Proyecto enlazado
               </p>
               <p className="mt-2 break-all text-sm leading-6 text-[#6b7280]">
-                {supabaseReady ? SUPABASE_URL : "Completá NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para activar el modo real."}
+                {SUPABASE_URL}
               </p>
             </div>
           </div>
