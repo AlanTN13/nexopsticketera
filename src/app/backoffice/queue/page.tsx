@@ -1,124 +1,40 @@
 import { redirect } from "next/navigation";
 
 import { LogoutClientForm } from "@/components/forms";
+import { TicketFilters } from "@/components/ticket-filters";
 import { TicketTable } from "@/components/tables";
-import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
+import { AppShell, EmptyState, IndicatorBar, NavButton, SectionCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { buildBackofficeStats, filterTickets, getInternalUsers, sortTickets } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 
 export const dynamic = "force-dynamic";
+type Props = { searchParams: Promise<{ query?: string; status?: string; area?: string; priority?: string; companyId?: string; assignedToId?: string }> };
 
-type BackofficeQueueProps = {
-  searchParams: Promise<{
-    status?: string;
-    area?: string;
-    priority?: string;
-    companyId?: string;
-    assignedToId?: string;
-  }>;
-};
-
-export default async function BackofficeQueuePage({ searchParams }: BackofficeQueueProps) {
-  const { status, area, priority, companyId, assignedToId } = await searchParams;
+export default async function BackofficeQueuePage({ searchParams }: Props) {
+  const filters = await searchParams;
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
-
-  if (!actor) {
-    redirect("/portal/login");
-  }
-
-  const tickets = sortTickets(
-    filterTickets(db.tickets, { status, area, priority, companyId, assignedToId }),
-  );
+  if (!actor) redirect("/portal/login?reason=session");
+  const tickets = sortTickets(filterTickets(db.tickets, filters));
   const stats = buildBackofficeStats(db.tickets, db.companies);
   const internalUsers = getInternalUsers(db);
 
-  return (
-    <AppShell
-      eyebrow="Backoffice · Tickets"
-      title="Cola operativa"
-      description="Vista diaria del equipo. Filtrá, priorizá y entrá a gestionar tickets sin mezclar empresas ni formularios auxiliares."
-      tone="light"
-      navigation={[
-        { href: withActor("/backoffice/queue", actor.id), label: "Tickets", active: true, badge: stats.activeTickets },
-        { href: withActor("/backoffice/companies", actor.id), label: "Empresas", badge: db.companies.length },
-        { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
-      ]}
-      actions={
-        <>
-          <NavButton href={withActor("/backoffice/companies", actor.id)} label="Ver empresas" muted tone="light" />
-          <LogoutClientForm tone="light" />
-        </>
-      }
-    >
-      <div className="grid gap-4 lg:grid-cols-4">
-        <StatCard label="Activos" value={stats.activeTickets} detail="Todo lo que sigue en operación o pendiente." tone="light" />
-        <StatCard label="Alta prioridad" value={stats.highPriority} detail="Tickets high y critical en la cola." tone="light" />
-        <StatCard label="Esperando cliente" value={stats.waitingCustomer} detail="Casos bloqueados hasta respuesta externa." tone="light" />
-        <StatCard label="Empresas" value={stats.companies} detail="Cuentas activas con tickets visibles." tone="light" />
-      </div>
-
-      <SectionCard
-        title="Tickets"
-        description="La acción diaria vive acá. Abrí cada ticket en gestionar para cambiar estado, prioridad, asignación y responder."
-        tone="light"
-      >
-        <form className="mb-5 grid gap-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]">
-          <select name="status" defaultValue={status ?? "all"} className="rounded-[16px] border border-[rgba(17,24,39,0.1)] bg-white px-3 py-2.5 text-sm text-[#111827]">
-            <option value="all">Todos los estados</option>
-            <option value="new">Nuevo</option>
-            <option value="analysis">En análisis</option>
-            <option value="in_progress">En progreso</option>
-            <option value="waiting_for_client">Esperando cliente</option>
-            <option value="resolved">Resuelto</option>
-            <option value="closed">Cerrado</option>
-          </select>
-          <select name="area" defaultValue={area ?? "all"} className="rounded-[16px] border border-[rgba(17,24,39,0.1)] bg-white px-3 py-2.5 text-sm text-[#111827]">
-            <option value="all">Todas las áreas</option>
-            <option value="automation">Automatizaciones</option>
-            <option value="custom_system">Sistema custom</option>
-            <option value="website">Sitios web</option>
-            <option value="ai_agent">Agentes IA</option>
-            <option value="crm">CRM</option>
-            <option value="erp">ERP</option>
-          </select>
-          <select name="priority" defaultValue={priority ?? "all"} className="rounded-[16px] border border-[rgba(17,24,39,0.1)] bg-white px-3 py-2.5 text-sm text-[#111827]">
-            <option value="all">Todas las prioridades</option>
-            <option value="low">Baja</option>
-            <option value="medium">Media</option>
-            <option value="high">Alta</option>
-            <option value="critical">Crítica</option>
-          </select>
-          <select name="companyId" defaultValue={companyId ?? "all"} className="rounded-[16px] border border-[rgba(17,24,39,0.1)] bg-white px-3 py-2.5 text-sm text-[#111827]">
-            <option value="all">Todas las empresas</option>
-            {db.companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-          <select name="assignedToId" defaultValue={assignedToId ?? "all"} className="rounded-[16px] border border-[rgba(17,24,39,0.1)] bg-white px-3 py-2.5 text-sm text-[#111827]">
-            <option value="all">Todos los asignados</option>
-            <option value="unassigned">Sin asignar</option>
-            {internalUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="rounded-[16px] bg-[#111827] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black">
-            Filtrar
-          </button>
-        </form>
-
-        {tickets.length > 0 ? (
-          <TicketTable db={db} tickets={tickets} basePath="/backoffice" tone="light" actionLabel="Gestionar" />
-        ) : (
-          <EmptyState title="No hay tickets con estos filtros" detail="Probá otra combinación o revisá la cola completa." tone="light" />
-        )}
-      </SectionCard>
-    </AppShell>
-  );
+  return <AppShell eyebrow="Backoffice · Tickets" title="Cola operativa" description="Priorizá y gestioná la atención de todas las empresas desde una vista compacta." tone="light"
+    navigation={[{ href: withActor("/backoffice/queue", actor.id), label: "Tickets", active: true, badge: stats.activeTickets }, { href: withActor("/backoffice/companies", actor.id), label: "Empresas", badge: db.companies.length }, { href: withActor("/backoffice/users", actor.id), label: "Usuarios" }]}
+    actions={<><NavButton href={withActor("/backoffice/companies", actor.id)} label="Ver empresas" muted tone="light" /><LogoutClientForm tone="light" /></>}
+  >
+    <IndicatorBar items={[{ label: "Activos", value: stats.activeTickets }, { label: "Alta o crítica", value: stats.highPriority }, { label: "Esperando cliente", value: stats.waitingCustomer }, { label: "Empresas", value: stats.companies }]} />
+    <SectionCard title="Tickets" description="Buscá, filtrá y abrí cualquier fila para gestionar el caso." tone="light">
+      <TicketFilters basePath="/backoffice/queue" query={filters.query} filters={[
+        { name: "status", label: "Todos los estados", value: filters.status, options: [{ value: "new", label: "Nuevo" }, { value: "analysis", label: "En análisis" }, { value: "in_progress", label: "En progreso" }, { value: "waiting_for_client", label: "Esperando al cliente" }, { value: "resolved", label: "Resuelto" }, { value: "closed", label: "Cerrado" }] },
+        { name: "area", label: "Todas las áreas", value: filters.area, options: [{ value: "automation", label: "Automatizaciones" }, { value: "custom_system", label: "Sistema personalizado" }, { value: "website", label: "Sitios web" }, { value: "ai_agent", label: "Agentes IA" }, { value: "crm", label: "CRM" }, { value: "erp", label: "ERP" }] },
+        { name: "priority", label: "Todas las prioridades", value: filters.priority, options: [{ value: "low", label: "Baja" }, { value: "medium", label: "Media" }, { value: "high", label: "Alta" }, { value: "critical", label: "Crítica" }] },
+        { name: "companyId", label: "Todas las empresas", value: filters.companyId, options: db.companies.map((company) => ({ value: company.id, label: company.name })) },
+        { name: "assignedToId", label: "Todos los responsables", value: filters.assignedToId, options: [{ value: "unassigned", label: "Sin asignar" }, ...internalUsers.map((user) => ({ value: user.id, label: user.name }))] },
+      ]} />
+      {tickets.length ? <TicketTable db={db} tickets={tickets} basePath="/backoffice" tone="light" actionLabel="Gestionar" /> : <EmptyState title="No hay resultados" detail="Probá quitar algún filtro o buscar con otras palabras." tone="light" />}
+    </SectionCard>
+  </AppShell>;
 }

@@ -2,12 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LoginClientForm } from "@/components/login-client-form";
+import { InlineNotice } from "@/components/ui";
 import { getAuthenticatedActor, isInternalActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
+  const { reason } = await searchParams;
   const db = await getAppSnapshot();
   const authenticatedActor = await getAuthenticatedActor(db);
 
@@ -16,10 +18,9 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#efeefe_0%,#dfe3ff_100%)] px-5 py-8 sm:px-6 lg:px-10">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(196,198,255,0.55),transparent_52%)]" />
+    <main className="relative min-h-screen overflow-hidden bg-[#eef0fa] px-5 py-6 sm:px-6 lg:px-10">
       <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center">
-        <div className="grid w-full items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid w-full items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
           <section className="max-w-xl">
             <div className="inline-flex items-center gap-3 rounded-full border border-[rgba(67,48,166,0.18)] bg-white/60 px-4 py-2 backdrop-blur">
               <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[linear-gradient(145deg,#7c5bff,#4330a6)] text-sm font-black text-white">
@@ -33,17 +34,17 @@ export default async function LoginPage() {
               </div>
             </div>
 
-            <h1 className="mt-8 text-4xl font-black tracking-[-0.06em] text-[#18123a] sm:text-5xl lg:text-6xl">
+            <h1 className="mt-6 text-4xl font-black tracking-[-0.05em] text-[#18123a] sm:text-5xl">
               Accedé a tu portal cliente.
             </h1>
             <p className="mt-5 max-w-lg text-base leading-8 text-[#4f5375]">
               Ingresá para reportar incidencias, seguir tickets y mantener el contexto de tu operación en un solo lugar.
             </p>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <FeatureCard
                 title="Reportar incidencias"
-                detail="Cargá problemas con prioridad y detalle desde una interfaz simple."
+                detail="Cargá problemas con impacto y contexto desde una interfaz simple."
               />
               <FeatureCard
                 title="Seguir tickets"
@@ -52,7 +53,7 @@ export default async function LoginPage() {
             </div>
           </section>
 
-          <section className="justify-self-end w-full max-w-xl rounded-[32px] border border-[rgba(67,48,166,0.18)] bg-[rgba(255,252,255,0.92)] p-7 shadow-[0_30px_120px_rgba(124,91,255,0.16)] backdrop-blur sm:p-8">
+          <section className="w-full max-w-xl justify-self-end rounded-2xl border border-[rgba(67,48,166,0.16)] bg-white p-6 shadow-[0_16px_50px_rgba(17,24,39,0.08)] sm:p-7">
             <div className="space-y-3">
               <p className="font-[family-name:var(--font-montserrat)] text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--brand-tertiary)]">
                 Login
@@ -65,11 +66,12 @@ export default async function LoginPage() {
               </p>
             </div>
 
-            <div className="mt-8">
+            {reason === "session" ? <div className="mt-5"><InlineNotice tone="error">Tu sesión venció. Ingresá nuevamente para continuar.</InlineNotice></div> : null}
+            <div className="mt-6">
               <LoginClientForm />
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[rgba(67,48,166,0.14)] pt-5 text-sm text-[#4f5375]">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[rgba(67,48,166,0.14)] pt-4 text-sm text-[#4f5375]">
               <span>¿Necesitás ayuda con tu acceso?</span>
               <Link href="mailto:soporte@nexops.io" className="text-[var(--brand-tertiary)] transition hover:text-[#1b1638]">
                 Contactar soporte
@@ -84,7 +86,7 @@ export default async function LoginPage() {
 
 function FeatureCard({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-[24px] border border-[rgba(67,48,166,0.14)] bg-white/54 p-5 backdrop-blur">
+    <div className="rounded-xl border border-[rgba(67,48,166,0.14)] bg-white/70 p-4">
       <p className="text-base font-bold tracking-tight text-[#1b1638]">{title}</p>
       <p className="mt-2 text-sm leading-6 text-[#4f5375]">{detail}</p>
     </div>

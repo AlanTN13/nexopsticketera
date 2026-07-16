@@ -46,8 +46,8 @@ function Field({
       htmlFor={name}
     >
       <span
-        className={`font-[family-name:var(--font-montserrat)] text-[11px] font-semibold uppercase tracking-[0.2em] ${
-          tone === "light" ? "text-[#5b48c7]" : "text-[var(--brand-secondary)]"
+        className={`text-xs font-semibold ${
+          tone === "light" ? "text-slate-700" : "text-[var(--brand-secondary)]"
         }`}
       >
         {label}
@@ -59,8 +59,8 @@ function Field({
 
 function textInputClasses(tone: "dark" | "light" = "dark") {
   return tone === "light"
-    ? "w-full rounded-[20px] border border-[rgba(91,72,199,0.14)] bg-white px-4 py-3 text-sm text-[#1b1638] outline-none transition placeholder:text-[#8f93b4] focus:border-[#7c5bff] focus:bg-white"
-    : "w-full rounded-[22px] border border-[var(--border)] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:bg-white/[0.08]";
+    ? "min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-500 focus:border-violet-600 focus:ring-2 focus:ring-violet-100"
+    : "min-h-10 w-full rounded-lg border border-[var(--border)] bg-white/[0.05] px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:bg-white/[0.08]";
 }
 
 const COMPANY_STATUS_OPTIONS = [
@@ -77,7 +77,7 @@ export function LogoutClientForm({
     <form action={logoutClientAction}>
       <button
         type="submit"
-        className={`rounded-full px-4 py-2.5 text-sm font-medium transition ${
+        className={`min-h-10 rounded-lg px-3 py-2 text-sm font-medium transition ${
           tone === "light"
             ? "border border-[rgba(67,48,166,0.14)] bg-white/80 text-[#1b1638] hover:border-[#7c5bff] hover:bg-white"
             : "border border-[var(--border)] bg-white/[0.04] text-[var(--muted-strong)] hover:border-[var(--border-strong)] hover:bg-white/[0.08]"
@@ -101,7 +101,7 @@ export function CreateTicketForm({
   if (!canCreateTickets(actor.role)) {
     return (
       <div
-        className={`rounded-[28px] border border-dashed p-5 text-sm leading-6 ${
+        className={`rounded-xl border border-dashed p-4 text-sm leading-6 ${
           tone === "light"
             ? "border-[rgba(91,72,199,0.2)] bg-[#f5f3ff] text-[#5a5d7f]"
             : "border-[var(--border-strong)] bg-white/[0.03] text-[var(--muted)]"
@@ -113,16 +113,16 @@ export function CreateTicketForm({
   }
 
   return (
-    <form action={createTicketAction} className={`grid ${compact ? "gap-4" : "gap-5"}`}>
+    <form action={createTicketAction} className={`grid ${compact ? "gap-3.5" : "gap-4"}`}>
       <input type="hidden" name="actorId" value={actor.id} />
       <Field label="Tipo de solicitud" name="type" tone={tone}>
-        <div className={`grid gap-3 ${compact ? "md:grid-cols-2" : "sm:grid-cols-2"}`}>
+        <div className={`grid gap-2 ${compact ? "md:grid-cols-2" : "sm:grid-cols-2"}`}>
           {TICKET_TYPES.map((type, index) => (
             <label
               key={type}
-              className={`flex cursor-pointer items-start gap-3 rounded-[18px] border ${compact ? "p-3" : "p-4"} transition ${
+              className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition ${
                 tone === "light"
-                  ? "border-[rgba(91,72,199,0.14)] bg-[#faf9ff] hover:border-[#7c5bff]"
+                  ? "border-slate-200 bg-white hover:border-violet-500"
                   : "border-[var(--border)] bg-white/[0.04] hover:border-[var(--border-strong)]"
               }`}
             >
@@ -137,7 +137,7 @@ export function CreateTicketForm({
                 <p className={tone === "light" ? "font-semibold text-[#1b1638]" : "font-semibold text-white"}>
                   {typeLabels[type]}
                 </p>
-                <p className={tone === "light" ? "mt-1 text-sm text-[#5a5d7f]" : "mt-1 text-sm text-[var(--muted)]"}>
+                <p className={tone === "light" ? "mt-0.5 text-xs leading-4 text-slate-600" : "mt-0.5 text-xs leading-4 text-[var(--muted)]"}>
                   {type === "issue"
                     ? compact
                       ? "Algo dejó de funcionar."
@@ -165,12 +165,12 @@ export function CreateTicketForm({
           id="description"
           name="description"
           required
-          rows={compact ? 4 : 5}
+          rows={compact ? 3 : 4}
           className={textInputClasses(tone)}
           placeholder="Contanos qué pasa, a quién afecta y cómo se reproduce."
         />
       </Field>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <Field label="Área" name="area" tone={tone}>
           <select id="area" name="area" className={textInputClasses(tone)} defaultValue="automation">
             {TICKET_AREAS.map((area) => (
@@ -180,27 +180,47 @@ export function CreateTicketForm({
             ))}
           </select>
         </Field>
-        <Field label="Prioridad" name="priority" tone={tone}>
-          <select
-            id="priority"
-            name="priority"
-            className={textInputClasses(tone)}
-            defaultValue="medium"
-          >
-            {TICKET_PRIORITIES.map((priority) => (
-              <option key={priority} value={priority}>
-                {priorityLabels[priority]}
-              </option>
-            ))}
+        <Field label="Impacto" name="impact" tone={tone}>
+          <select id="impact" name="impact" className={textInputClasses(tone)} defaultValue="individual">
+            <option value="individual">Individual · afecta a una persona</option>
+            <option value="partial">Parcial · afecta a un equipo o proceso</option>
+            <option value="general">General · afecta toda la operación</option>
           </select>
         </Field>
       </div>
-      <div className={`rounded-[18px] border ${tone === "light" ? "border-[rgba(17,24,39,0.08)] bg-[#fafafa]" : "border-[var(--border)] bg-white/[0.03]"} p-4`}>
-        <TicketEvidenceFields inputClassName={textInputClasses(tone)} tone={tone} />
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Urgencia informada" name="urgency" tone={tone}>
+          <select id="urgency" name="urgency" className={textInputClasses(tone)} defaultValue="can_wait">
+            <option value="can_wait">Puede esperar</option>
+            <option value="today">Necesito resolverlo hoy</option>
+            <option value="immediate">Necesito atención inmediata</option>
+          </select>
+        </Field>
+        <Field label="¿Podés seguir trabajando?" name="workContinuity" tone={tone}>
+          <select id="workContinuity" name="workContinuity" className={textInputClasses(tone)} defaultValue="normal">
+            <option value="normal">Sí, normalmente</option>
+            <option value="workaround">Sí, con una alternativa</option>
+            <option value="blocked">No, el trabajo está detenido</option>
+          </select>
+        </Field>
       </div>
+
+      <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+        NexOps evaluará el contexto y asignará el nivel de atención. El cliente no define la prioridad operativa.
+      </p>
+
+      <details className="rounded-lg border border-slate-200 bg-white">
+        <summary className="min-h-11 cursor-pointer px-3 py-3 text-sm font-semibold text-slate-800">
+          Agregar archivos, imágenes o enlaces
+        </summary>
+        <div className="border-t border-slate-200 p-3">
+          <TicketEvidenceFields inputClassName={textInputClasses(tone)} tone={tone} />
+        </div>
+      </details>
       <button
         type="submit"
-        className="rounded-[18px] bg-[linear-gradient(135deg,#5b4ee6,#7c5bff)] px-5 py-3 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
+        className="min-h-11 rounded-lg bg-[#5b48c7] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#4936ad]"
       >
         Crear ticket
       </button>
@@ -212,54 +232,46 @@ export function AddCommentForm({
   actor,
   ticketId,
   returnPath,
-  allowInternal,
+  visibility = "external",
+  label = "Nuevo mensaje",
+  submitLabel = "Responder al cliente",
   tone = "dark",
 }: {
   actor: UserProfile;
   ticketId: string;
   returnPath: string;
-  allowInternal: boolean;
+  visibility?: "external" | "internal";
+  label?: string;
+  submitLabel?: string;
   tone?: "dark" | "light";
 }) {
   return (
-    <form action={addCommentAction} className="grid gap-4">
+    <form action={addCommentAction} className="grid gap-3">
       <input type="hidden" name="actorId" value={actor.id} />
       <input type="hidden" name="ticketId" value={ticketId} />
       <input type="hidden" name="returnPath" value={returnPath} />
-      <Field label="Nuevo comentario" name="body" tone={tone}>
+      <input type="hidden" name="visibility" value={visibility} />
+      <Field label={label} name={`body-${visibility}`} tone={tone}>
         <textarea
-          id="body"
+          id={`body-${visibility}`}
           name="body"
           required
-          rows={4}
+          rows={3}
           className={textInputClasses(tone)}
           placeholder="Sumá contexto, respuesta o próximos pasos."
         />
       </Field>
-      {allowInternal ? (
-        <Field label="Visibilidad" name="visibility" tone={tone}>
-          <select
-            id="visibility"
-            name="visibility"
-            className={textInputClasses(tone)}
-            defaultValue="external"
-          >
-            <option value="external">Externo</option>
-            <option value="internal">Interno</option>
-          </select>
-        </Field>
-      ) : (
-        <input type="hidden" name="visibility" value="external" />
-      )}
       <button
         type="submit"
-        className={`rounded-[22px] px-5 py-3 text-sm font-semibold transition hover:translate-y-[-1px] ${
+        className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold transition ${
           tone === "light"
-            ? "bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] text-white hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
+            ? visibility === "internal"
+              ? "border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
+              : "bg-[#5b48c7] text-white hover:bg-[#4936ad]"
             : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
         }`}
       >
-        Publicar comentario
+        {submitLabel}
       </button>
     </form>
   );
@@ -299,7 +311,7 @@ export function TicketWorkflowForm({
   }
 
   return (
-    <form action={updateTicketWorkflowAction} className="grid gap-4">
+    <form action={updateTicketWorkflowAction} className="grid gap-3">
       <input type="hidden" name="actorId" value={actor.id} />
       <input type="hidden" name="ticketId" value={ticketId} />
       <input type="hidden" name="returnPath" value={returnPath} />
@@ -338,13 +350,13 @@ export function TicketWorkflowForm({
       </Field>
       <button
         type="submit"
-        className={`rounded-[22px] px-5 py-3 text-sm font-semibold transition hover:translate-y-[-1px] ${
+        className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold transition ${
           tone === "light"
-            ? "bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] text-white hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
+            ? "bg-[#5b48c7] text-white hover:bg-[#4936ad]"
             : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
         }`}
       >
-        Guardar workflow
+        Guardar cambios
       </button>
     </form>
   );

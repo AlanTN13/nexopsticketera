@@ -14,4 +14,10 @@ describe("ticket metrics", () => {
     });
     expect(filterTickets([ticketA, ticketB], { companyId: companyA.id })).toEqual([ticketA]);
   });
+
+  it("searches tickets by code or title without case sensitivity", () => {
+    expect(filterTickets([ticketA, ticketB], { query: ticketA.code.toLowerCase() })).toEqual([ticketA]);
+    expect(filterTickets([ticketA, ticketB], { query: ticketB.title.toUpperCase() })).toEqual([ticketB]);
+    expect(filterTickets([ticketA, ticketB], { query: "sin coincidencias" })).toEqual([]);
+  });
 });

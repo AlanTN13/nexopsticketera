@@ -17,12 +17,12 @@ export function TicketEvidenceFields({
   const helperClass = tone === "light" ? "text-xs text-[#7b74a6]" : "text-xs text-[var(--muted)]";
   const buttonClass =
     tone === "light"
-      ? "rounded-full border border-[rgba(17,24,39,0.08)] bg-white px-3 py-1.5 text-xs font-semibold text-[#4330a6] transition hover:border-[#7c5bff]"
-      : "rounded-full border border-[var(--border)] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-[var(--brand-secondary)]";
+      ? "rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#4330a6] transition hover:border-[#7c5bff]"
+      : "rounded-lg border border-[var(--border)] bg-white/[0.04] px-3 py-2 text-xs font-semibold text-[var(--brand-secondary)]";
 
   return (
-    <div className="grid gap-4">
-      <div className="grid gap-3">
+    <div className="grid gap-3">
+      <div className="grid gap-2">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-[#111827]">Agregar link</p>
@@ -50,7 +50,7 @@ export function TicketEvidenceFields({
         ))}
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-2 border-t border-slate-200 pt-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-[#111827]">Adjuntar imagen</p>
@@ -73,7 +73,7 @@ export function TicketEvidenceFields({
             name={`attachment${index + 1}`}
             type="file"
             accept="image/*"
-            className={`${inputClassName} file:mr-4 file:rounded-full file:border-0 file:bg-[#efeefe] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#4330a6]`}
+            className={`${inputClassName} file:mr-3 file:rounded-md file:border-0 file:bg-[#efeefe] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[#4330a6]`}
           />
         ))}
       </div>

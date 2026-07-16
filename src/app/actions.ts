@@ -109,6 +109,24 @@ export async function createTicketAction(formData: FormData) {
   const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const title = getString(formData, "title");
   const description = getString(formData, "description");
+  const impactLabels: Record<string, string> = {
+    individual: "Individual — afecta a una persona",
+    partial: "Parcial — afecta a un equipo o proceso",
+    general: "General — afecta a toda la empresa u operación crítica",
+  };
+  const urgencyLabels: Record<string, string> = {
+    can_wait: "Puede esperar",
+    today: "Necesito resolverlo hoy",
+    immediate: "Necesito atención inmediata",
+  };
+  const continuityLabels: Record<string, string> = {
+    normal: "Sí, normalmente",
+    workaround: "Sí, con una alternativa",
+    blocked: "No, el trabajo está detenido",
+  };
+  const impact = getString(formData, "impact");
+  const urgency = getString(formData, "urgency");
+  const workContinuity = getString(formData, "workContinuity");
 
   if (!title || !description) {
     throw new Error("Título y descripción son obligatorios.");
@@ -117,16 +135,16 @@ export async function createTicketAction(formData: FormData) {
   await createTicket({
     actorId: actor.id,
     title,
-    description,
+    description: `${description}\n\nContexto informado por el cliente\nImpacto: ${impactLabels[impact] ?? "No informado"}\nUrgencia: ${urgencyLabels[urgency] ?? "No informada"}\n¿Puede seguir trabajando?: ${continuityLabels[workContinuity] ?? "No informado"}`,
     contextUrls: getContextUrls(formData),
     attachments: getTicketImageFiles(formData),
     type: assertInSet(getString(formData, "type"), TICKET_TYPES),
     area: assertInSet(getString(formData, "area"), TICKET_AREAS),
-    priority: assertInSet(getString(formData, "priority"), TICKET_PRIORITIES),
+    priority: "medium",
   });
 
   revalidatePath("/portal");
-  redirect("/portal");
+  redirect(buildSuccessRedirect("/portal", "Ticket creado correctamente."));
 }
 
 export async function addCommentAction(formData: FormData) {
