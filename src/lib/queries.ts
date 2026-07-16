@@ -12,6 +12,7 @@ import {
   isInternalRole,
   isClientRole,
 } from "@/lib/ticketing";
+import { parseTicketReference } from "@/lib/routing";
 
 export function getVisibleTickets(db: TicketDatabase, actor: UserProfile) {
   if (isClientRole(actor.role)) {
@@ -49,6 +50,23 @@ export function getTicketHistory(db: TicketDatabase, ticketId: string) {
 
 export function getTicketById(db: TicketDatabase, actor: UserProfile, ticketId: string) {
   return getVisibleTickets(db, actor).find((ticket) => ticket.id === ticketId) ?? null;
+}
+
+export function getTicketByReference(
+  db: TicketDatabase,
+  actor: UserProfile,
+  reference: string,
+) {
+  const parsedReference = parseTicketReference(reference);
+  if (!parsedReference) return null;
+
+  return getVisibleTickets(db, actor).find((ticket) => {
+    if (parsedReference.kind === "id") {
+      return ticket.id.toLocaleLowerCase("en-US") === parsedReference.value;
+    }
+
+    return ticket.code.toLocaleUpperCase("en-US") === parsedReference.value;
+  }) ?? null;
 }
 
 export function getCompany(db: TicketDatabase, companyId: string | null) {

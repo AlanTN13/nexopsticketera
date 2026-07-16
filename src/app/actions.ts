@@ -7,6 +7,7 @@ import { assertAuthenticatedActorId, clearClientSession, isInternalActor } from 
 import { addComment, createCompany, createTicket, createUser, getAppSnapshot, updateCompany, updateTicketWorkflow, updateUser } from "@/lib/app-store";
 import { COMPANY_PLANS, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { ticketDetailPath } from "@/lib/routing";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -132,7 +133,7 @@ export async function createTicketAction(formData: FormData) {
     throw new Error("Título y descripción son obligatorios.");
   }
 
-  await createTicket({
+  const ticket = await createTicket({
     actorId: actor.id,
     title,
     description: `${description}\n\nContexto informado por el cliente\nImpacto: ${impactLabels[impact] ?? "No informado"}\nUrgencia: ${urgencyLabels[urgency] ?? "No informada"}\n¿Puede seguir trabajando?: ${continuityLabels[workContinuity] ?? "No informado"}`,
@@ -144,7 +145,7 @@ export async function createTicketAction(formData: FormData) {
   });
 
   revalidatePath("/portal");
-  redirect(buildSuccessRedirect("/portal", "Ticket creado correctamente."));
+  redirect(buildSuccessRedirect(ticketDetailPath("/portal", ticket), "Ticket creado correctamente."));
 }
 
 export async function addCommentAction(formData: FormData) {

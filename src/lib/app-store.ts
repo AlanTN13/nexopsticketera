@@ -4,6 +4,7 @@ import { PostgrestError } from "@supabase/supabase-js";
 
 import { canCommentOnTicket, canCreateCompanyTicket, canUpdateTicketWorkflow } from "@/lib/authorization";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
+import { parseTicketReference } from "@/lib/routing";
 import {
   Company,
   CompanyPlan,
@@ -452,6 +453,22 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
     })),
     history: (historyResult.data ?? []).map((row) => mapHistory(row as HistoryRow)),
   };
+}
+
+async function getVisibleTicketReferenceFromSupabase(reference: string) {
+  const parsedReference = parseTicketReference(reference);
+  if (!parsedReference) return null;
+
+  const client = await getSupabaseServerClient();
+  const query = client.from("tickets").select("id, code");
+  const { data, error } = await (parsedReference.kind === "id"
+    ? query.eq("id", parsedReference.value)
+    : query.eq("code", parsedReference.value)
+  ).maybeSingle();
+
+  assertNoError(error);
+  if (!data) return null;
+  return { id: String(data.id), code: String(data.code) };
 }
 
 function assertContextUrls(contextUrls: string[]) {
@@ -1011,6 +1028,10 @@ async function updateCompanyInSupabase(input: {
 
 export async function getAppSnapshot() {
   return getSupabaseSnapshot();
+}
+
+export async function getVisibleTicketReference(reference: string) {
+  return getVisibleTicketReferenceFromSupabase(reference);
 }
 
 export async function createTicket(input: CreateTicketInput) {

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AreaPill, PriorityPill, RolePill, StatusPill, TimelineDate } from "@/components/ui";
 import { getCompany, getUser } from "@/lib/queries";
+import { ticketDetailPath } from "@/lib/routing";
 import { TicketDatabase, TicketRecord, UserProfile, getTicketNextStep } from "@/lib/ticketing";
 
 export function TicketTable({
@@ -59,7 +60,7 @@ export function TicketTable({
             {tickets.map((ticket) => {
               const company = getCompany(db, ticket.companyId);
               const assignee = getUser(db, ticket.assignedToId);
-              const detailHref = `${basePath}/tickets/${ticket.id}`;
+              const detailHref = ticketDetailPath(basePath, ticket);
 
               return (
                 <tr key={ticket.id} className={`${rowClass} relative group`}>
@@ -119,7 +120,7 @@ export function TicketTable({
         {tickets.map((ticket) => {
           const company = getCompany(db, ticket.companyId);
           const assignee = getUser(db, ticket.assignedToId);
-          const detailHref = `${basePath}/tickets/${ticket.id}`;
+          const detailHref = ticketDetailPath(basePath, ticket);
           return (
             <article key={ticket.id} className="relative grid gap-2 px-3 py-3 transition hover:bg-slate-50">
               <div className="flex items-start justify-between gap-3">
