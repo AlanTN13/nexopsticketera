@@ -25,6 +25,7 @@ import {
   isClientRole,
   isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";
+import { requireUserTitle } from "@/lib/validation";
 
 export type CreateTicketInput = {
   actorId: string;
@@ -785,6 +786,7 @@ async function createUserInSupabase(input: {
 }) {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
+  const title = requireUserTitle(input.title);
 
   const sameCompany = actor.companyId === input.companyId;
   const canManageClientSide = actor.role === "client_admin" && sameCompany;
@@ -805,7 +807,7 @@ async function createUserInSupabase(input: {
     email: input.email,
     name: input.name,
     role: input.role,
-    title: input.title,
+    title,
     password: input.password,
   });
 }

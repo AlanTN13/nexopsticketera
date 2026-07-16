@@ -4,7 +4,6 @@ import {
   addCommentAction,
   createCompanyAction,
   createTicketAction,
-  createUserAction,
   logoutClientAction,
   updateCompanyAction,
   updateTicketWorkflowAction,
@@ -28,6 +27,8 @@ import {
   typeLabels,
   UserProfile,
 } from "@/lib/ticketing";
+
+export { CreateUserForm } from "@/components/create-user-form";
 
 function Field({
   label,
@@ -357,73 +358,6 @@ export function TicketWorkflowForm({
         }`}
       >
         Guardar cambios
-      </button>
-    </form>
-  );
-}
-
-export function CreateUserForm({
-  actor,
-  companyId,
-  returnPath,
-  clientOnly = false,
-  tone = "dark",
-}: {
-  actor: UserProfile;
-  companyId: string | null;
-  returnPath: string;
-  clientOnly?: boolean;
-  tone?: "dark" | "light";
-}) {
-  const roles = clientOnly
-    ? USER_ROLES.filter((role) => role.startsWith("client_"))
-    : companyId
-      ? USER_ROLES
-      : USER_ROLES.filter((role) => !role.startsWith("client_"));
-
-  return (
-    <form action={createUserAction} className="grid gap-4">
-      <input type="hidden" name="actorId" value={actor.id} />
-      <input type="hidden" name="companyId" value={companyId ?? "internal"} />
-      <input type="hidden" name="returnPath" value={returnPath} />
-      <Field label="Nombre" name="name" tone={tone}>
-        <input id="name" name="name" required className={textInputClasses(tone)} />
-      </Field>
-      <Field label="Email" name="email" tone={tone}>
-        <input id="email" name="email" type="email" required className={textInputClasses(tone)} />
-      </Field>
-      <Field label="Cargo" name="title" tone={tone}>
-        <input id="title" name="title" required className={textInputClasses(tone)} />
-      </Field>
-      <Field label="Contraseña inicial" name="password" tone={tone}>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          minLength={8}
-          required
-          className={textInputClasses(tone)}
-          placeholder="Mínimo 8 caracteres"
-        />
-      </Field>
-      <Field label="Rol" name="role" tone={tone}>
-        <select id="role" name="role" className={textInputClasses(tone)} defaultValue={roles[0]}>
-          {roles.map((role) => (
-            <option key={role} value={role}>
-              {roleLabels[role]}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <button
-        type="submit"
-        className={`rounded-[22px] px-5 py-3 text-sm font-semibold transition hover:translate-y-[-1px] ${
-          tone === "light"
-            ? "bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] text-white hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
-            : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
-        }`}
-      >
-        Invitar usuario
       </button>
     </form>
   );

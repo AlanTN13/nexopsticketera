@@ -154,19 +154,21 @@ function NavigationLinks({
         <Link
           key={item.href}
           href={item.href}
-          className={`flex min-h-10 items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition ${
+          aria-current={item.active ? "page" : undefined}
+          className={`flex min-h-10 items-center justify-between rounded-lg px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 ${
             item.active
-              ? light
-                ? "bg-[#312e81] text-white"
-                : "bg-white/[0.09] text-white"
+              ? "bg-[#4330a6] font-semibold !text-white hover:bg-[#37258f] hover:!text-white [&_svg]:text-white"
               : light
-                ? "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
-                : "text-[var(--muted)] hover:bg-white/[0.05] hover:text-white"
+                ? "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                : "font-medium text-[var(--muted)] hover:bg-white/[0.05] hover:text-white"
           }`}
         >
-          <span>{item.label}</span>
+          <span className="flex items-center gap-2">
+            {item.active ? <span aria-hidden className="h-4 w-1 rounded-full bg-white" /> : null}
+            {item.label}
+          </span>
           {item.badge !== undefined ? (
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${item.active ? "bg-white/15 text-white" : "bg-violet-50 text-violet-800"}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${item.active ? "bg-white text-[#312e81]" : "bg-violet-50 text-violet-800"}`}>
               {item.badge}
             </span>
           ) : null}

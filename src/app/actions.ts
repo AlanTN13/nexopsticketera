@@ -8,6 +8,7 @@ import { addComment, createCompany, createTicket, createUser, getAppSnapshot, up
 import { COMPANY_PLANS, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { ticketDetailPath } from "@/lib/routing";
+import { requireUserTitle } from "@/lib/validation";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -189,19 +190,28 @@ export async function updateTicketWorkflowAction(formData: FormData) {
   redirect(buildPostActionRedirect(returnPath, actor.id));
 }
 
-export async function createUserAction(formData: FormData) {
+export type CreateUserState = {
+  error: string | null;
+};
+
+export async function createUserAction(
+  _previousState: CreateUserState,
+  formData: FormData,
+): Promise<CreateUserState> {
   const db = await getAppSnapshot();
   const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const companyIdValue = getString(formData, "companyId");
   const returnPath = getString(formData, "returnPath");
 
   try {
+    const title = requireUserTitle(getString(formData, "title"));
+
     await createUser({
       actorId: actor.id,
       companyId: companyIdValue === "internal" ? null : companyIdValue,
       name: getString(formData, "name"),
       email: getString(formData, "email"),
-      title: getString(formData, "title"),
+      title,
       role: assertInSet(getString(formData, "role"), USER_ROLES),
       password: getString(formData, "password"),
     });
@@ -211,7 +221,7 @@ export async function createUserAction(formData: FormData) {
         ? error.message
         : "No pudimos crear el usuario. Revisá los datos e intentá de nuevo.";
 
-    redirect(buildErrorRedirect(returnPath, message));
+    return { error: message };
   }
 
   revalidatePath(returnPath);
