@@ -1,5 +1,9 @@
 # Estado V1 técnico
 
+## Entorno Supabase definitivo
+
+El proyecto `tfonsiurhjmllqaknhgh` se utiliza para desarrollo y piloto interno y será la base productiva definitiva. No se debe crear otro proyecto. Durante el piloto solo se permiten datos controlados e identificables; su limpieza futura exige backup completo y autorización separada según `docs/PREPRODUCTION_CLEANUP.md`.
+
 ## Implementado en esta rama
 
 - Supabase es el único backend.
@@ -11,11 +15,9 @@
 - Los códigos de ticket se generan mediante secuencia Postgres, evitando carreras de aplicación.
 - Existe una suite mínima de seguridad y métricas.
 
-## Validación externa pendiente
+## Validación de staging
 
-No se identificó un Supabase local o staging seguro durante la implementación y Docker no está disponible en el equipo. Por eso no se aplicaron migraciones ni se realizaron mutaciones contra el proyecto configurado en `.env.local`.
-
-Antes de declarar V1 operativa deben pasar en staging las pruebas A/B de `SUPABASE_MVP_CHECKLIST.md`, Security Advisor y el recorrido funcional autenticado.
+Las cinco migraciones fueron aplicadas en `tfonsiurhjmllqaknhgh`. Pasaron las pruebas reales A/B con JWT, acceso directo por ID, comentarios internos, Storage, Auth SSR y el recorrido funcional de portal/backoffice. Security Advisor conserva únicamente el warning de Leaked Password Protection deshabilitada, que debe resolverse antes del uso oficial.
 
 ## Invitaciones
 

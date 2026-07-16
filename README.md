@@ -73,6 +73,13 @@ npm audit
 
 Las pruebas locales cubren roles, rutas protegidas a nivel de autorización, aislamiento A/B, IDs directos, comentarios, workflow y métricas. Las políticas reales deben validarse adicionalmente sobre Supabase local o staging.
 
+## Piloto y preparación productiva
+
+El proyecto `tfonsiurhjmllqaknhgh` es la única base de desarrollo, piloto interno y producción futura. La limpieza de datos temporales no es automática y requiere autorización explícita. Consultar:
+
+- `docs/INTERNAL_PILOT.md` para operar el piloto controlado;
+- `docs/PREPRODUCTION_CLEANUP.md` para inventario, backup, clasificación, limpieza y smoke test preproducción.
+
 ## Invitaciones
 
 La V1 conserva creación administrativa directa con contraseña y `email_confirm`. No existe todavía aceptación por email, expiración de invitaciones ni recuperación visual de contraseña. Es deuda explícita y no debe presentarse como un flujo de invitación completo.
