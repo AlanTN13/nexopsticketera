@@ -244,11 +244,12 @@ Se mantiene una tabla densa. Orden canónico de columnas:
 - Prioridad, principalmente backoffice; visible en portal como dato informado.
 - Última actualización.
 
-Área puede permanecer como columna o filtro secundario según ancho. La columna “Acción” se elimina cuando la fila completa sea clickeable.
+Área puede permanecer como columna o filtro secundario según ancho. La fila completa es clickeable y se conserva **Abrir** como acción secundaria explícita: apoya la descubribilidad y la accesibilidad sin competir visualmente con la interacción principal de la fila.
 
 Reglas:
 
 - Toda la fila abre el detalle y tiene foco de teclado visible.
+- **Abrir** ofrece un destino explícito y accesible, con jerarquía visual secundaria respecto de la fila.
 - Los controles internos de la fila, si existen, no deben disparar la navegación.
 - Orden por defecto: elementos que requieren acción primero y luego actualización descendente.
 - Filtros activos visibles como chips removibles; acción clara para limpiar.
@@ -411,7 +412,7 @@ Objetivo mínimo: WCAG 2.2 AA.
 ### Refactor necesario
 
 - `PortalTicketModal` / `AppModal`: separar patrón modal desktop de ruta/página completa mobile y completar gestión de foco.
-- `TicketTable`: fila completa clickeable, sin columna Acción, próximo paso y variante mobile.
+- `TicketTable`: fila completa clickeable, acción secundaria **Abrir**, próximo paso y variante mobile.
 - `CreateTicketForm`: eliminar prioridad cliente; agregar impacto, urgencia y “No estoy seguro”.
 - `TicketWorkflowForm`: presentar términos en español, incorporar próximo paso y mejorar feedback de guardado.
 - Conversación: extraer componentes `ConversationThread`, `MessageItem` y `CommentComposer` con visibilidad inequívoca.
@@ -448,7 +449,7 @@ Leyenda: **Cumple**, **Cumple parcialmente**, **No cumple**. Prioridad **P0** bl
 | Ticket muestra última actualización | Cumple | P0 | Bajo | Mantener y normalizar formato accesible. |
 | Ticket muestra próximo paso | No cumple | P0 | No queda claro quién debe actuar ni qué sigue. | Incorporar texto, responsable NexOps/Cliente y fecha estimada opcional. |
 | Tabla en desktop | Cumple | P0 | Bajo | Mantener con mayor densidad y columnas priorizadas. |
-| Fila completa clickeable | No cumple | P0 | Solo el ticket y botón Acción navegan; menor velocidad y accesibilidad. | Convertir fila en objetivo interactivo de teclado y mouse. |
+| Fila completa clickeable | No cumple | P0 | Solo el ticket y el botón Abrir navegan; menor velocidad y accesibilidad. | Convertir la fila en objetivo interactivo de teclado y mouse, conservando Abrir como acción secundaria explícita. |
 | Listado mobile operativo | No cumple | P1 | La tabla depende de scroll horizontal. | Variante apilada compacta específica para mobile. |
 | Filtros consistentes | Cumple parcialmente | P1 | Código duplicado; no muestra chips ni conteo activo. | Extraer `TicketFilters` y hacer visibles los filtros activos. |
 | Conversación como foco principal | Cumple parcialmente | P0 | Está destacada, pero el resumen aparece antes y ocupa mucho espacio. | Subir barra de situación y dar mayor protagonismo al hilo. |
@@ -488,7 +489,7 @@ Leyenda: **Cumple**, **Cumple parcialmente**, **No cumple**. Prioridad **P0** bl
 - El detalle declara que la conversación es foco, pero antepone un resumen voluminoso.
 - Historial y conversación compiten en altura, aunque el historial debería ser secundario.
 - Las páginas usan tabla en cualquier ancho y modal de creación también en mobile.
-- La columna Acción contradice la decisión de fila completa clickeable.
+- La acción Abrir debe coexistir con la fila clickeable como apoyo de descubribilidad y accesibilidad, con jerarquía visual secundaria.
 
 ## 22. Decisiones pendientes
 
@@ -546,6 +547,13 @@ Las decisiones estructurales de impacto, continuidad, urgencia, prioridad, próx
 
 La lista es orientativa y no implica cambios en esta fase.
 
+Las rutas públicas canónicas de detalle utilizan `ticketCode` como referencia legible:
+
+- `/portal/tickets/[ticketCode]`
+- `/backoffice/tickets/[ticketCode]`
+
+El código es la referencia pública de la URL; el UUID continúa siendo el identificador interno y la clave de las relaciones. Las URLs anteriores basadas en UUID mantienen compatibilidad mediante redirección a la ruta canónica. La sesión, los permisos y la autorización multiempresa se validan antes de devolver información del ticket o efectuar la redirección.
+
 ### UI y navegación
 
 - `src/app/globals.css`
@@ -560,7 +568,7 @@ La lista es orientativa y no implica cambios en esta fase.
 
 - `src/app/portal/layout.tsx`
 - `src/app/portal/page.tsx`
-- `src/app/portal/tickets/[ticketId]/page.tsx`
+- `src/app/portal/tickets/[ticketCode]/page.tsx`
 - `src/app/portal/users/page.tsx`
 - posible nueva ruta `src/app/portal/tickets/new/page.tsx`
 
@@ -568,7 +576,7 @@ La lista es orientativa y no implica cambios en esta fase.
 
 - `src/app/backoffice/layout.tsx`
 - `src/app/backoffice/queue/page.tsx`
-- `src/app/backoffice/tickets/[ticketId]/page.tsx`
+- `src/app/backoffice/tickets/[ticketCode]/page.tsx`
 - `src/app/backoffice/companies/page.tsx`
 - `src/app/backoffice/companies/[companyId]/page.tsx`
 - `src/app/backoffice/users/page.tsx`
