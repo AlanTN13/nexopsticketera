@@ -14,15 +14,19 @@ function redirectToInvitationError(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get("code");
+  const tokenHash = request.nextUrl.searchParams.get("token_hash");
+  const type = request.nextUrl.searchParams.get("type");
 
-  if (!code) {
+  if (!tokenHash || type !== "invite") {
     return redirectToInvitationError(request);
   }
 
   try {
     const supabase = await getSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "invite",
+    });
 
     if (error) {
       return redirectToInvitationError(request);
