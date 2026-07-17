@@ -1,10 +1,16 @@
 # Estado V1 técnico
 
+## Estado de integración y despliegue
+
+La PR #5 de UX P0 fue integrada en `main` mediante squash and merge. El commit canónico es `ecf2baaa3cebc4869beac0efcaba7800d3eb7bea`. Los deployments productivos de Vercel asociados finalizaron correctamente y el dominio `https://sdnexops.vercel.app` respondió sin errores visibles en los smoke tests públicos de login, rutas protegidas, portal, backoffice y URLs de tickets por `ticketCode`.
+
+La UX P0 está completada: la interfaz es más compacta y operativa, conserva la identidad NexOps, mejora sidebar, listados, creación, detalle, responsive y estados de interfaz, y utiliza URLs públicas legibles sin reemplazar el UUID interno. La V1 queda lista para iniciar el piloto interno controlado según `docs/INTERNAL_PILOT.md`; esto no equivale todavía a una salida oficial a clientes.
+
 ## Entorno Supabase definitivo
 
 El proyecto `tfonsiurhjmllqaknhgh` se utiliza para desarrollo y piloto interno y será la base productiva definitiva. No se debe crear otro proyecto. Durante el piloto solo se permiten datos controlados e identificables; su limpieza futura exige backup completo y autorización separada según `docs/PREPRODUCTION_CLEANUP.md`.
 
-## Implementado en esta rama
+## Implementado en main
 
 - Supabase es el único backend.
 - Sesiones oficiales SSR reemplazan la cookie HMAC propia.
@@ -22,6 +28,16 @@ Las cinco migraciones fueron aplicadas en `tfonsiurhjmllqaknhgh`. Pasaron las pr
 ## Invitaciones
 
 El alta sigue siendo directa por un administrador con contraseña inicial. Aceptación por email, expiración y recuperación de contraseña quedan pendientes.
+
+## Pendientes antes del piloto con GlobalTrip
+
+- Implementar y validar la recuperación de contraseña de extremo a extremo.
+- Habilitar Leaked Password Protection antes del uso productivo oficial.
+- Completar el flujo real de área **Por clasificar** cuando el cliente elige “No estoy seguro”, sin crear un área ficticia permanente.
+- Persistir en Supabase los campos de impacto, urgencia informada, continuidad de trabajo y próximo paso; la UX actual no sustituye estos cambios de datos pendientes.
+- Revisar por separado las dos vulnerabilidades moderadas de dependencias, sin ejecutar correcciones automáticas destructivas.
+
+Estos pendientes no forman parte de la integración UX P0 y requieren alcance, validación y autorización propios. No se aplicaron migraciones, cambios de RLS, limpieza de datos ni modificaciones de variables de Vercel durante el cierre.
 
 ## Vulnerabilidades npm
 
