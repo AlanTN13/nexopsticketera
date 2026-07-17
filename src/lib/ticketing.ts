@@ -111,13 +111,13 @@ export type TicketDatabase = {
 };
 
 export const typeLabels: Record<TicketType, string> = {
-  issue: "Issue",
+  issue: "Problema",
   improvement: "Mejora",
 };
 
 export const areaLabels: Record<TicketArea, string> = {
   automation: "Automatizaciones",
-  custom_system: "Sistema custom",
+  custom_system: "Sistema personalizado",
   website: "Sitios web",
   ai_agent: "Agentes IA",
   crm: "CRM",
@@ -141,7 +141,7 @@ export const statusLabels: Record<TicketStatus, string> = {
   new: "Nuevo",
   analysis: "En análisis",
   in_progress: "En progreso",
-  waiting_for_client: "Esperando cliente",
+  waiting_for_client: "Esperando al cliente",
   resolved: "Resuelto",
   closed: "Cerrado",
 };
@@ -192,4 +192,43 @@ export function formatRelativeDate(dateString: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(dateString));
+}
+
+export function getTicketNextStep(ticket: TicketRecord) {
+  switch (ticket.status) {
+    case "new":
+      return "NexOps debe revisar y clasificar la solicitud.";
+    case "analysis":
+      return "NexOps está definiendo el abordaje.";
+    case "in_progress":
+      return ticket.assignedToId
+        ? "NexOps continúa con la resolución."
+        : "NexOps debe asignar un responsable.";
+    case "waiting_for_client":
+      return "El cliente debe responder o aportar información.";
+    case "resolved":
+      return "El cliente debe confirmar si quedó resuelto.";
+    case "closed":
+      return "Sin acciones pendientes.";
+  }
+}
+
+export function translateHistoryMessage(message: string) {
+  const replacements: Array<[RegExp, string]> = [
+    [/\bin_progress\b/g, "En progreso"],
+    [/\bwaiting_for_client\b/g, "Esperando al cliente"],
+    [/\banalysis\b/g, "En análisis"],
+    [/\bresolved\b/g, "Resuelto"],
+    [/\bclosed\b/g, "Cerrado"],
+    [/\bnew\b/g, "Nuevo"],
+    [/\bcritical\b/g, "Crítica"],
+    [/\bhigh\b/g, "Alta"],
+    [/\bmedium\b/g, "Media"],
+    [/\blow\b/g, "Baja"],
+  ];
+
+  return replacements.reduce(
+    (translated, [pattern, label]) => translated.replace(pattern, label),
+    message,
+  );
 }

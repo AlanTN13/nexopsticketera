@@ -4,6 +4,7 @@ import { PostgrestError } from "@supabase/supabase-js";
 
 import { canCommentOnTicket, canCreateCompanyTicket, canUpdateTicketWorkflow } from "@/lib/authorization";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
+import { parseTicketReference } from "@/lib/routing";
 import {
   Company,
   CompanyPlan,
@@ -24,6 +25,7 @@ import {
   isClientRole,
   isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";
+import { requireUserTitle } from "@/lib/validation";
 
 export type CreateTicketInput = {
   actorId: string;
@@ -454,6 +456,22 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
   };
 }
 
+async function getVisibleTicketReferenceFromSupabase(reference: string) {
+  const parsedReference = parseTicketReference(reference);
+  if (!parsedReference) return null;
+
+  const client = await getSupabaseServerClient();
+  const query = client.from("tickets").select("id, code");
+  const { data, error } = await (parsedReference.kind === "id"
+    ? query.eq("id", parsedReference.value)
+    : query.eq("code", parsedReference.value)
+  ).maybeSingle();
+
+  assertNoError(error);
+  if (!data) return null;
+  return { id: String(data.id), code: String(data.code) };
+}
+
 function assertContextUrls(contextUrls: string[]) {
   if (contextUrls.length > MAX_TICKET_CONTEXT_URLS) {
     throw new Error(`Solo podés adjuntar hasta ${MAX_TICKET_CONTEXT_URLS} links por ticket.`);
@@ -768,6 +786,7 @@ async function createUserInSupabase(input: {
 }) {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
+  const title = requireUserTitle(input.title);
 
   const sameCompany = actor.companyId === input.companyId;
   const canManageClientSide = actor.role === "client_admin" && sameCompany;
@@ -788,7 +807,7 @@ async function createUserInSupabase(input: {
     email: input.email,
     name: input.name,
     role: input.role,
-    title: input.title,
+    title,
     password: input.password,
   });
 }
@@ -1011,6 +1030,10 @@ async function updateCompanyInSupabase(input: {
 
 export async function getAppSnapshot() {
   return getSupabaseSnapshot();
+}
+
+export async function getVisibleTicketReference(reference: string) {
+  return getVisibleTicketReferenceFromSupabase(reference);
 }
 
 export async function createTicket(input: CreateTicketInput) {

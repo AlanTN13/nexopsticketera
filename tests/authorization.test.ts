@@ -7,7 +7,7 @@ import {
   canCreateCompanyTicket,
   canUpdateTicketWorkflow,
 } from "@/lib/authorization";
-import { getTicketById, getVisibleComments, getVisibleTickets } from "@/lib/queries";
+import { getTicketById, getTicketByReference, getVisibleComments, getVisibleTickets } from "@/lib/queries";
 import { clientA, clientB, fixtureDb, nexopsAgent, ticketA, ticketB, viewerA } from "./fixtures";
 
 describe("tenant isolation and roles", () => {
@@ -16,6 +16,22 @@ describe("tenant isolation and roles", () => {
     expect(getVisibleTickets(fixtureDb, clientB)).toEqual([ticketB]);
     expect(getTicketById(fixtureDb, clientA, ticketB.id)).toBeNull();
     expect(canAccessTicket(clientA, ticketB)).toBe(false);
+  });
+
+  it("resolves visible tickets by code without using the code as authorization", () => {
+    expect(getTicketByReference(fixtureDb, clientA, "nex-1001")).toEqual(ticketA);
+    expect(getTicketByReference(fixtureDb, clientA, "NEX-1001")).toEqual(ticketA);
+    expect(getTicketByReference(fixtureDb, clientA, "nex-1002")).toBeNull();
+    expect(getTicketByReference(fixtureDb, clientA, "ticket-invalido")).toBeNull();
+    expect(getTicketByReference(fixtureDb, nexopsAgent, "nex-1002")).toEqual(ticketB);
+  });
+
+  it("keeps legacy UUID references compatible after authorization", () => {
+    const legacyTicket = { ...ticketA, id: "e008aa4e-3b90-416b-adbe-43ff023275da" };
+    const legacyDb = { ...fixtureDb, tickets: [legacyTicket, ticketB] };
+
+    expect(getTicketByReference(legacyDb, clientA, legacyTicket.id)).toEqual(legacyTicket);
+    expect(getTicketByReference(legacyDb, clientB, legacyTicket.id)).toBeNull();
   });
 
   it("prevents Empresa B from reading comments from Empresa A", () => {

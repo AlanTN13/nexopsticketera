@@ -12,6 +12,7 @@ import {
   isInternalRole,
   isClientRole,
 } from "@/lib/ticketing";
+import { parseTicketReference } from "@/lib/routing";
 
 export function getVisibleTickets(db: TicketDatabase, actor: UserProfile) {
   if (isClientRole(actor.role)) {
@@ -32,11 +33,15 @@ export function getVisibleComments(
     return [];
   }
 
-  return db.comments.filter((comment) => {
-    if (comment.ticketId !== ticketId) return false;
-    if (comment.visibility === "external") return true;
-    return canManageOperations(actor.role);
-  });
+  return db.comments
+    .filter((comment) => {
+      if (comment.ticketId !== ticketId) return false;
+      if (comment.visibility === "external") return true;
+      return canManageOperations(actor.role);
+    })
+    .sort((left, right) => {
+      return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+    });
 }
 
 export function getTicketHistory(db: TicketDatabase, ticketId: string) {
@@ -45,6 +50,23 @@ export function getTicketHistory(db: TicketDatabase, ticketId: string) {
 
 export function getTicketById(db: TicketDatabase, actor: UserProfile, ticketId: string) {
   return getVisibleTickets(db, actor).find((ticket) => ticket.id === ticketId) ?? null;
+}
+
+export function getTicketByReference(
+  db: TicketDatabase,
+  actor: UserProfile,
+  reference: string,
+) {
+  const parsedReference = parseTicketReference(reference);
+  if (!parsedReference) return null;
+
+  return getVisibleTickets(db, actor).find((ticket) => {
+    if (parsedReference.kind === "id") {
+      return ticket.id.toLocaleLowerCase("en-US") === parsedReference.value;
+    }
+
+    return ticket.code.toLocaleUpperCase("en-US") === parsedReference.value;
+  }) ?? null;
 }
 
 export function getCompany(db: TicketDatabase, companyId: string | null) {
@@ -118,9 +140,17 @@ export function filterTickets(
     priority?: string;
     companyId?: string;
     assignedToId?: string;
+    query?: string;
   },
 ) {
   return tickets.filter((ticket) => {
+    if (filters.query) {
+      const query = filters.query.trim().toLocaleLowerCase("es");
+      const searchable = `${ticket.code} ${ticket.title}`.toLocaleLowerCase("es");
+      if (query && !searchable.includes(query)) {
+        return false;
+      }
+    }
     if (filters.status && filters.status !== "all" && ticket.status !== filters.status) {
       return false;
     }
