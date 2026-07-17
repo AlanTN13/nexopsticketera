@@ -21,7 +21,7 @@ describe("Supabase Auth callback", () => {
     });
   });
 
-  it("verifies a valid invitation token and redirects to the client portal", async () => {
+  it("verifies a valid invitation token and redirects to account activation", async () => {
     verifyOtp.mockResolvedValue({ error: null });
 
     const response = await GET(new NextRequest("https://sdnexops.vercel.app/auth/callback?token_hash=valid-token&type=invite"));
@@ -30,7 +30,7 @@ describe("Supabase Auth callback", () => {
       token_hash: "valid-token",
       type: "invite",
     });
-    expect(response.headers.get("location")).toBe("https://sdnexops.vercel.app/portal");
+    expect(response.headers.get("location")).toBe("https://sdnexops.vercel.app/portal/activar-cuenta");
     expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
 

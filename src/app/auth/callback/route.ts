@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     return redirectToInvitationError(request);
   }
 
-  const redirectUrl = new URL("/portal", request.url);
+  const redirectUrl = new URL("/portal/activar-cuenta", request.url);
   const response = NextResponse.redirect(redirectUrl);
   response.headers.set("Cache-Control", "private, no-store");
   return response;
