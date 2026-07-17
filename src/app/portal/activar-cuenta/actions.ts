@@ -35,7 +35,9 @@ export async function activateAccountAction(
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
-    redirect("/portal/login?reason=invite");
+    return {
+      error: "No pudimos guardar esa contraseña. Probá con otra más segura.",
+    };
   }
 
   redirect("/portal?success=Cuenta%20activada%20correctamente.");

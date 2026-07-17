@@ -68,7 +68,7 @@ describe("account activation", () => {
     expect(updateUser).toHaveBeenCalledWith({ password: "correcta1" });
   });
 
-  it("redirects to login when Supabase rejects the password update", async () => {
+  it("keeps the activation form and returns a generic error when Supabase rejects the password update", async () => {
     getSupabaseServerClient.mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } }, error: null }),
@@ -76,8 +76,9 @@ describe("account activation", () => {
       },
     });
 
-    await expect(activateAccountAction({ error: null }, activationForm("correcta1", "correcta1"))).rejects.toThrow(
-      "redirect:/portal/login?reason=invite",
-    );
+    await expect(activateAccountAction({ error: null }, activationForm("correcta1", "correcta1"))).resolves.toEqual({
+      error: "No pudimos guardar esa contraseña. Probá con otra más segura.",
+    });
+    expect(redirect).not.toHaveBeenCalled();
   });
 });
