@@ -10,6 +10,12 @@ La UX P0 está completada: la interfaz es más compacta y operativa, conserva la
 
 El proyecto `tfonsiurhjmllqaknhgh` se utiliza para desarrollo y piloto interno y será la base productiva definitiva. No se debe crear otro proyecto. Durante el piloto solo se permiten datos controlados e identificables; su limpieza futura exige backup completo y autorización separada según `docs/PREPRODUCTION_CLEANUP.md`.
 
+La configuración de Auth quedó alineada con el dominio productivo:
+
+- `Site URL`: `https://soporte.nexopstech.com`
+- Redirect permitido: `https://soporte.nexopstech.com/**`
+- Redirect local conservado: `http://localhost:3000/**`
+
 ## Implementado en main
 
 - Supabase es el único backend.
@@ -31,7 +37,15 @@ El alta sigue siendo directa por un administrador con contraseña inicial. Acept
 
 ## Notificaciones por email del MVP
 
-La infraestructura de Resend quedó preparada sobre `nexopstech.com`, con remitente previsto `NexOps Soporte <soporte@nexopstech.com>` y `Reply-To: info@nexopstech.com`. La conexión con el código todavía está pendiente.
+La infraestructura de Resend quedó preparada sobre `nexopstech.com`:
+
+- dominio verificado en Resend;
+- remitente previsto: `NexOps Soporte <soporte@nexopstech.com>`;
+- `Reply-To`: `info@nexopstech.com`;
+- `RESEND_API_KEY` cargada en Vercel para Production;
+- `NEXT_PUBLIC_APP_URL=https://soporte.nexopstech.com` cargada en Vercel para Production.
+
+La conexión con el código todavía está pendiente.
 
 Alcance funcional aprobado para el MVP:
 
@@ -45,19 +59,18 @@ Alcance funcional aprobado para el MVP:
 
 ## Dominio propio
 
-Se configuró `soporte.nexopstech.com` mediante CNAME hacia Vercel. Los resolvers públicos y ambos nameservers autoritativos de Donweb responden con el destino solicitado por Vercel. La validación del dominio en Vercel seguía pendiente al último control, sin evidencia de error en la zona DNS.
+`soporte.nexopstech.com` quedó validado y asociado al deployment productivo de Vercel. El CNAME publicado por Donweb apunta al destino específico solicitado por Vercel y fue comprobado contra Google DNS y ambos nameservers autoritativos de Donweb.
 
 ## Pendientes antes del piloto con GlobalTrip
 
 - Implementar y probar las notificaciones MVP definidas arriba.
-- Confirmar la validación final de `soporte.nexopstech.com` en Vercel.
 - Implementar y validar la recuperación de contraseña de extremo a extremo.
 - Habilitar Leaked Password Protection antes del uso productivo oficial.
 - Completar el flujo real de área **Por clasificar** cuando el cliente elige “No estoy seguro”, sin crear un área ficticia permanente.
 - Persistir en Supabase los campos de impacto, urgencia informada, continuidad de trabajo y próximo paso; la UX actual no sustituye estos cambios de datos pendientes.
 - Revisar por separado las dos vulnerabilidades moderadas de dependencias, sin ejecutar correcciones automáticas destructivas.
 
-Estos pendientes no forman parte de la integración UX P0 y requieren alcance, validación y autorización propios. No se aplicaron migraciones, cambios de RLS, limpieza de datos ni modificaciones de variables de Vercel durante el cierre.
+Estos pendientes no forman parte de la integración UX P0 y requieren alcance, validación y autorización propios. No se aplicaron migraciones, cambios de RLS ni limpieza de datos durante esta actualización documental.
 
 ## Vulnerabilidades npm
 
