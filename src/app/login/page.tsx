@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LoginClientForm } from "@/components/login-client-form";
@@ -72,12 +71,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <LoginClientForm />
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[rgba(67,48,166,0.14)] pt-4 text-sm text-[#4f5375]">
-              <span>¿Necesitás ayuda con tu acceso?</span>
-              <Link href="mailto:soporte@nexops.io" className="text-[var(--brand-tertiary)] transition hover:text-[#1b1638]">
-                Contactar soporte
-              </Link>
-            </div>
           </section>
         </div>
       </div>

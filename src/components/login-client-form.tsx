@@ -43,15 +43,6 @@ export function LoginClientForm() {
         />
       </label>
 
-      <div className="flex items-center justify-end">
-        <a
-          href="mailto:soporte@nexops.io?subject=Recuperar%20acceso%20al%20portal"
-          className="text-sm text-[#5b48c7] transition hover:text-[#1b1638]"
-        >
-          Olvidé mi contraseña
-        </a>
-      </div>
-
       {state.error ? (
         <div className="rounded-[18px] border border-rose-300/30 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {state.error}
