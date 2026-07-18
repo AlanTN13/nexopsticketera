@@ -1,5 +1,13 @@
 # Alcance funcional y roles
 
+| Campo | Detalle |
+| --- | --- |
+| **Producto** | Centro de Soporte NexOps |
+| **Versión** | 1.0 |
+| **Estado** | V1 / piloto controlado |
+| **Fecha de actualización** | 18 de julio de 2026 |
+| **Audiencia** | Responsables de negocio, administradores de cuentas cliente y equipo NexOps |
+
 ## 1. Propósito de la plataforma
 
 El **Centro de Soporte NexOps** centraliza las solicitudes que una empresa cliente necesita comunicar, seguir y resolver con NexOps. Su objetivo es evitar pedidos dispersos, conservar una conversación ordenada y dejar visible el estado, el responsable y el próximo paso de cada caso.
@@ -80,10 +88,10 @@ Los cambios reales generan entradas de historial. Guardar el mismo estado no gen
 ### 2.6 Gestión de empresas y usuarios
 
 - Todos los usuarios cliente pueden consultar el directorio de su propia empresa.
-- `client_admin` puede crear usuarios cliente de su empresa desde el Portal Cliente.
+- El **Administrador cliente** (`client_admin`) puede crear usuarios cliente de su empresa desde el Portal Cliente.
 - El Portal Cliente no ofrece actualmente edición ni eliminación de usuarios.
-- `team_lead` y `platform_admin` pueden crear y actualizar usuarios internos o cliente.
-- `team_lead` y `platform_admin` pueden crear y actualizar empresas.
+- El **Líder de equipo** (`team_lead`) y el **Administrador de plataforma** (`platform_admin`) pueden crear y actualizar usuarios internos o cliente.
+- El **Líder de equipo** y el **Administrador de plataforma** pueden crear y actualizar empresas.
 - No existe una acción de eliminación de usuarios en la interfaz actual.
 
 La interfaz denomina “Invitar usuario” al alta, pero el comportamiento real es una creación directa con email confirmado y contraseña inicial. No se envía un enlace de invitación como parte de este flujo.
@@ -138,17 +146,28 @@ No existe una aplicación móvil nativa ni funcionamiento sin conexión.
 | **Resuelto** | NexOps considera completada la solución. | El cliente confirma o informa que el problema continúa. |
 | **Cerrado** | No quedan acciones pendientes para el caso. | Sin acción, salvo que NexOps decida reabrirlo. |
 
-Los roles `agent`, `team_lead` y `platform_admin` pueden seleccionar cualquiera de los estados disponibles. La aplicación no impone una secuencia cerrada de transiciones ni realiza cierres automáticos.
+El **Agente NexOps** (`agent`), el **Líder de equipo** (`team_lead`) y el **Administrador de plataforma** (`platform_admin`) pueden seleccionar cualquiera de los estados disponibles. La aplicación no impone una secuencia cerrada de transiciones ni realiza cierres automáticos.
 
 El cliente no puede cambiar el estado directamente. Para confirmar una resolución o pedir reapertura debe publicar un mensaje; NexOps realiza el cambio correspondiente. Cada cambio real de estado queda en el historial y genera una notificación al creador del ticket cuando su email es válido.
 
 ## 4. Roles y permisos efectivos
 
+Los nombres funcionales utilizados en la documentación corresponden a los siguientes códigos técnicos:
+
+| Nombre funcional | Código técnico |
+| --- | --- |
+| Cliente lector | `client_viewer` |
+| Cliente operador | `client_operator` |
+| Administrador cliente | `client_admin` |
+| Agente NexOps | `agent` |
+| Líder de equipo | `team_lead` |
+| Administrador de plataforma | `platform_admin` |
+
 ### 4.1 Matriz de permisos
 
 Leyenda: **Sí** = disponible; **No** = no autorizado; **Propia empresa** = limitado a la empresa del usuario.
 
-| Permiso | `client_viewer` | `client_operator` | `client_admin` | `agent` | `team_lead` | `platform_admin` |
+| Permiso | Cliente lector | Cliente operador | Administrador cliente | Agente NexOps | Líder de equipo | Administrador de plataforma |
 | --- | --- | --- | --- | --- | --- | --- |
 | Ver tickets | Propia empresa | Propia empresa | Propia empresa | Todas | Todas | Todas |
 | Crear tickets | No | Propia empresa | Propia empresa | No | No | No |
@@ -167,11 +186,11 @@ Leyenda: **Sí** = disponible; **No** = no autorizado; **Propia empresa** = limi
 
 ### 4.2 Observaciones sobre la matriz
 
-- `client_viewer` puede consultar tickets, mensajes externos, historial, adjuntos y usuarios de su empresa, pero no crear ni comentar.
-- `client_operator` y `client_admin` tienen las mismas capacidades sobre tickets.
-- La diferencia actual de `client_admin` es la creación de usuarios de su empresa. La edición no está expuesta en el Portal Cliente.
+- El **Cliente lector** puede consultar tickets, mensajes externos, historial, adjuntos y usuarios de su empresa, pero no crear ni comentar.
+- El **Cliente operador** y el **Administrador cliente** tienen las mismas capacidades sobre tickets.
+- La diferencia actual del **Administrador cliente** es la creación de usuarios de su empresa. La edición no está expuesta en el Portal Cliente.
 - Los tres roles internos tienen iguales permisos operativos sobre tickets.
-- `team_lead` y `platform_admin` comparten actualmente las capacidades globales implementadas para empresas y usuarios. No existe todavía una diferencia funcional adicional visible entre ambos.
+- El **Líder de equipo** y el **Administrador de plataforma** comparten actualmente las capacidades globales implementadas para empresas y usuarios. No existe todavía una diferencia funcional adicional visible entre ambos.
 - “Configuración global” se limita hoy a las pantallas implementadas de empresas y usuarios; no hay un módulo general de parámetros, SLA, áreas o plantillas.
 
 ## 5. Notificaciones
@@ -233,7 +252,7 @@ Los emails incluyen un enlace al ticket, versión visual y versión de texto.
 - Impacto, urgencia y continuidad se solicitan, pero se guardan como parte de la descripción.
 - El próximo paso se muestra, pero se deriva automáticamente del estado.
 - Existe una ruta preparada para aceptar enlaces de invitación, pero el alta utilizada por la interfaz crea la cuenta directamente y no envía ese enlace.
-- `team_lead` y `platform_admin` existen como roles separados, pero hoy comparten las capacidades globales implementadas.
+- El **Líder de equipo** y el **Administrador de plataforma** existen como roles separados, pero hoy comparten las capacidades globales implementadas.
 
 ## 8. Criterio de vigencia
 

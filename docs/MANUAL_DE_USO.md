@@ -1,10 +1,20 @@
 # Manual de uso
 
-## Centro de Soporte NexOps
+| Campo | Detalle |
+| --- | --- |
+| **Producto** | Centro de Soporte NexOps |
+| **Versión** | 1.0 |
+| **Estado** | V1 / piloto controlado |
+| **Fecha de actualización** | 18 de julio de 2026 |
+| **Audiencia** | Usuarios cliente y equipo operativo NexOps |
+
+## Introducción
 
 Acceso oficial: <https://soporte.nexopstech.com>
 
 Este manual explica cómo utilizar la plataforma según el tipo de usuario. Las acciones visibles dependen del rol asignado a cada cuenta.
+
+Los nombres funcionales de los roles son: **Cliente lector** (`client_viewer`), **Cliente operador** (`client_operator`), **Administrador cliente** (`client_admin`), **Agente NexOps** (`agent`), **Líder de equipo** (`team_lead`) y **Administrador de plataforma** (`platform_admin`). En el resto del manual se priorizan estos nombres amigables.
 
 ## Parte A — Usuario cliente
 
@@ -48,7 +58,7 @@ Los tickets se muestran con los actualizados más recientemente primero.
 
 ### 5. Crear un ticket
 
-La creación está disponible para `client_operator` y `client_admin`. `client_viewer` solo puede consultar.
+La creación está disponible para el **Cliente operador** y el **Administrador cliente**. El **Cliente lector** solo puede consultar.
 
 En desktop, seleccioná **Nuevo ticket** para abrir el formulario. En mobile, la misma acción abre una pantalla dedicada.
 
@@ -125,7 +135,7 @@ El próximo paso no es un texto escrito manualmente por el equipo. Si necesitás
 3. Escribí el mensaje en **Escribí un mensaje**.
 4. Seleccioná **Enviar mensaje**.
 
-Los mensajes del cliente son públicos para NexOps. `client_viewer` puede leer la conversación, pero no publicar.
+Los mensajes del cliente son públicos para NexOps. El **Cliente lector** puede leer la conversación, pero no publicar.
 
 Cuando el estado sea **Esperando al cliente**, respondé en esa conversación. Si un ticket figura **Resuelto** y el problema continúa, explicalo allí; NexOps decidirá la reapertura y actualizará el estado.
 
@@ -148,7 +158,7 @@ Otros usuarios de la empresa no reciben automáticamente esos avisos. Los emails
 
 Todos los roles cliente pueden abrir **Usuarios** y consultar los miembros de su empresa.
 
-`client_admin` también puede crear un usuario:
+El **Administrador cliente** también puede crear un usuario:
 
 1. Abrí **Usuarios**.
 2. Completá nombre, email, cargo, contraseña inicial y rol.
@@ -178,7 +188,7 @@ Un administrador autorizado deberá gestionar el acceso. No envíes tu contrase�
 2. Ingresá con tu cuenta interna individual.
 3. La plataforma te dirigirá al Backoffice.
 
-Los roles internos son `agent`, `team_lead` y `platform_admin`.
+Los roles internos son **Agente NexOps**, **Líder de equipo** y **Administrador de plataforma**.
 
 ### 2. Cola multiempresa
 
@@ -226,7 +236,7 @@ En **Gestión operativa**:
 3. seleccioná un responsable o Sin asignar;
 4. seleccioná **Guardar cambios**.
 
-`agent`, `team_lead` y `platform_admin` pueden realizar estas acciones. Cada cambio real queda en el historial.
+El **Agente NexOps**, el **Líder de equipo** y el **Administrador de plataforma** pueden realizar estas acciones. Cada cambio real queda en el historial.
 
 La prioridad debe reflejar impacto, continuidad, urgencia, riesgo y alcance. No copies automáticamente la urgencia informada por el cliente.
 
@@ -287,8 +297,8 @@ El cliente no puede cambiar el estado directamente y no existe cierre automátic
 
 Todos los roles internos pueden consultar las empresas, sus tickets y los directorios visibles.
 
-- `agent` opera tickets, pero no crea ni edita empresas o usuarios.
-- `team_lead` y `platform_admin` pueden crear y actualizar empresas y usuarios.
+- El **Agente NexOps** opera tickets, pero no crea ni edita empresas o usuarios.
+- El **Líder de equipo** y el **Administrador de plataforma** pueden crear y actualizar empresas y usuarios.
 - No existe eliminación de usuarios desde la interfaz.
 
 Al crear una cuenta, el sistema solicita una contraseña inicial. Entregala por un canal seguro y nunca la registres en un ticket.

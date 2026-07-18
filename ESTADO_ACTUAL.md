@@ -57,7 +57,9 @@ Alcance funcional aprobado para el MVP:
 - Los cambios de prioridad o asignación no generan email en esta etapa.
 - La creación del ticket no debe producir dos correos por representar también el primer mensaje del cliente.
 
-La suite automatizada cubre los cuatro disparadores, notas internas, estados sin cambio, tolerancia a fallos y ausencia del doble aviso inicial. No se modificaron esquema, migraciones, grants, Auth ni RLS. Queda pendiente validar entrega real en el deployment con `RESEND_API_KEY` y `NEXT_PUBLIC_APP_URL` configuradas; no se afirma todavía funcionamiento productivo de extremo a extremo.
+La suite automatizada cubre los cuatro disparadores, notas internas, estados sin cambio, tolerancia a fallos y ausencia del doble aviso inicial. No se modificaron esquema, migraciones, grants, Auth ni RLS.
+
+Los cuatro eventos fueron validados manualmente en producción: ticket nuevo, mensaje del cliente, respuesta pública de NexOps y cambio real de estado. Durante la validación, las notas internas no generaron notificaciones, no se observaron duplicados y los enlaces incluidos utilizaron `https://soporte.nexopstech.com`. No se registran en este documento IDs ni evidencias de entrega no disponibles.
 
 ## Dominio propio
 
@@ -65,7 +67,6 @@ La suite automatizada cubre los cuatro disparadores, notas internas, estados sin
 
 ## Pendientes antes del piloto con GlobalTrip
 
-- Validar en el deployment la entrega real de los cuatro emails del MVP y sus enlaces públicos.
 - Implementar y validar la recuperación de contraseña de extremo a extremo.
 - Habilitar Leaked Password Protection antes del uso productivo oficial.
 - Completar el flujo real de área **Por clasificar** cuando el cliente elige “No estoy seguro”, sin crear un área ficticia permanente.
