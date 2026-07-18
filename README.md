@@ -28,11 +28,28 @@ Variables:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+RESEND_API_KEY=
+NEXT_PUBLIC_APP_URL=https://soporte.nexopstech.com
 ```
 
 La clave publicable puede estar en el frontend y queda limitada por grants y RLS. `SUPABASE_SERVICE_ROLE_KEY` es server-only y solo es necesaria para crear o editar usuarios desde acciones administrativas. Nunca debe llevar prefijo `NEXT_PUBLIC_`.
 
 La variable legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` sigue aceptada durante la migración, pero los proyectos nuevos deben usar la clave publicable.
+
+`RESEND_API_KEY` es server-only y no debe llevar el prefijo `NEXT_PUBLIC_`. `NEXT_PUBLIC_APP_URL` define el origen de los enlaces “Ver ticket”; mientras el dominio propio no esté validado se puede configurar `https://sdnexops.vercel.app`. En Vercel, el servicio también acepta `VERCEL_PROJECT_PRODUCTION_URL` o `VERCEL_URL` como fallback y nunca construye enlaces a partir de headers del navegador.
+
+## Notificaciones por email
+
+El envío se realiza después de guardar la operación principal y usa claves idempotentes de Resend. Un error del proveedor se registra sin destinatarios, contenido ni credenciales y no se muestra al usuario. Remitente: `NexOps Soporte <soporte@nexopstech.com>`; Reply-To: `info@nexopstech.com`.
+
+Prueba manual de los cuatro eventos en un entorno no productivo con las variables configuradas:
+
+1. Iniciar sesión como cliente y crear un ticket: debe llegar un único email a `info@nexopstech.com`.
+2. Agregar otro mensaje externo como cliente: debe llegar un aviso interno. La descripción inicial no cuenta como este evento.
+3. Responder externamente desde Backoffice: debe llegar un email al creador del ticket. Una nota interna no debe enviar nada.
+4. Cambiar el estado desde Backoffice: debe avisar al creador solo cuando el valor realmente cambia; guardar el mismo estado no debe enviar nada.
+
+Verificar en todos los casos asunto, contenido, botón “Ver ticket” y destino del enlace. La suite automatizada valida el ruteo y las exclusiones, pero no sustituye una prueba real de entrega con Resend.
 
 ## Base de datos local o staging
 

@@ -31,7 +31,7 @@ El alta sigue siendo directa por un administrador con contraseña inicial. Acept
 
 ## Notificaciones por email del MVP
 
-La infraestructura de Resend quedó preparada sobre `nexopstech.com`, con remitente previsto `NexOps Soporte <soporte@nexopstech.com>` y `Reply-To: info@nexopstech.com`. La conexión con el código todavía está pendiente.
+La integración server-only con el SDK oficial de Resend quedó implementada sobre `nexopstech.com`, con remitente `NexOps Soporte <soporte@nexopstech.com>` y `Reply-To: info@nexopstech.com`. Centraliza transporte, plantilla responsive, alternativa de texto plano, escape de contenido de usuarios, validación de destinatarios y URL pública. Los fallos de Resend no revierten la mutación principal ni exponen el error técnico al usuario; las claves idempotentes mitigan duplicados durante reintentos.
 
 Alcance funcional aprobado para el MVP:
 
@@ -43,13 +43,15 @@ Alcance funcional aprobado para el MVP:
 - Los cambios de prioridad o asignación no generan email en esta etapa.
 - La creación del ticket no debe producir dos correos por representar también el primer mensaje del cliente.
 
+La suite automatizada cubre los cuatro disparadores, notas internas, estados sin cambio, tolerancia a fallos y ausencia del doble aviso inicial. No se modificaron esquema, migraciones, grants, Auth ni RLS. Queda pendiente validar entrega real en el deployment con `RESEND_API_KEY` y `NEXT_PUBLIC_APP_URL` configuradas; no se afirma todavía funcionamiento productivo de extremo a extremo.
+
 ## Dominio propio
 
 Se configuró `soporte.nexopstech.com` mediante CNAME hacia Vercel. Los resolvers públicos y ambos nameservers autoritativos de Donweb responden con el destino solicitado por Vercel. La validación del dominio en Vercel seguía pendiente al último control, sin evidencia de error en la zona DNS.
 
 ## Pendientes antes del piloto con GlobalTrip
 
-- Implementar y probar las notificaciones MVP definidas arriba.
+- Validar en el deployment la entrega real de los cuatro emails del MVP y sus enlaces públicos.
 - Confirmar la validación final de `soporte.nexopstech.com` en Vercel.
 - Implementar y validar la recuperación de contraseña de extremo a extremo.
 - Habilitar Leaked Password Protection antes del uso productivo oficial.
