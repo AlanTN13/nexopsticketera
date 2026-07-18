@@ -70,6 +70,7 @@ describe("ticket email notifications", () => {
     const email = buildStatusChangedNotification({
       ...context,
       actor: nexopsAgent,
+      statusHistoryId: "history-status-1",
       previousStatus: "new",
       newStatus: "analysis",
     });
@@ -84,10 +85,49 @@ describe("ticket email notifications", () => {
       buildStatusChangedNotification({
         ...context,
         actor: nexopsAgent,
+        statusHistoryId: "history-status-no-change",
         previousStatus: "new",
         newStatus: "new",
       }),
     ).toBeNull();
+  });
+
+  it("uses different keys for distinct occurrences of the same status transition", () => {
+    const firstEvent = buildStatusChangedNotification({
+      ...context,
+      actor: nexopsAgent,
+      statusHistoryId: "history-status-1",
+      previousStatus: "new",
+      newStatus: "analysis",
+    });
+    const secondEvent = buildStatusChangedNotification({
+      ...context,
+      actor: nexopsAgent,
+      statusHistoryId: "history-status-2",
+      previousStatus: "new",
+      newStatus: "analysis",
+    });
+
+    expect(firstEvent?.idempotencyKey).toBe("ticket-status/history-status-1");
+    expect(secondEvent?.idempotencyKey).toBe("ticket-status/history-status-2");
+    expect(firstEvent?.idempotencyKey).not.toBe(secondEvent?.idempotencyKey);
+  });
+
+  it("keeps the same key when retrying the same persisted status event", () => {
+    const statusEvent = {
+      ...context,
+      actor: nexopsAgent,
+      statusHistoryId: "history-status-retry",
+      previousStatus: "new" as const,
+      newStatus: "analysis" as const,
+    };
+
+    expect(buildStatusChangedNotification(statusEvent)?.idempotencyKey).toBe(
+      buildStatusChangedNotification(statusEvent)?.idempotencyKey,
+    );
+    expect(buildStatusChangedNotification(statusEvent)?.idempotencyKey).toBe(
+      "ticket-status/history-status-retry",
+    );
   });
 
   it("keeps the persisted mutation when notification delivery fails", async () => {

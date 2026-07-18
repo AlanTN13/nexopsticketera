@@ -108,7 +108,11 @@ export function buildCommentNotification(
 }
 
 export function buildStatusChangedNotification(
-  context: TicketContext & { previousStatus: TicketStatus; newStatus: TicketStatus },
+  context: TicketContext & {
+    statusHistoryId: string;
+    previousStatus: TicketStatus;
+    newStatus: TicketStatus;
+  },
 ): NotificationEmail | null {
   if (context.previousStatus === context.newStatus) return null;
   if (!validEmail(context.creator.email) || sameEmail(context.actor.email, context.creator.email)) {
@@ -128,7 +132,7 @@ export function buildStatusChangedNotification(
       { label: "Estado nuevo", value: statusLabels[context.newStatus] },
     ],
     ticketUrl: context.ticketUrl,
-    idempotencyKey: `ticket-status/${context.ticket.id}/${context.previousStatus}/${context.newStatus}`,
+    idempotencyKey: `ticket-status/${context.statusHistoryId}`,
   };
 }
 

@@ -819,17 +819,30 @@ async function updateTicketWorkflowInSupabase(input: {
     });
   }
 
+  let statusHistoryId: string | null = null;
   if (historyRows.length > 0) {
-    const { error: historyError } = await client.from("ticket_history").insert(historyRows);
+    const { data: historyData, error: historyError } = await client
+      .from("ticket_history")
+      .insert(historyRows)
+      .select("id,event_type");
     assertNoError(historyError);
+    const historyRecords = assertData(
+      historyData,
+      "No pudimos recuperar el historial del workflow.",
+    );
+    const statusHistory = historyRecords.find(
+      (entry) => String(entry.event_type) === "status_changed",
+    );
+    statusHistoryId = statusHistory ? String(statusHistory.id) : null;
   }
 
-  if (previousStatus !== input.status) {
+  if (previousStatus !== input.status && statusHistoryId) {
     const notificationContext = getNotificationContext(db, actor, ticket, "client");
     await sendNotificationEmail(
       notificationContext
         ? buildStatusChangedNotification({
             ...notificationContext,
+            statusHistoryId,
             previousStatus,
             newStatus: input.status,
           })
