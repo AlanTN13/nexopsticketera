@@ -36,7 +36,7 @@ La clave publicable puede estar en el frontend y queda limitada por grants y RLS
 
 La variable legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` sigue aceptada durante la migración, pero los proyectos nuevos deben usar la clave publicable.
 
-`RESEND_API_KEY` es server-only y no debe llevar el prefijo `NEXT_PUBLIC_`. `NEXT_PUBLIC_APP_URL` define el origen de los enlaces “Ver ticket”; mientras el dominio propio no esté validado se puede configurar `https://sdnexops.vercel.app`. En Vercel, el servicio también acepta `VERCEL_PROJECT_PRODUCTION_URL` o `VERCEL_URL` como fallback y nunca construye enlaces a partir de headers del navegador.
+`RESEND_API_KEY` es server-only y no debe llevar el prefijo `NEXT_PUBLIC_`. `NEXT_PUBLIC_APP_URL` define el origen de los enlaces “Ver ticket” y en producción apunta al dominio validado `https://soporte.nexopstech.com`. El servicio también acepta `VERCEL_PROJECT_PRODUCTION_URL` o `VERCEL_URL` como fallback para entornos temporales y nunca construye enlaces a partir de headers del navegador.
 
 ## Notificaciones por email
 
