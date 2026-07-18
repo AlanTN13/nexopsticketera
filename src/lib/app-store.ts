@@ -3,8 +3,14 @@ import "server-only";
 import { PostgrestError } from "@supabase/supabase-js";
 
 import { canCommentOnTicket, canCreateCompanyTicket, canUpdateTicketWorkflow } from "@/lib/authorization";
+import { getPublicAppUrl, sendNotificationEmail } from "@/lib/email-service";
+import {
+  buildCommentNotification,
+  buildStatusChangedNotification,
+  buildTicketCreatedNotification,
+} from "@/lib/notification-events";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
-import { parseTicketReference } from "@/lib/routing";
+import { parseTicketReference, ticketDetailPath } from "@/lib/routing";
 import {
   Company,
   CompanyPlan,
@@ -168,6 +174,27 @@ function ensureActor(db: TicketDatabase, actorId: string) {
     throw new Error("No pudimos encontrar el usuario actual.");
   }
   return actor;
+}
+
+function getNotificationContext(
+  db: TicketDatabase,
+  actor: UserProfile,
+  ticket: TicketRecord,
+  audience: "client" | "internal",
+) {
+  const company = db.companies.find((item) => item.id === ticket.companyId);
+  const creator = db.users.find((user) => user.id === ticket.createdById);
+  const appUrl = getPublicAppUrl();
+  if (!company || !creator || !appUrl) return null;
+
+  const basePath = audience === "internal" ? "/backoffice" : "/portal";
+  return {
+    ticket,
+    actor,
+    company,
+    creator,
+    ticketUrl: `${appUrl}${ticketDetailPath(basePath, ticket)}`,
+  };
 }
 
 function avatarFromName(name: string) {
@@ -659,8 +686,13 @@ async function createTicketInSupabase(input: {
     contextUrls: input.contextUrls,
     attachments: input.attachments,
   });
+  const ticket = mapTicket(ticketData as TicketRow);
+  const notificationContext = getNotificationContext(db, actor, ticket, "internal");
+  await sendNotificationEmail(
+    notificationContext ? buildTicketCreatedNotification(notificationContext) : null,
+  );
 
-  return mapTicket(ticketData as TicketRow);
+  return ticket;
 }
 
 async function addCommentInSupabase(input: {
@@ -682,13 +714,18 @@ async function addCommentInSupabase(input: {
   }
 
   const client = await getSupabaseServerClient();
-  const { error: commentError } = await client.from("ticket_comments").insert({
-    ticket_id: ticket.id,
-    author_id: actor.id,
-    body: input.body,
-    visibility: input.visibility,
-  });
+  const { data: commentData, error: commentError } = await client
+    .from("ticket_comments")
+    .insert({
+      ticket_id: ticket.id,
+      author_id: actor.id,
+      body: input.body,
+      visibility: input.visibility,
+    })
+    .select("id")
+    .single();
   assertNoError(commentError);
+  const commentRecord = assertData(commentData, "No pudimos recuperar el comentario creado.");
 
   const { error: historyError } = await client.from("ticket_history").insert({
     ticket_id: ticket.id,
@@ -699,6 +736,19 @@ async function addCommentInSupabase(input: {
     }.`,
   });
   assertNoError(historyError);
+
+  const audience = isClientRole(actor.role) ? "internal" : "client";
+  const notificationContext = getNotificationContext(db, actor, ticket, audience);
+  await sendNotificationEmail(
+    notificationContext
+      ? buildCommentNotification({
+          ...notificationContext,
+          commentId: String(commentRecord.id),
+          body: input.body,
+          visibility: input.visibility,
+        })
+      : null,
+  );
 }
 
 async function updateTicketWorkflowInSupabase(input: {
@@ -769,9 +819,35 @@ async function updateTicketWorkflowInSupabase(input: {
     });
   }
 
+  let statusHistoryId: string | null = null;
   if (historyRows.length > 0) {
-    const { error: historyError } = await client.from("ticket_history").insert(historyRows);
+    const { data: historyData, error: historyError } = await client
+      .from("ticket_history")
+      .insert(historyRows)
+      .select("id,event_type");
     assertNoError(historyError);
+    const historyRecords = assertData(
+      historyData,
+      "No pudimos recuperar el historial del workflow.",
+    );
+    const statusHistory = historyRecords.find(
+      (entry) => String(entry.event_type) === "status_changed",
+    );
+    statusHistoryId = statusHistory ? String(statusHistory.id) : null;
+  }
+
+  if (previousStatus !== input.status && statusHistoryId) {
+    const notificationContext = getNotificationContext(db, actor, ticket, "client");
+    await sendNotificationEmail(
+      notificationContext
+        ? buildStatusChangedNotification({
+            ...notificationContext,
+            statusHistoryId,
+            previousStatus,
+            newStatus: input.status,
+          })
+        : null,
+    );
   }
 }
 

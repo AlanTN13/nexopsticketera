@@ -40,12 +40,12 @@ El alta sigue siendo directa por un administrador con contraseña inicial. Acept
 La infraestructura de Resend quedó preparada sobre `nexopstech.com`:
 
 - dominio verificado en Resend;
-- remitente previsto: `NexOps Soporte <soporte@nexopstech.com>`;
+- remitente: `NexOps Soporte <soporte@nexopstech.com>`;
 - `Reply-To`: `info@nexopstech.com`;
 - `RESEND_API_KEY` cargada en Vercel para Production;
 - `NEXT_PUBLIC_APP_URL=https://soporte.nexopstech.com` cargada en Vercel para Production.
 
-La conexión con el código todavía está pendiente.
+La integración server-only con el SDK oficial de Resend quedó implementada. Centraliza transporte, plantilla responsive, alternativa de texto plano, escape de contenido de usuarios, validación de destinatarios y URL pública. Los fallos de Resend no revierten la mutación principal ni exponen el error técnico al usuario; las claves idempotentes mitigan duplicados durante reintentos.
 
 Alcance funcional aprobado para el MVP:
 
@@ -57,13 +57,15 @@ Alcance funcional aprobado para el MVP:
 - Los cambios de prioridad o asignación no generan email en esta etapa.
 - La creación del ticket no debe producir dos correos por representar también el primer mensaje del cliente.
 
+La suite automatizada cubre los cuatro disparadores, notas internas, estados sin cambio, tolerancia a fallos y ausencia del doble aviso inicial. No se modificaron esquema, migraciones, grants, Auth ni RLS. Queda pendiente validar entrega real en el deployment con `RESEND_API_KEY` y `NEXT_PUBLIC_APP_URL` configuradas; no se afirma todavía funcionamiento productivo de extremo a extremo.
+
 ## Dominio propio
 
 `soporte.nexopstech.com` quedó validado y asociado al deployment productivo de Vercel. El CNAME publicado por Donweb apunta al destino específico solicitado por Vercel y fue comprobado contra Google DNS y ambos nameservers autoritativos de Donweb.
 
 ## Pendientes antes del piloto con GlobalTrip
 
-- Implementar y probar las notificaciones MVP definidas arriba.
+- Validar en el deployment la entrega real de los cuatro emails del MVP y sus enlaces públicos.
 - Implementar y validar la recuperación de contraseña de extremo a extremo.
 - Habilitar Leaked Password Protection antes del uso productivo oficial.
 - Completar el flujo real de área **Por clasificar** cuando el cliente elige “No estoy seguro”, sin crear un área ficticia permanente.
