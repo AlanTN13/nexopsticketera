@@ -29,8 +29,28 @@ Las cinco migraciones fueron aplicadas en `tfonsiurhjmllqaknhgh`. Pasaron las pr
 
 El alta sigue siendo directa por un administrador con contraseña inicial. Aceptación por email, expiración y recuperación de contraseña quedan pendientes.
 
+## Notificaciones por email del MVP
+
+La infraestructura de Resend quedó preparada sobre `nexopstech.com`, con remitente previsto `NexOps Soporte <soporte@nexopstech.com>` y `Reply-To: info@nexopstech.com`. La conexión con el código todavía está pendiente.
+
+Alcance funcional aprobado para el MVP:
+
+- Cuando el cliente crea un ticket, NexOps recibe un único aviso.
+- Cuando el cliente publica un mensaje externo en un ticket existente, NexOps recibe un aviso.
+- Cuando NexOps publica un mensaje externo, el creador del ticket recibe un aviso.
+- Cuando NexOps cambia el estado del ticket, el creador del ticket recibe un aviso.
+- Las notas internas no generan email.
+- Los cambios de prioridad o asignación no generan email en esta etapa.
+- La creación del ticket no debe producir dos correos por representar también el primer mensaje del cliente.
+
+## Dominio propio
+
+Se configuró `soporte.nexopstech.com` mediante CNAME hacia Vercel. Los resolvers públicos y ambos nameservers autoritativos de Donweb responden con el destino solicitado por Vercel. La validación del dominio en Vercel seguía pendiente al último control, sin evidencia de error en la zona DNS.
+
 ## Pendientes antes del piloto con GlobalTrip
 
+- Implementar y probar las notificaciones MVP definidas arriba.
+- Confirmar la validación final de `soporte.nexopstech.com` en Vercel.
 - Implementar y validar la recuperación de contraseña de extremo a extremo.
 - Habilitar Leaked Password Protection antes del uso productivo oficial.
 - Completar el flujo real de área **Por clasificar** cuando el cliente elige “No estoy seguro”, sin crear un área ficticia permanente.
