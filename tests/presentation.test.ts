@@ -16,6 +16,24 @@ describe("ticket presentation", () => {
     expect(page).not.toContain("assignee?.email");
   });
 
+  it("uses the batched safe assignee projection in desktop and mobile ticket lists", () => {
+    const store = readFileSync(join(process.cwd(), "src/lib/app-store.ts"), "utf8");
+    const table = readFileSync(join(process.cwd(), "src/components/tables.tsx"), "utf8");
+    const migration = readFileSync(
+      join(process.cwd(), "supabase/migrations/20260720222153_batch_visible_ticket_assignees.sql"),
+      "utf8",
+    );
+
+    expect(store).toContain('client.rpc("ticket_assignee_display_names"');
+    expect(store).not.toContain('client.rpc("ticket_assignee_display_name",');
+    expect(table.match(/clientView\s*\? ticket\.assigneeName/g)).toHaveLength(2);
+    expect(table.match(/clientView \? "Aún no asignado" : "Sin asignar"/g)).toHaveLength(2);
+    expect(migration).toContain("private.can_access_company(t.company_id)");
+    expect(migration).toContain(
+      "revoke all on function public.ticket_assignee_display_names(uuid[]) from public, anon",
+    );
+  });
+
   it("offers previews, removal and duplicate-submit protection for comment images", () => {
     const form = readFileSync(join(process.cwd(), "src/components/comment-form.tsx"), "utf8");
     expect(form).toContain("Adjuntar imágenes");
