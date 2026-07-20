@@ -479,21 +479,30 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
   );
 
   const tickets = (ticketsResult.data ?? []).map((row) => mapTicket(row as TicketRow));
-  const assigneeNames = await Promise.all(
-    tickets.map(async (ticket) => {
-      if (!ticket.assignedToId) return null;
-      const { data, error } = await client.rpc("ticket_assignee_display_name", {
-        target_ticket_id: ticket.id,
-      });
-      if (error) throw new Error(error.message);
-      return typeof data === "string" ? data : null;
-    }),
-  );
+  const assignedTicketIds = tickets
+    .filter((ticket) => ticket.assignedToId)
+    .map((ticket) => ticket.id);
+  const assigneeNameByTicketId = new Map<string, string>();
+
+  if (assignedTicketIds.length) {
+    const { data, error } = await client.rpc("ticket_assignee_display_names", {
+      target_ticket_ids: assignedTicketIds,
+    });
+    if (error) throw new Error(error.message);
+    for (const row of data ?? []) {
+      if (typeof row.ticket_id === "string" && typeof row.assignee_name === "string") {
+        assigneeNameByTicketId.set(row.ticket_id, row.assignee_name);
+      }
+    }
+  }
 
   return {
     companies: (companiesResult.data ?? []).map((row) => mapCompany(row as CompanyRow)),
     users: (usersResult.data ?? []).map((row) => mapUser(row as UserRow)),
-    tickets: tickets.map((ticket, index) => ({ ...ticket, assigneeName: assigneeNames[index] ?? null })),
+    tickets: tickets.map((ticket) => ({
+      ...ticket,
+      assigneeName: assigneeNameByTicketId.get(ticket.id) ?? null,
+    })),
     comments: (commentsResult.data ?? []).map((row) => mapComment(row as CommentRow)),
     attachments: attachmentRows.map((row, index) => ({
       ...mapAttachment(row),

@@ -59,7 +59,9 @@ export function TicketTable({
           <tbody className="divide-y divide-white/[0.04]">
             {tickets.map((ticket) => {
               const company = getCompany(db, ticket.companyId);
-              const assignee = getUser(db, ticket.assignedToId);
+              const assigneeName = clientView
+                ? ticket.assigneeName
+                : getUser(db, ticket.assignedToId)?.name;
               const detailHref = ticketDetailPath(basePath, ticket);
 
               return (
@@ -89,7 +91,7 @@ export function TicketTable({
                     <AreaPill area={ticket.area} />
                   </td>
                   <td className={`px-3 py-2.5 align-top ${tone === "light" ? "text-[#4b5563]" : "text-[var(--muted)]"}`}>
-                    {assignee ? assignee.name : "Sin asignar"}
+                    {assigneeName ?? (clientView ? "Aún no asignado" : "Sin asignar")}
                   </td>
                   <td className="hidden max-w-[220px] px-3 py-2.5 align-top text-xs leading-4 text-slate-600 lg:table-cell">
                     {getTicketNextStep(ticket)}
@@ -119,7 +121,9 @@ export function TicketTable({
       <div className="divide-y divide-slate-200 md:hidden">
         {tickets.map((ticket) => {
           const company = getCompany(db, ticket.companyId);
-          const assignee = getUser(db, ticket.assignedToId);
+          const assigneeName = clientView
+            ? ticket.assigneeName
+            : getUser(db, ticket.assignedToId)?.name;
           const detailHref = ticketDetailPath(basePath, ticket);
           return (
             <article key={ticket.id} className="relative grid gap-2 px-3 py-3 transition hover:bg-slate-50">
@@ -136,7 +140,7 @@ export function TicketTable({
               <div className="flex flex-wrap items-center gap-2">
                 <PriorityPill priority={ticket.priority} />
                 <AreaPill area={ticket.area} />
-                <span className="text-xs text-slate-600">{assignee?.name ?? "Sin asignar"}</span>
+                <span className="text-xs text-slate-600">{assigneeName ?? (clientView ? "Aún no asignado" : "Sin asignar")}</span>
               </div>
               <p className="text-xs leading-4 text-slate-600"><span className="font-semibold">Próximo:</span> {getTicketNextStep(ticket)}</p>
               <div className="flex items-center justify-between gap-3">
