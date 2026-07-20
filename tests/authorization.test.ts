@@ -7,7 +7,7 @@ import {
   canCreateCompanyTicket,
   canUpdateTicketWorkflow,
 } from "@/lib/authorization";
-import { getTicketById, getTicketByReference, getVisibleComments, getVisibleTickets } from "@/lib/queries";
+import { getTicketById, getTicketByReference, getVisibleCommentAttachments, getVisibleComments, getVisibleTickets } from "@/lib/queries";
 import { clientA, clientB, fixtureDb, nexopsAgent, ticketA, ticketB, viewerA } from "./fixtures";
 
 describe("tenant isolation and roles", () => {
@@ -40,6 +40,24 @@ describe("tenant isolation and roles", () => {
       "comment-a",
     ]);
     expect(getVisibleComments(fixtureDb, nexopsAgent, ticketA.id)).toHaveLength(2);
+  });
+
+  it("inherits attachment visibility from the parent comment", () => {
+    const db = { ...fixtureDb, attachments: [
+      { id: "external-image", ticketId: ticketA.id, commentId: "comment-a", name: "externa.png", sizeLabel: "1 KB", kind: "screenshot" as const, url: "signed-external" },
+      { id: "internal-image", ticketId: ticketA.id, commentId: "internal-a", name: "interna.png", sizeLabel: "1 KB", kind: "screenshot" as const, url: "signed-internal" },
+    ] };
+    expect(getVisibleCommentAttachments(db, clientA, ticketA.id).map((item) => item.id)).toEqual(["external-image"]);
+    expect(getVisibleCommentAttachments(db, nexopsAgent, ticketA.id).map((item) => item.id)).toEqual(["external-image", "internal-image"]);
+    expect(getVisibleCommentAttachments(db, clientB, ticketA.id)).toEqual([]);
+  });
+
+  it("keeps the persisted assignee display scoped to a visible ticket", () => {
+    const assigned = { ...ticketA, assignedToId: nexopsAgent.id, assigneeName: "Agente NexOps" };
+    const db = { ...fixtureDb, tickets: [assigned, ticketB] };
+    expect(getTicketById(db, clientA, ticketA.id)?.assigneeName).toBe("Agente NexOps");
+    expect(getTicketById(db, clientB, ticketA.id)).toBeNull();
+    expect(ticketB.assigneeName).toBeNull();
   });
 
   it("enforces ticket creation, comments, workflow and backoffice roles", () => {

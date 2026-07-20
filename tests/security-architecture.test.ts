@@ -29,4 +29,19 @@ describe("security architecture", () => {
     expect(migration).toContain('create policy "ticket attachment upload"');
     expect(migration).toContain("ticket_code_seq");
   });
+
+  it("isolates conversation images and exposes only the assignee display name", () => {
+    const migration = read("supabase/migrations/20260720120000_comment_attachments_and_safe_assignee.sql");
+    expect(migration).toContain("foreign key (comment_id, ticket_id)");
+    expect(migration).toContain("c.visibility = 'external' or private.is_internal_user()");
+    expect(migration).toContain("c.author_id = (select auth.uid())");
+    expect(migration).toContain("c.ticket_id = ticket_attachments.ticket_id");
+    expect(migration).toContain("owner_id = (select auth.uid())::text");
+    expect(migration).toContain("revoke all on function public.ticket_assignee_display_name(uuid) from public, anon");
+    expect(migration).toContain("security invoker");
+    expect(migration).toContain("create_ticket_comment_with_attachments");
+    expect(read("src/lib/app-store.ts")).toContain('client.rpc(\n    "create_ticket_comment_with_attachments"');
+    expect(read("src/lib/app-store.ts")).toContain("remove(uploadedPaths)");
+    expect(migration).not.toMatch(/service_role/i);
+  });
 });

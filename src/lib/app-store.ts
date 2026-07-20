@@ -32,6 +32,7 @@ import {
   isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";
 import { requireUserTitle } from "@/lib/validation";
+import { validateCommentImages } from "@/lib/comment-image-validation";
 
 export type CreateTicketInput = {
   actorId: string;
@@ -49,6 +50,7 @@ export type AddCommentInput = {
   ticketId: string;
   body: string;
   visibility: "external" | "internal";
+  attachments: File[];
 };
 
 export type UpdateTicketWorkflowInput = {
@@ -156,6 +158,8 @@ type AttachmentRow = {
   size_bytes: number;
   kind: "brief" | "screenshot" | "log";
   storage_path: string;
+  comment_id: string | null;
+  mime_type: string | null;
   created_at?: string;
 };
 
@@ -272,6 +276,7 @@ function mapTicket(row: TicketRow): TicketRecord {
     status: row.status as TicketStatus,
     createdById: row.created_by_id,
     assignedToId: row.assigned_to_id,
+    assigneeName: null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -314,6 +319,7 @@ function mapAttachment(row: AttachmentRow) {
     name: row.file_name,
     sizeLabel: formatBytes(row.size_bytes),
     kind: row.kind,
+    commentId: row.comment_id ?? null,
     url: row.storage_path,
   };
 }
@@ -387,6 +393,7 @@ async function uploadTicketImages(input: {
         storage_path: storagePath,
         file_name: file.name,
         size_bytes: file.size,
+        mime_type: file.type,
         kind: "screenshot",
       })
       .select("*")
@@ -403,6 +410,7 @@ async function uploadTicketImages(input: {
       name: String(data.file_name),
       sizeLabel: formatBytes(Number(data.size_bytes ?? 0)),
       kind: "screenshot",
+      commentId: null,
       url: await getSignedAttachmentUrl(String(data.storage_path)),
     });
   }
@@ -470,10 +478,22 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
     attachmentRows.map((row) => getSignedAttachmentUrl(row.storage_path)),
   );
 
+  const tickets = (ticketsResult.data ?? []).map((row) => mapTicket(row as TicketRow));
+  const assigneeNames = await Promise.all(
+    tickets.map(async (ticket) => {
+      if (!ticket.assignedToId) return null;
+      const { data, error } = await client.rpc("ticket_assignee_display_name", {
+        target_ticket_id: ticket.id,
+      });
+      if (error) throw new Error(error.message);
+      return typeof data === "string" ? data : null;
+    }),
+  );
+
   return {
     companies: (companiesResult.data ?? []).map((row) => mapCompany(row as CompanyRow)),
     users: (usersResult.data ?? []).map((row) => mapUser(row as UserRow)),
-    tickets: (ticketsResult.data ?? []).map((row) => mapTicket(row as TicketRow)),
+    tickets: tickets.map((ticket, index) => ({ ...ticket, assigneeName: assigneeNames[index] ?? null })),
     comments: (commentsResult.data ?? []).map((row) => mapComment(row as CommentRow)),
     attachments: attachmentRows.map((row, index) => ({
       ...mapAttachment(row),
@@ -700,6 +720,7 @@ async function addCommentInSupabase(input: {
   ticketId: string;
   body: string;
   visibility: "external" | "internal";
+  attachments: File[];
 }) {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
@@ -713,29 +734,41 @@ async function addCommentInSupabase(input: {
     throw new Error("Tu rol puede ver el ticket, pero no publicar comentarios.");
   }
 
-  const client = await getSupabaseServerClient();
-  const { data: commentData, error: commentError } = await client
-    .from("ticket_comments")
-    .insert({
-      ticket_id: ticket.id,
-      author_id: actor.id,
-      body: input.body,
-      visibility: input.visibility,
-    })
-    .select("id")
-    .single();
-  assertNoError(commentError);
-  const commentRecord = assertData(commentData, "No pudimos recuperar el comentario creado.");
+  await validateCommentImages(input.attachments);
 
-  const { error: historyError } = await client.from("ticket_history").insert({
-    ticket_id: ticket.id,
-    actor_id: actor.id,
-    event_type: "commented",
-    message: `${actor.name} agregó un comentario ${
-      input.visibility === "internal" ? "interno" : "externo"
-    }.`,
-  });
-  assertNoError(historyError);
+  const client = await getSupabaseServerClient();
+  const uploadedPaths: string[] = [];
+  const uploadRows: Array<{ storage_path: string; file_name: string; size_bytes: number; mime_type: string }> = [];
+  for (const file of input.attachments) {
+    const safeFileName = sanitizeFileName(file.name);
+    const storagePath = `tickets/${ticket.id}/comments/${crypto.randomUUID()}-${safeFileName}`;
+    const { error: uploadError } = await client.storage
+      .from("ticket-attachments")
+      .upload(storagePath, Buffer.from(await file.arrayBuffer()), {
+        contentType: file.type,
+        upsert: false,
+      });
+    if (uploadError) {
+      if (uploadedPaths.length) await client.storage.from("ticket-attachments").remove(uploadedPaths);
+      throw new Error(`No pudimos subir ${file.name}. El mensaje no fue publicado.`);
+    }
+    uploadedPaths.push(storagePath);
+    uploadRows.push({ storage_path: storagePath, file_name: file.name, size_bytes: file.size, mime_type: file.type });
+  }
+
+  const { data: commentId, error: commentError } = await client.rpc(
+    "create_ticket_comment_with_attachments",
+    {
+      target_ticket_id: ticket.id,
+      comment_body: input.body,
+      comment_visibility: input.visibility,
+      attachment_rows: uploadRows,
+    },
+  );
+  if (commentError || typeof commentId !== "string") {
+    if (uploadedPaths.length) await client.storage.from("ticket-attachments").remove(uploadedPaths);
+    throw new Error(commentError?.message ?? "No pudimos publicar el mensaje.");
+  }
 
   const audience = isClientRole(actor.role) ? "internal" : "client";
   const notificationContext = getNotificationContext(db, actor, ticket, audience);
@@ -743,9 +776,10 @@ async function addCommentInSupabase(input: {
     notificationContext
       ? buildCommentNotification({
           ...notificationContext,
-          commentId: String(commentRecord.id),
+          commentId,
           body: input.body,
           visibility: input.visibility,
+          attachmentCount: input.attachments.length,
         })
       : null,
   );

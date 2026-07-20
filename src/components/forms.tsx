@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 
 import {
-  addCommentAction,
   createCompanyAction,
   createTicketAction,
   logoutClientAction,
@@ -10,6 +9,7 @@ import {
   updateUserAction,
 } from "@/app/actions";
 import { TicketEvidenceFields } from "@/components/ticket-evidence-fields";
+import { CommentForm } from "@/components/comment-form";
 import {
   Company,
   TICKET_AREAS,
@@ -246,36 +246,7 @@ export function AddCommentForm({
   submitLabel?: string;
   tone?: "dark" | "light";
 }) {
-  return (
-    <form action={addCommentAction} className="grid gap-3">
-      <input type="hidden" name="actorId" value={actor.id} />
-      <input type="hidden" name="ticketId" value={ticketId} />
-      <input type="hidden" name="returnPath" value={returnPath} />
-      <input type="hidden" name="visibility" value={visibility} />
-      <Field label={label} name={`body-${visibility}`} tone={tone}>
-        <textarea
-          id={`body-${visibility}`}
-          name="body"
-          required
-          rows={3}
-          className={textInputClasses(tone)}
-          placeholder="Sumá contexto, respuesta o próximos pasos."
-        />
-      </Field>
-      <button
-        type="submit"
-        className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-          tone === "light"
-            ? visibility === "internal"
-              ? "border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
-              : "bg-[#5b48c7] text-white hover:bg-[#4936ad]"
-            : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
-        }`}
-      >
-        {submitLabel}
-      </button>
-    </form>
-  );
+  return <CommentForm actorId={actor.id} ticketId={ticketId} returnPath={returnPath} visibility={visibility} label={label} submitLabel={submitLabel} tone={tone} />;
 }
 
 export function TicketWorkflowForm({

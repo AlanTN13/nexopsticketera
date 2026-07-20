@@ -35,10 +35,12 @@ describe("ticket email notifications", () => {
       commentId: "comment-client-1",
       body: "Sigue ocurriendo",
       visibility: "external",
+      attachmentCount: 2,
     });
 
     expect(email?.to).toBe(NEXOPS_NOTIFICATION_EMAIL);
     expect(email?.subject).toBe(`[NexOps] Nuevo mensaje en ${ticketA.code}`);
+    expect(email?.intro).toContain("2 imágenes");
   });
 
   it("notifies the ticket creator for an external NexOps response", () => {
