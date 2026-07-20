@@ -6,6 +6,7 @@ import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getInternalUsers, getTicketById, getTicketHistory, getUser, getVisibleComments } from "@/lib/queries";
 import { ticketDetailPath, withActor } from "@/lib/routing";
 import { formatRelativeDate, getTicketNextStep, translateHistoryMessage } from "@/lib/ticketing";
+import { CommentAttachments } from "@/components/comment-attachments";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ ticketCode: string }> };
@@ -38,7 +39,7 @@ export default async function BackofficeTicketDetail({ params }: Props) {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div className="grid gap-4">
         <SectionCard title="Conversación" description="Mensajes en orden cronológico. Las notas internas están claramente diferenciadas." tone="light">
-          <div className="grid gap-2.5">{comments.map((comment) => { const author = getUser(db, comment.authorId); const internal = comment.visibility === "internal"; return <article key={comment.id} className={`rounded-lg border p-3 ${internal ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-slate-50"}`}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-slate-950">{author?.name ?? "NexOps"}</p>{internal ? <p className="text-xs font-semibold text-amber-800">Nota interna</p> : null}</div><TimelineDate value={comment.createdAt} tone="light" /></div><p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{comment.body}</p></article>; })}</div>
+          <div className="grid gap-2.5">{comments.map((comment) => { const author = getUser(db, comment.authorId); const internal = comment.visibility === "internal"; const images = db.attachments.filter((item) => item.commentId === comment.id); return <article key={comment.id} className={`rounded-lg border p-3 ${internal ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-slate-50"}`}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-slate-950">{author?.name ?? "NexOps"}</p>{internal ? <p className="text-xs font-semibold text-amber-800">Nota interna</p> : null}</div><TimelineDate value={comment.createdAt} tone="light" /></div><p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{comment.body}</p><CommentAttachments attachments={images} /></article>; })}</div>
           <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4 md:grid-cols-2"><div className="rounded-lg border border-slate-200 p-3"><AddCommentForm actor={actor} ticketId={ticket.id} returnPath={canonicalPath} visibility="external" label="Responder al cliente" submitLabel="Enviar respuesta" tone="light" /></div><div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3"><AddCommentForm actor={actor} ticketId={ticket.id} returnPath={canonicalPath} visibility="internal" label="Agregar nota interna" submitLabel="Guardar nota interna" tone="light" /></div></div>
         </SectionCard>
         <SectionCard title="Descripción y contexto" tone="light"><p className="whitespace-pre-line text-sm leading-6 text-slate-700">{ticket.description}</p></SectionCard>

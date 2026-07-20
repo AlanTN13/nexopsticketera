@@ -44,6 +44,15 @@ export function getVisibleComments(
     });
 }
 
+export function getVisibleCommentAttachments(db: TicketDatabase, actor: UserProfile, ticketId: string) {
+  const visibleCommentIds = new Set(getVisibleComments(db, actor, ticketId).map((comment) => comment.id));
+  return db.attachments.filter((attachment) =>
+    attachment.ticketId === ticketId
+    && attachment.commentId !== null
+    && visibleCommentIds.has(attachment.commentId),
+  );
+}
+
 export function getTicketHistory(db: TicketDatabase, ticketId: string) {
   return db.history.filter((entry) => entry.ticketId === ticketId);
 }

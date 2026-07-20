@@ -60,7 +60,7 @@ export function buildTicketCreatedNotification(
 }
 
 export function buildCommentNotification(
-  context: TicketContext & { commentId: string; body: string; visibility: "external" | "internal" },
+  context: TicketContext & { commentId: string; body: string; visibility: "external" | "internal"; attachmentCount?: number },
 ): NotificationEmail | null {
   if (context.visibility === "internal") return null;
 
@@ -71,7 +71,7 @@ export function buildCommentNotification(
       subject: `[NexOps] Nuevo mensaje en ${context.ticket.code}`,
       preheader: `${context.actor.name} respondió el ticket ${context.ticket.code}.`,
       heading: "Nuevo mensaje del cliente",
-      intro: "Un cliente publicó un mensaje externo en la Ticketera NexOps.",
+      intro: `Un cliente publicó un mensaje externo en la Ticketera NexOps.${context.attachmentCount ? ` El mensaje contiene ${context.attachmentCount} ${context.attachmentCount === 1 ? "imagen" : "imágenes"}.` : ""}`,
       details: [
         { label: "Respondió", value: context.actor.name },
         { label: "Empresa", value: context.company.name },
@@ -94,7 +94,7 @@ export function buildCommentNotification(
     subject: `NexOps respondió tu ticket ${context.ticket.code}`,
     preheader: `${context.actor.name} respondió tu ticket ${context.ticket.code}.`,
     heading: "Nueva respuesta de NexOps",
-    intro: "El equipo de NexOps publicó una respuesta en tu ticket.",
+    intro: `El equipo de NexOps publicó una respuesta en tu ticket.${context.attachmentCount ? ` La respuesta contiene ${context.attachmentCount} ${context.attachmentCount === 1 ? "imagen" : "imágenes"}.` : ""}`,
     details: [
       { label: "Ticket", value: context.ticket.code },
       { label: "Título", value: context.ticket.title },

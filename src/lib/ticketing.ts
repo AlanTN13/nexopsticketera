@@ -26,6 +26,9 @@ export const USER_ROLES = [
   "platform_admin",
 ] as const;
 export const MAX_TICKET_IMAGES = 3;
+export const MAX_COMMENT_IMAGES = 3;
+export const MAX_COMMENT_IMAGE_BYTES = 10 * 1024 * 1024;
+export const COMMENT_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const MAX_TICKET_CONTEXT_URLS = 3;
 
 export type TicketType = (typeof TICKET_TYPES)[number];
@@ -63,6 +66,7 @@ export type TicketAttachment = {
   name: string;
   sizeLabel: string;
   kind: "brief" | "screenshot" | "log";
+  commentId: string | null;
   url: string;
 };
 
@@ -97,6 +101,7 @@ export type TicketRecord = {
   status: TicketStatus;
   createdById: string;
   assignedToId: string | null;
+  assigneeName: string | null;
   createdAt: string;
   updatedAt: string;
 };

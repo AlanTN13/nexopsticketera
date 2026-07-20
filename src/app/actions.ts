@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { assertAuthenticatedActorId, clearClientSession, isInternalActor } from "@/lib/auth";
 import { addComment, createCompany, createTicket, createUser, getAppSnapshot, updateCompany, updateTicketWorkflow, updateUser } from "@/lib/app-store";
-import { COMPANY_PLANS, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
+import { COMPANY_PLANS, MAX_COMMENT_IMAGES, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { ticketDetailPath } from "@/lib/routing";
 import { requireUserTitle } from "@/lib/validation";
@@ -149,22 +149,32 @@ export async function createTicketAction(formData: FormData) {
   redirect(buildSuccessRedirect(ticketDetailPath("/portal", ticket), "Ticket creado correctamente."));
 }
 
-export async function addCommentAction(formData: FormData) {
+export type AddCommentState = { error: string | null };
+
+export async function addCommentAction(_previousState: AddCommentState, formData: FormData): Promise<AddCommentState> {
   const db = await getAppSnapshot();
   const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const ticketId = getString(formData, "ticketId");
   const body = getString(formData, "body");
 
-  if (!body) {
-    throw new Error("El comentario no puede estar vacío.");
-  }
+  if (!body) return { error: "El comentario no puede estar vacío." };
 
-  await addComment({
-    actorId: actor.id,
-    ticketId,
-    body,
-    visibility: getString(formData, "visibility") === "internal" ? "internal" : "external",
-  });
+  const attachments = formData
+    .getAll("commentImages")
+    .filter((value): value is File => value instanceof File && value.size > 0)
+    .slice(0, MAX_COMMENT_IMAGES + 1);
+
+  try {
+    await addComment({
+      actorId: actor.id,
+      ticketId,
+      body,
+      visibility: getString(formData, "visibility") === "internal" ? "internal" : "external",
+      attachments,
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No pudimos publicar el mensaje." };
+  }
 
   const returnPath = getString(formData, "returnPath");
   revalidatePath(returnPath);
