@@ -14,6 +14,7 @@ export function CommentForm({ actorId, ticketId, returnPath, visibility, label, 
   label: string; submitLabel: string; tone: "dark" | "light";
 }) {
   const [state, action] = useActionState(addCommentAction, initialState);
+  const [body, setBody] = useState("");
   const [files, setFiles] = useState<Array<{ file: File; preview: string }>>([]);
   const [localError, setLocalError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +57,7 @@ export function CommentForm({ actorId, ticketId, returnPath, visibility, label, 
     <input type="hidden" name="returnPath" value={returnPath} />
     <input type="hidden" name="visibility" value={visibility} />
     <label className="grid gap-2 text-sm" htmlFor={`body-${visibility}`}><span className="text-xs font-semibold text-slate-700">{label}</span>
-      <textarea id={`body-${visibility}`} name="body" required rows={3} className={inputClass} placeholder="Sumá contexto, respuesta o próximos pasos." />
+      <textarea id={`body-${visibility}`} name="body" required rows={3} value={body} onChange={(event) => setBody(event.target.value)} className={inputClass} placeholder="Sumá contexto, respuesta o próximos pasos." />
     </label>
     <div>
       <label className="inline-flex min-h-10 cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:border-violet-500">

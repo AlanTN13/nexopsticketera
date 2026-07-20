@@ -138,7 +138,7 @@ with check (
     or exists (
       select 1 from public.ticket_comments c
       where c.id = comment_id
-        and c.ticket_id = ticket_id
+        and c.ticket_id = ticket_attachments.ticket_id
         and c.author_id = (select auth.uid())
     )
   )

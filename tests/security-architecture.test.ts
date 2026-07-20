@@ -35,6 +35,7 @@ describe("security architecture", () => {
     expect(migration).toContain("foreign key (comment_id, ticket_id)");
     expect(migration).toContain("c.visibility = 'external' or private.is_internal_user()");
     expect(migration).toContain("c.author_id = (select auth.uid())");
+    expect(migration).toContain("c.ticket_id = ticket_attachments.ticket_id");
     expect(migration).toContain("owner_id = (select auth.uid())::text");
     expect(migration).toContain("revoke all on function public.ticket_assignee_display_name(uuid) from public, anon");
     expect(migration).toContain("security invoker");
