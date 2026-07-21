@@ -2,9 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { ChangeEvent, useActionState, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
 
 import { addCommentAction, type AddCommentState } from "@/app/actions";
+import { ActionStateForm, PendingSubmitButton } from "@/components/pending-form";
 import { COMMENT_IMAGE_MIME_TYPES, MAX_COMMENT_IMAGE_BYTES, MAX_COMMENT_IMAGES } from "@/lib/ticketing";
 
 const initialState: AddCommentState = { error: null };
@@ -13,7 +13,7 @@ export function CommentForm({ actorId, ticketId, returnPath, visibility, label, 
   actorId: string; ticketId: string; returnPath: string; visibility: "external" | "internal";
   label: string; submitLabel: string; tone: "dark" | "light";
 }) {
-  const [state, action] = useActionState(addCommentAction, initialState);
+  const [state, action, pending] = useActionState(addCommentAction, initialState);
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<Array<{ file: File; preview: string }>>([]);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export function CommentForm({ actorId, ticketId, returnPath, visibility, label, 
     if (inputRef.current) inputRef.current.files = transfer.files;
   }
 
-  return <form action={action} className="grid gap-3">
+  return <ActionStateForm action={action} pending={pending} className="grid gap-3">
     <input type="hidden" name="actorId" value={actorId} />
     <input type="hidden" name="ticketId" value={ticketId} />
     <input type="hidden" name="returnPath" value={returnPath} />
@@ -71,11 +71,10 @@ export function CommentForm({ actorId, ticketId, returnPath, visibility, label, 
       <p className="mt-1 truncate text-xs text-slate-700">{file.name}</p><button type="button" onClick={() => removeFile(index)} className="mt-1 text-xs font-semibold text-red-700">Quitar</button>
     </div>)}</div> : null}
     {localError || state.error ? <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{localError ?? state.error}</p> : null}
-    <SubmitButton label={submitLabel} internal={visibility === "internal"} />
-  </form>;
-}
-
-function SubmitButton({ label, internal }: { label: string; internal: boolean }) {
-  const { pending } = useFormStatus();
-  return <button type="submit" disabled={pending} className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold disabled:cursor-wait disabled:opacity-60 ${internal ? "border border-amber-300 bg-amber-50 text-amber-900" : "bg-[#5b48c7] text-white"}`}>{pending ? "Subiendo y publicando…" : label}</button>;
+    <PendingSubmitButton
+      idleLabel={submitLabel}
+      pendingLabel="Enviando…"
+      className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold disabled:cursor-wait disabled:opacity-60 ${visibility === "internal" ? "border border-amber-300 bg-amber-50 text-amber-900" : "bg-[#5b48c7] text-white"}`}
+    />
+  </ActionStateForm>;
 }

@@ -36,6 +36,7 @@ import { validateCommentImages } from "@/lib/comment-image-validation";
 
 export type CreateTicketInput = {
   actorId: string;
+  idempotencyKey: string;
   title: string;
   description: string;
   contextUrls: string[];
@@ -668,6 +669,7 @@ async function createSupabaseUserProfile(input: {
 
 async function createTicketInSupabase(input: {
   actorId: string;
+  idempotencyKey: string;
   title: string;
   description: string;
   contextUrls: string[];
@@ -697,15 +699,31 @@ async function createTicketInSupabase(input: {
     status: "new",
     created_by_id: actor.id,
     assigned_to_id: null,
+    creation_key: input.idempotencyKey,
   };
 
   const { data: ticketData, error: ticketError } = await client
     .from("tickets")
-    .insert(payload)
+    .upsert(payload, {
+      onConflict: "created_by_id,creation_key",
+      ignoreDuplicates: true,
+    })
     .select("*")
-    .single();
+    .maybeSingle();
 
   assertNoError(ticketError);
+
+  if (!ticketData) {
+    const { data: existingTicket, error: existingTicketError } = await client
+      .from("tickets")
+      .select("*")
+      .eq("created_by_id", actor.id)
+      .eq("creation_key", input.idempotencyKey)
+      .single();
+
+    assertNoError(existingTicketError);
+    return mapTicket(existingTicket as TicketRow);
+  }
 
   await createTicketResources({
     ticketId: String(ticketData.id),

@@ -61,17 +61,16 @@ function buildPostActionRedirect(path: string, actorId: string) {
   return routeWithActor(path, actorId);
 }
 
-function buildErrorRedirect(path: string, message: string) {
-  const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}error=${encodeURIComponent(message)}`;
-}
-
 function buildSuccessRedirect(path: string, message: string) {
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}success=${encodeURIComponent(message)}`;
 }
 
 export type LoginClientState = {
+  error: string | null;
+};
+
+export type MutationState = {
   error: string | null;
 };
 
@@ -106,7 +105,7 @@ export async function logoutClientAction() {
   redirect("/portal/login");
 }
 
-export async function createTicketAction(formData: FormData) {
+export async function createTicketAction(formData: FormData): Promise<MutationState> {
   const db = await getAppSnapshot();
   const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const title = getString(formData, "title");
@@ -129,21 +128,32 @@ export async function createTicketAction(formData: FormData) {
   const impact = getString(formData, "impact");
   const urgency = getString(formData, "urgency");
   const workContinuity = getString(formData, "workContinuity");
+  const idempotencyKey = getString(formData, "idempotencyKey");
 
   if (!title || !description) {
     throw new Error("Título y descripción son obligatorios.");
   }
 
-  const ticket = await createTicket({
-    actorId: actor.id,
-    title,
-    description: `${description}\n\nContexto informado por el cliente\nImpacto: ${impactLabels[impact] ?? "No informado"}\nUrgencia: ${urgencyLabels[urgency] ?? "No informada"}\n¿Puede seguir trabajando?: ${continuityLabels[workContinuity] ?? "No informado"}`,
-    contextUrls: getContextUrls(formData),
-    attachments: getTicketImageFiles(formData),
-    type: assertInSet(getString(formData, "type"), TICKET_TYPES),
-    area: assertInSet(getString(formData, "area"), TICKET_AREAS),
-    priority: "medium",
-  });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
+    throw new Error("No pudimos validar este envío. Recargá la página e intentá nuevamente.");
+  }
+
+  let ticket;
+  try {
+    ticket = await createTicket({
+      actorId: actor.id,
+      idempotencyKey,
+      title,
+      description: `${description}\n\nContexto informado por el cliente\nImpacto: ${impactLabels[impact] ?? "No informado"}\nUrgencia: ${urgencyLabels[urgency] ?? "No informada"}\n¿Puede seguir trabajando?: ${continuityLabels[workContinuity] ?? "No informado"}`,
+      contextUrls: getContextUrls(formData),
+      attachments: getTicketImageFiles(formData),
+      type: assertInSet(getString(formData, "type"), TICKET_TYPES),
+      area: assertInSet(getString(formData, "area"), TICKET_AREAS),
+      priority: "medium",
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No pudimos crear el ticket." };
+  }
 
   revalidatePath("/portal");
   redirect(buildSuccessRedirect(ticketDetailPath("/portal", ticket), "Ticket creado correctamente."));
@@ -181,20 +191,24 @@ export async function addCommentAction(_previousState: AddCommentState, formData
   redirect(buildPostActionRedirect(returnPath, actor.id));
 }
 
-export async function updateTicketWorkflowAction(formData: FormData) {
+export async function updateTicketWorkflowAction(formData: FormData): Promise<MutationState> {
   const db = await getAppSnapshot();
   const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const ticketId = getString(formData, "ticketId");
   const assignedToId = getString(formData, "assignedToId");
   const returnPath = getString(formData, "returnPath");
 
-  await updateTicketWorkflow({
-    actorId: actor.id,
-    ticketId,
-    status: assertInSet(getString(formData, "status"), TICKET_STATUSES),
-    priority: assertInSet(getString(formData, "priority"), TICKET_PRIORITIES),
-    assignedToId: assignedToId === "unassigned" ? null : assignedToId,
-  });
+  try {
+    await updateTicketWorkflow({
+      actorId: actor.id,
+      ticketId,
+      status: assertInSet(getString(formData, "status"), TICKET_STATUSES),
+      priority: assertInSet(getString(formData, "priority"), TICKET_PRIORITIES),
+      assignedToId: assignedToId === "unassigned" ? null : assignedToId,
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No pudimos guardar la gestión." };
+  }
 
   revalidatePath(returnPath);
   redirect(buildPostActionRedirect(returnPath, actor.id));
@@ -238,7 +252,7 @@ export async function createUserAction(
   redirect(buildSuccessRedirect(buildPostActionRedirect(returnPath, actor.id), "Usuario creado correctamente."));
 }
 
-export async function createCompanyAction(formData: FormData) {
+export async function createCompanyAction(formData: FormData): Promise<MutationState> {
   const db = await getAppSnapshot();
   const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const returnPath = getString(formData, "returnPath");
@@ -260,7 +274,7 @@ export async function createCompanyAction(formData: FormData) {
         ? error.message
         : "No pudimos crear la empresa. Revisá los datos e intentá de nuevo.";
 
-    redirect(buildErrorRedirect(returnPath || "/backoffice", message));
+    return { error: message };
   }
 
   revalidatePath("/backoffice");
@@ -268,7 +282,7 @@ export async function createCompanyAction(formData: FormData) {
   redirect(buildPostActionRedirect(returnPath, actor.id));
 }
 
-export async function updateCompanyAction(formData: FormData) {
+export async function updateCompanyAction(formData: FormData): Promise<MutationState> {
   const db = await getAppSnapshot();
   const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const companyId = getString(formData, "companyId");
@@ -294,7 +308,7 @@ export async function updateCompanyAction(formData: FormData) {
         ? error.message
         : "No pudimos actualizar la empresa. Revisá los datos e intentá de nuevo.";
 
-    redirect(buildErrorRedirect(returnPath, message));
+    return { error: message };
   }
 
   revalidatePath("/backoffice");
@@ -303,7 +317,7 @@ export async function updateCompanyAction(formData: FormData) {
   redirect(buildSuccessRedirect(buildPostActionRedirect(nextPath, actor.id), "Empresa actualizada correctamente."));
 }
 
-export async function updateUserAction(formData: FormData) {
+export async function updateUserAction(formData: FormData): Promise<MutationState> {
   const db = await getAppSnapshot();
   const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const userId = getString(formData, "userId");
@@ -325,7 +339,7 @@ export async function updateUserAction(formData: FormData) {
         ? error.message
         : "No pudimos actualizar el usuario. Revisá los datos e intentá de nuevo.";
 
-    redirect(buildErrorRedirect(returnPath, message));
+    return { error: message };
   }
 
   revalidatePath("/backoffice");

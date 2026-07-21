@@ -39,8 +39,8 @@ describe("ticket presentation", () => {
     expect(form).toContain("Adjuntar imágenes");
     expect(form).toContain("URL.createObjectURL");
     expect(form).toContain("removeFile(index)");
-    expect(form).toContain("disabled={pending}");
-    expect(form).toContain("Subiendo y publicando…");
+    expect(form).toContain("PendingSubmitButton");
+    expect(form).toContain('pendingLabel="Enviando…"');
     expect(form).toContain('value={body}');
     expect(form).toContain('setBody(event.target.value)');
   });
