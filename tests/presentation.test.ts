@@ -45,6 +45,14 @@ describe("ticket presentation", () => {
     expect(form).toContain('setBody(event.target.value)');
   });
 
+  it("clears stale native validation when the user enters a job title", () => {
+    const form = readFileSync(join(process.cwd(), "src/components/create-user-form.tsx"), "utf8");
+
+    expect(form).toContain('event.currentTarget.setCustomValidity("");');
+    expect(form).not.toContain('pattern=".*\\\\S.*"');
+    expect(form).toContain("const titleIsEmpty = title.trim().length === 0");
+  });
+
   it("translates technical values in history messages", () => {
     expect(translateHistoryMessage("Status: in_progress. Priority: high"))
       .toBe("Status: En progreso. Priority: Alta");
