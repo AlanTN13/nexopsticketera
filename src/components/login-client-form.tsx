@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { LoginClientState, loginClientAction } from "@/app/actions";
+import { ActionStateForm, PendingSubmitButton } from "@/components/pending-form";
 
 const initialState: LoginClientState = {
   error: null,
@@ -12,7 +13,7 @@ export function LoginClientForm() {
   const [state, action, pending] = useActionState(loginClientAction, initialState);
 
   return (
-    <form action={action} className="grid gap-5">
+    <ActionStateForm action={action} pending={pending} className="grid gap-5">
       <label className="grid gap-2 text-sm text-[#5f6385]" htmlFor="email">
         <span className="font-[family-name:var(--font-montserrat)] text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5b48c7]">
           Email
@@ -49,13 +50,11 @@ export function LoginClientForm() {
         </div>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
+      <PendingSubmitButton
+        idleLabel="Ingresar"
+        pendingLabel="Ingresando…"
         className="rounded-[22px] bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] px-5 py-3 text-sm font-semibold text-[#120d31] transition hover:translate-y-[-1px] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)] disabled:cursor-not-allowed disabled:opacity-70"
-      >
-        {pending ? "Ingresando..." : "Ingresar"}
-      </button>
-    </form>
+      />
+    </ActionStateForm>
   );
 }

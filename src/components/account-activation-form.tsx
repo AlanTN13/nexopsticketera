@@ -6,6 +6,7 @@ import {
   activateAccountAction,
   type AccountActivationState,
 } from "@/app/portal/activar-cuenta/actions";
+import { ActionStateForm, PendingSubmitButton } from "@/components/pending-form";
 import { MINIMUM_PASSWORD_LENGTH } from "@/lib/account-activation";
 
 const initialState: AccountActivationState = { error: null };
@@ -17,7 +18,7 @@ export function AccountActivationForm() {
   const [state, action, pending] = useActionState(activateAccountAction, initialState);
 
   return (
-    <form action={action} className="grid gap-4">
+    <ActionStateForm action={action} pending={pending} className="grid gap-4">
       <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="password">
         <span className="text-xs font-semibold text-slate-700">
           Nueva contraseña <span className="text-rose-700" aria-hidden>*</span>
@@ -60,13 +61,11 @@ export function AccountActivationForm() {
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
+      <PendingSubmitButton
+        idleLabel="Activar cuenta"
+        pendingLabel="Guardando…"
         className="rounded-lg bg-[#5b48c7] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#4936ad] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {pending ? "Guardando contraseña…" : "Activar cuenta"}
-      </button>
-    </form>
+      />
+    </ActionStateForm>
   );
 }

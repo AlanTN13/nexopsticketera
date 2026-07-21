@@ -10,6 +10,7 @@ import {
 } from "@/app/actions";
 import { TicketEvidenceFields } from "@/components/ticket-evidence-fields";
 import { CommentForm } from "@/components/comment-form";
+import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
 import {
   Company,
   TICKET_AREAS,
@@ -75,18 +76,17 @@ export function LogoutClientForm({
   tone?: "dark" | "light";
 }) {
   return (
-    <form action={logoutClientAction}>
-      <button
-        type="submit"
+    <PendingForm action={logoutClientAction}>
+      <PendingSubmitButton
+        idleLabel="Cerrar sesión"
+        pendingLabel="Cerrando…"
         className={`min-h-10 rounded-lg px-3 py-2 text-sm font-medium transition ${
           tone === "light"
             ? "border border-[rgba(67,48,166,0.14)] bg-white/80 text-[#1b1638] hover:border-[#7c5bff] hover:bg-white"
             : "border border-[var(--border)] bg-white/[0.04] text-[var(--muted-strong)] hover:border-[var(--border-strong)] hover:bg-white/[0.08]"
         }`}
-      >
-        Cerrar sesión
-      </button>
-    </form>
+      />
+    </PendingForm>
   );
 }
 
@@ -114,7 +114,8 @@ export function CreateTicketForm({
   }
 
   return (
-    <form action={createTicketAction} className={`grid ${compact ? "gap-3.5" : "gap-4"}`}>
+    <PendingForm action={createTicketAction} className={`grid ${compact ? "gap-3.5" : "gap-4"}`}>
+      <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
       <input type="hidden" name="actorId" value={actor.id} />
       <Field label="Tipo de solicitud" name="type" tone={tone}>
         <div className={`grid gap-2 ${compact ? "md:grid-cols-2" : "sm:grid-cols-2"}`}>
@@ -219,13 +220,12 @@ export function CreateTicketForm({
           <TicketEvidenceFields inputClassName={textInputClasses(tone)} tone={tone} />
         </div>
       </details>
-      <button
-        type="submit"
+      <PendingSubmitButton
+        idleLabel="Crear ticket"
+        pendingLabel="Creando…"
         className="min-h-11 rounded-lg bg-[#5b48c7] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#4936ad]"
-      >
-        Crear ticket
-      </button>
-    </form>
+      />
+    </PendingForm>
   );
 }
 
@@ -283,7 +283,7 @@ export function TicketWorkflowForm({
   }
 
   return (
-    <form action={updateTicketWorkflowAction} className="grid gap-3">
+    <PendingForm action={updateTicketWorkflowAction} className="grid gap-3">
       <input type="hidden" name="actorId" value={actor.id} />
       <input type="hidden" name="ticketId" value={ticketId} />
       <input type="hidden" name="returnPath" value={returnPath} />
@@ -320,17 +320,16 @@ export function TicketWorkflowForm({
           ))}
         </select>
       </Field>
-      <button
-        type="submit"
+      <PendingSubmitButton
+        idleLabel="Guardar cambios"
+        pendingLabel="Guardando…"
         className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold transition ${
           tone === "light"
             ? "bg-[#5b48c7] text-white hover:bg-[#4936ad]"
             : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
         }`}
-      >
-        Guardar cambios
-      </button>
-    </form>
+      />
+    </PendingForm>
   );
 }
 
@@ -358,7 +357,7 @@ export function CreateCompanyForm({
   }
 
   return (
-    <form action={createCompanyAction} className="grid gap-4">
+    <PendingForm action={createCompanyAction} className="grid gap-4">
       <input type="hidden" name="actorId" value={actor.id} />
       <input type="hidden" name="returnPath" value={returnPath} />
       <Field label="Nombre de la empresa" name="companyName" tone={tone}>
@@ -420,17 +419,16 @@ export function CreateCompanyForm({
           placeholder="Definí una contraseña inicial de al menos 8 caracteres"
         />
       </Field>
-      <button
-        type="submit"
+      <PendingSubmitButton
+        idleLabel="Crear empresa"
+        pendingLabel="Creando…"
         className={`rounded-[22px] px-5 py-3 text-sm font-semibold transition hover:translate-y-[-1px] ${
           tone === "light"
             ? "bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] text-white hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
             : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
         }`}
-      >
-        Crear empresa
-      </button>
-    </form>
+      />
+    </PendingForm>
   );
 }
 
@@ -460,7 +458,7 @@ export function UpdateCompanyForm({
   }
 
   return (
-    <form action={updateCompanyAction} className="grid gap-4">
+    <PendingForm action={updateCompanyAction} className="grid gap-4">
       <input type="hidden" name="actorId" value={actor.id} />
       <input type="hidden" name="companyId" value={company.id} />
       <input type="hidden" name="returnPath" value={returnPath} />
@@ -520,17 +518,16 @@ export function UpdateCompanyForm({
           className={textInputClasses(tone)}
         />
       </Field>
-      <button
-        type="submit"
+      <PendingSubmitButton
+        idleLabel="Guardar cambios"
+        pendingLabel="Guardando…"
         className={`rounded-[22px] px-5 py-3 text-sm font-semibold transition hover:translate-y-[-1px] ${
           tone === "light"
             ? "bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] text-white hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
             : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
         }`}
-      >
-        Guardar cambios
-      </button>
-    </form>
+      />
+    </PendingForm>
   );
 }
 
@@ -550,7 +547,7 @@ export function UpdateUserForm({
     : USER_ROLES.filter((role) => !role.startsWith("client_"));
 
   return (
-    <form action={updateUserAction} className="grid gap-4">
+    <PendingForm action={updateUserAction} className="grid gap-4">
       <input type="hidden" name="actorId" value={actor.id} />
       <input type="hidden" name="userId" value={user.id} />
       <input type="hidden" name="returnPath" value={returnPath} />
@@ -610,16 +607,15 @@ export function UpdateUserForm({
           />
         </Field>
       </div>
-      <button
-        type="submit"
+      <PendingSubmitButton
+        idleLabel="Guardar usuario"
+        pendingLabel="Guardando…"
         className={`rounded-[22px] px-5 py-3 text-sm font-semibold transition hover:translate-y-[-1px] ${
           tone === "light"
             ? "bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] text-white hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
             : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
         }`}
-      >
-        Guardar usuario
-      </button>
-    </form>
+      />
+    </PendingForm>
   );
 }

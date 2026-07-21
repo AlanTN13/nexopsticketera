@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { createUserAction, CreateUserState } from "@/app/actions";
+import { ActionStateForm, PendingSubmitButton } from "@/components/pending-form";
 import {
   USER_ROLES,
   UserProfile,
@@ -69,7 +70,7 @@ export function CreateUserForm({
   const titleIsEmpty = title.trim().length === 0;
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <ActionStateForm action={formAction} pending={pending} className="grid gap-4">
       <input type="hidden" name="actorId" value={actor.id} />
       <input type="hidden" name="companyId" value={companyId ?? "internal"} />
       <input type="hidden" name="returnPath" value={returnPath} />
@@ -122,15 +123,14 @@ export function CreateUserForm({
           {state.error}
         </p>
       ) : null}
-      <button
-        type="submit"
-        disabled={pending || titleIsEmpty}
+      <PendingSubmitButton
+        idleLabel="Invitar usuario"
+        pendingLabel="Creando…"
+        disabled={titleIsEmpty}
         className={`rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
           tone === "light" ? "bg-[#5b48c7] hover:bg-[#4936ad]" : "bg-[#4330a6] hover:bg-[#37258f]"
         }`}
-      >
-        {pending ? "Creando usuario…" : "Invitar usuario"}
-      </button>
-    </form>
+      />
+    </ActionStateForm>
   );
 }
