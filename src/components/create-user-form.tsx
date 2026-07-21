@@ -84,13 +84,14 @@ export function CreateUserForm({
           id="title"
           name="title"
           value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            event.currentTarget.setCustomValidity("");
+          }}
           required
-          pattern=".*\\S.*"
           aria-describedby="title-requirement"
           className={fieldClasses}
           onInvalid={(event) => event.currentTarget.setCustomValidity(REQUIRED_USER_TITLE_MESSAGE)}
-          onInput={(event) => event.currentTarget.setCustomValidity("")}
         />
         <span id="title-requirement" className={`text-xs ${tone === "light" ? "text-slate-600" : "text-[var(--muted)]"}`}>
           {REQUIRED_USER_TITLE_MESSAGE}
