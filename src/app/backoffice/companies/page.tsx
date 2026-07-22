@@ -3,20 +3,20 @@ import { redirect } from "next/navigation";
 
 import { CreateCompanyForm, LogoutClientForm } from "@/components/forms";
 import { AppModal } from "@/components/portal-ticket-modal";
-import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
+import { AppShell, EmptyState, InlineNotice, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { buildBackofficeStats, getClientUsersForCompany, getTicketsForCompany } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 
 type CompaniesPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; created?: string }>;
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function CompaniesPage({ searchParams }: CompaniesPageProps) {
-  const { error } = await searchParams;
+  const { error, success, created } = await searchParams;
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
 
@@ -57,12 +57,15 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
         </div>
       ) : null}
 
+      {success ? <InlineNotice tone="success">{success}</InlineNotice> : null}
+
       <SectionCard
         title="Directorio de empresas"
         description="Cada fila resume estado de la cuenta y carga operativa. Entrá a la empresa para ver tickets y usuarios."
         tone="light"
         actions={
           <AppModal
+            key={created ?? "create-company"}
             triggerLabel="+ Dar de alta empresa"
             title="Nueva empresa"
             description="Cargá la empresa y dejá listo el primer acceso para su responsable inicial."

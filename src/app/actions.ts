@@ -257,8 +257,10 @@ export async function createCompanyAction(formData: FormData): Promise<MutationS
   const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
   const returnPath = getString(formData, "returnPath");
 
+  let createdCompanyId = "";
+
   try {
-    await createCompany({
+    const result = await createCompany({
       actorId: actor.id,
       companyName: getString(formData, "companyName"),
       industry: getString(formData, "industry"),
@@ -268,6 +270,7 @@ export async function createCompanyAction(formData: FormData): Promise<MutationS
       adminTitle: getString(formData, "adminTitle"),
       adminPassword: getString(formData, "adminPassword"),
     });
+    createdCompanyId = result.company.id;
   } catch (error) {
     const message =
       error instanceof Error && error.message
@@ -279,7 +282,11 @@ export async function createCompanyAction(formData: FormData): Promise<MutationS
 
   revalidatePath("/backoffice");
   revalidatePath(returnPath);
-  redirect(buildPostActionRedirect(returnPath, actor.id));
+  const successPath = buildSuccessRedirect(
+      buildPostActionRedirect(returnPath, actor.id),
+      "Empresa creada correctamente.",
+    );
+  redirect(`${successPath}&created=${encodeURIComponent(createdCompanyId)}`);
 }
 
 export async function updateCompanyAction(formData: FormData): Promise<MutationState> {

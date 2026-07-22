@@ -144,14 +144,25 @@ export function buildBackofficeStats(tickets: TicketRecord[], companies: Company
 export function filterTickets(
   tickets: TicketRecord[],
   filters: {
-    status?: string;
-    area?: string;
-    priority?: string;
-    companyId?: string;
-    assignedToId?: string;
+    status?: string | string[];
+    area?: string | string[];
+    priority?: string | string[];
+    companyId?: string | string[];
+    assignedToId?: string | string[];
     query?: string;
   },
 ) {
+  const selected = (value?: string | string[]) => {
+    const values = Array.isArray(value) ? value : value ? [value] : [];
+    return values.filter((item) => item && item !== "all");
+  };
+
+  const statuses = selected(filters.status);
+  const areas = selected(filters.area);
+  const priorities = selected(filters.priority);
+  const companyIds = selected(filters.companyId);
+  const assigneeIds = selected(filters.assignedToId);
+
   return tickets.filter((ticket) => {
     if (filters.query) {
       const query = filters.query.trim().toLocaleLowerCase("es");
@@ -160,31 +171,19 @@ export function filterTickets(
         return false;
       }
     }
-    if (filters.status && filters.status !== "all" && ticket.status !== filters.status) {
+    if (statuses.length && !statuses.includes(ticket.status)) {
       return false;
     }
-    if (filters.area && filters.area !== "all" && ticket.area !== filters.area) {
+    if (areas.length && !areas.includes(ticket.area)) {
       return false;
     }
-    if (
-      filters.priority &&
-      filters.priority !== "all" &&
-      ticket.priority !== filters.priority
-    ) {
+    if (priorities.length && !priorities.includes(ticket.priority)) {
       return false;
     }
-    if (
-      filters.companyId &&
-      filters.companyId !== "all" &&
-      ticket.companyId !== filters.companyId
-    ) {
+    if (companyIds.length && !companyIds.includes(ticket.companyId)) {
       return false;
     }
-    if (
-      filters.assignedToId &&
-      filters.assignedToId !== "all" &&
-      (ticket.assignedToId ?? "unassigned") !== filters.assignedToId
-    ) {
+    if (assigneeIds.length && !assigneeIds.includes(ticket.assignedToId ?? "unassigned")) {
       return false;
     }
     return true;
