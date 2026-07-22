@@ -57,4 +57,37 @@ describe("ticket presentation", () => {
     expect(translateHistoryMessage("Status: in_progress. Priority: high"))
       .toBe("Status: En progreso. Priority: Alta");
   });
+
+  it("closes the company modal through the success navigation and keeps errors in place", () => {
+    const action = readFileSync(join(process.cwd(), "src/app/actions.ts"), "utf8");
+    const page = readFileSync(
+      join(process.cwd(), "src/app/backoffice/companies/page.tsx"),
+      "utf8",
+    );
+
+    expect(action).toContain('"Empresa creada correctamente."');
+    expect(action).toContain("createdCompanyId = result.company.id");
+    expect(page).toContain('key={created ?? "create-company"}');
+    expect(page).toContain('<InlineNotice tone="success">{success}</InlineNotice>');
+  });
+
+  it("keeps operational multiselect filters in the URL and ticket return path", () => {
+    const filters = readFileSync(join(process.cwd(), "src/components/ticket-filters.tsx"), "utf8");
+    const queue = readFileSync(
+      join(process.cwd(), "src/app/backoffice/queue/page.tsx"),
+      "utf8",
+    );
+    const ticket = readFileSync(
+      join(process.cwd(), "src/app/backoffice/tickets/[ticketCode]/page.tsx"),
+      "utf8",
+    );
+
+    expect(filters).toContain('type="checkbox"');
+    expect(queue).toContain('multiple defaultedFilters={["status"]} filters={[');
+    expect(queue).toContain('filters.status === undefined ? defaultStatuses : filters.status');
+    expect(filters).toContain("currentParams.append(filter.name, value)");
+    expect(filters).toContain("remainingValues.forEach");
+    expect(queue).toContain("returnPath={returnPath}");
+    expect(ticket).toContain("queueReturnPath");
+  });
 });

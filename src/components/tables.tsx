@@ -13,6 +13,7 @@ export function TicketTable({
   showCompany = true,
   actionLabel = "Gestionar",
   clientView = false,
+  returnPath,
 }: {
   db: TicketDatabase;
   tickets: TicketRecord[];
@@ -21,6 +22,7 @@ export function TicketTable({
   showCompany?: boolean;
   actionLabel?: string;
   clientView?: boolean;
+  returnPath?: string;
 }) {
   const headClass =
     tone === "light"
@@ -62,7 +64,10 @@ export function TicketTable({
               const assigneeName = clientView
                 ? ticket.assigneeName
                 : getUser(db, ticket.assignedToId)?.name;
-              const detailHref = ticketDetailPath(basePath, ticket);
+              const rawDetailHref = ticketDetailPath(basePath, ticket);
+              const detailHref = returnPath
+                ? `${rawDetailHref}?returnTo=${encodeURIComponent(returnPath)}`
+                : rawDetailHref;
 
               return (
                 <tr key={ticket.id} className={`${rowClass} relative group`}>
@@ -124,7 +129,10 @@ export function TicketTable({
           const assigneeName = clientView
             ? ticket.assigneeName
             : getUser(db, ticket.assignedToId)?.name;
-          const detailHref = ticketDetailPath(basePath, ticket);
+          const rawDetailHref = ticketDetailPath(basePath, ticket);
+          const detailHref = returnPath
+            ? `${rawDetailHref}?returnTo=${encodeURIComponent(returnPath)}`
+            : rawDetailHref;
           return (
             <article key={ticket.id} className="relative grid gap-2 px-3 py-3 transition hover:bg-slate-50">
               <div className="flex items-start justify-between gap-3">

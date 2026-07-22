@@ -20,4 +20,25 @@ describe("ticket metrics", () => {
     expect(filterTickets([ticketA, ticketB], { query: ticketB.title.toUpperCase() })).toEqual([ticketB]);
     expect(filterTickets([ticketA, ticketB], { query: "sin coincidencias" })).toEqual([]);
   });
+
+  it("combines multiselect values within and across operational filters", () => {
+    expect(
+      filterTickets([ticketA, ticketB], {
+        companyId: [companyA.id, companyB.id],
+        status: [ticketA.status, ticketB.status],
+      }),
+    ).toEqual([ticketA, ticketB]);
+
+    expect(
+      filterTickets([ticketA, ticketB], {
+        companyId: [companyA.id],
+        status: [ticketA.status, ticketB.status],
+      }),
+    ).toEqual([ticketA]);
+
+    expect(filterTickets([ticketA, ticketB], { companyId: ["all"] })).toEqual([
+      ticketA,
+      ticketB,
+    ]);
+  });
 });
