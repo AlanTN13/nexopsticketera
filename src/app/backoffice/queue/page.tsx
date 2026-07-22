@@ -15,18 +15,23 @@ type Props = { searchParams: Promise<{ query?: string; status?: FilterValue; are
 
 export default async function BackofficeQueuePage({ searchParams }: Props) {
   const filters = await searchParams;
+  const defaultStatuses = ["new", "analysis", "in_progress", "waiting_for_client"];
+  const effectiveFilters = {
+    ...filters,
+    status: filters.status === undefined ? defaultStatuses : filters.status,
+  };
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
   if (!actor) redirect("/portal/login?reason=session");
-  const tickets = sortTickets(filterTickets(db.tickets, filters));
+  const tickets = sortTickets(filterTickets(db.tickets, effectiveFilters));
   const stats = buildBackofficeStats(db.tickets, db.companies);
   const internalUsers = getInternalUsers(db);
   const queueParams = new URLSearchParams();
-  if (filters.query) queueParams.set("query", filters.query);
+  if (effectiveFilters.query) queueParams.set("query", effectiveFilters.query);
   (["status", "area", "priority", "companyId", "assignedToId"] as const).forEach((name) => {
-    const values = Array.isArray(filters[name]) ? filters[name] : filters[name] ? [filters[name]] : [];
+    const values = Array.isArray(effectiveFilters[name]) ? effectiveFilters[name] : effectiveFilters[name] ? [effectiveFilters[name]] : [];
     values.forEach((value) => {
-      if (value !== "all") queueParams.append(name, value);
+      queueParams.append(name, value);
     });
   });
   const returnPath = queueParams.size ? `/backoffice/queue?${queueParams.toString()}` : "/backoffice/queue";
@@ -37,8 +42,8 @@ export default async function BackofficeQueuePage({ searchParams }: Props) {
   >
     <IndicatorBar items={[{ label: "Activos", value: stats.activeTickets }, { label: "Alta o crítica", value: stats.highPriority }, { label: "Esperando cliente", value: stats.waitingCustomer }, { label: "Empresas", value: stats.companies }]} />
     <SectionCard title="Tickets" description="Buscá, filtrá y abrí cualquier fila para gestionar el caso." tone="light">
-      <TicketFilters basePath="/backoffice/queue" query={filters.query} multiple filters={[
-        { name: "status", label: "Todos los estados", value: filters.status, options: [{ value: "new", label: "Nuevo" }, { value: "analysis", label: "En análisis" }, { value: "in_progress", label: "En progreso" }, { value: "waiting_for_client", label: "Esperando al cliente" }, { value: "resolved", label: "Resuelto" }, { value: "closed", label: "Cerrado" }] },
+      <TicketFilters basePath="/backoffice/queue" query={filters.query} multiple defaultedFilters={["status"]} filters={[
+        { name: "status", label: "Todos los estados", value: effectiveFilters.status, options: [{ value: "new", label: "Nuevo" }, { value: "analysis", label: "En análisis" }, { value: "in_progress", label: "En progreso" }, { value: "waiting_for_client", label: "Esperando al cliente" }, { value: "resolved", label: "Resuelto" }, { value: "closed", label: "Cerrado" }] },
         { name: "area", label: "Todas las áreas", value: filters.area, options: [{ value: "automation", label: "Automatizaciones" }, { value: "custom_system", label: "Sistema personalizado" }, { value: "website", label: "Sitios web" }, { value: "ai_agent", label: "Agentes IA" }, { value: "crm", label: "CRM" }, { value: "erp", label: "ERP" }] },
         { name: "priority", label: "Todas las prioridades", value: filters.priority, options: [{ value: "low", label: "Baja" }, { value: "medium", label: "Media" }, { value: "high", label: "Alta" }, { value: "critical", label: "Crítica" }] },
         { name: "companyId", label: "Todas las empresas", value: filters.companyId, options: db.companies.map((company) => ({ value: company.id, label: company.name })) },

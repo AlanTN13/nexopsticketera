@@ -17,11 +17,13 @@ export function TicketFilters({
   query,
   filters,
   multiple = false,
+  defaultedFilters = [],
 }: {
   basePath: string;
   query?: string;
   filters: TicketFilterDefinition[];
   multiple?: boolean;
+  defaultedFilters?: string[];
 }) {
   const activeFilters = [
     ...(query ? [{ name: "query", label: `Búsqueda: ${query}`, value: query }] : []),
@@ -36,8 +38,15 @@ export function TicketFilters({
   const currentParams = new URLSearchParams();
   if (query) currentParams.set("query", query);
   filters.forEach((filter) => {
-    getSelectedFilterValues(filter.value).forEach((value) => currentParams.append(filter.name, value));
+    const selectedValues = getSelectedFilterValues(filter.value);
+    selectedValues.forEach((value) => currentParams.append(filter.name, value));
+    if (!selectedValues.length && filter.value === "all") {
+      currentParams.append(filter.name, "all");
+    }
   });
+  const clearAllParams = new URLSearchParams();
+  defaultedFilters.forEach((name) => clearAllParams.set(name, "all"));
+  const clearAllHref = clearAllParams.size ? `${basePath}?${clearAllParams.toString()}` : basePath;
 
   return (
     <div className="grid gap-2.5">
@@ -104,7 +113,7 @@ export function TicketFilters({
                   <Link
                     href={(() => {
                       const params = new URLSearchParams(currentParams);
-                      params.delete(filter.name);
+                      params.set(filter.name, "all");
                       const queryString = params.toString();
                       return queryString ? `${basePath}?${queryString}` : basePath;
                     })()}
@@ -135,7 +144,11 @@ export function TicketFilters({
                 .getAll(active.name)
                 .filter((value) => value !== active.value);
               nextParams.delete(active.name);
-              remainingValues.forEach((value) => nextParams.append(active.name, value));
+              if (remainingValues.length) {
+                remainingValues.forEach((value) => nextParams.append(active.name, value));
+              } else {
+                nextParams.set(active.name, "all");
+              }
             }
             const queryString = nextParams.toString();
             return (
@@ -149,7 +162,7 @@ export function TicketFilters({
               </Link>
             );
           })}
-          <Link href={basePath} className="text-xs font-semibold text-slate-700 underline-offset-4 hover:underline">
+          <Link href={clearAllHref} className="text-xs font-semibold text-slate-700 underline-offset-4 hover:underline">
             Limpiar todos
           </Link>
         </div>

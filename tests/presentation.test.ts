@@ -83,7 +83,8 @@ describe("ticket presentation", () => {
     );
 
     expect(filters).toContain('type="checkbox"');
-    expect(queue).toContain('query={filters.query} multiple filters={[');
+    expect(queue).toContain('multiple defaultedFilters={["status"]} filters={[');
+    expect(queue).toContain('filters.status === undefined ? defaultStatuses : filters.status');
     expect(filters).toContain("currentParams.append(filter.name, value)");
     expect(filters).toContain("remainingValues.forEach");
     expect(queue).toContain("returnPath={returnPath}");
