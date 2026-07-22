@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createSubmissionGuard } from "@/components/pending-form";
+import { createSubmissionGuard, isNextNavigationSignal } from "@/components/pending-form";
 
 describe("submission guard", () => {
   it("executes only the first submission while it is pending", async () => {
@@ -31,5 +31,14 @@ describe("submission guard", () => {
     await expect(guard(action)).rejects.toThrow("network error");
     await expect(guard(action)).resolves.toBe("ok");
     expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not turn framework redirects into visible form errors", () => {
+    expect(
+      isNextNavigationSignal({
+        digest: "NEXT_REDIRECT;push;/backoffice/tickets/nex-1015;303;",
+      }),
+    ).toBe(true);
+    expect(isNextNavigationSignal(new Error("network error"))).toBe(false);
   });
 });

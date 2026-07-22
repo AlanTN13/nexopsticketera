@@ -20,6 +20,15 @@ export function createSubmissionGuard() {
   };
 }
 
+export function isNextNavigationSignal(error: unknown) {
+  if (!error || typeof error !== "object" || !("digest" in error)) {
+    return false;
+  }
+
+  const digest = String(error.digest);
+  return digest.startsWith("NEXT_REDIRECT;") || digest.startsWith("NEXT_HTTP_ERROR_FALLBACK;");
+}
+
 export function PendingForm({
   action,
   children,
@@ -39,7 +48,10 @@ export function PendingForm({
       if (result && typeof result === "object" && "error" in result) {
         setError(result.error ?? null);
       }
-    } catch {
+    } catch (caughtError) {
+      if (isNextNavigationSignal(caughtError)) {
+        throw caughtError;
+      }
       setError("No pudimos completar la acción. Revisá los datos e intentá nuevamente.");
     }
   }
