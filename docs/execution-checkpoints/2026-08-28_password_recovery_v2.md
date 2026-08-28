@@ -8,7 +8,7 @@ Ticketera NexOps — recuperación autoservicio de contraseña sobre Supabase Au
 
 ## Estado
 
-`READY_FOR_REVIEW / BLOCKED_EXTERNAL para publicación`
+`READY_FOR_REVIEW`
 
 La implementación local está completa y validada. No se modificaron producción, datos, migraciones, RLS, credenciales ni dependencias.
 
@@ -17,7 +17,7 @@ La implementación local está completa y validada. No se modificaron producció
 - Repo: `AlanTN13/nexopsticketera`
 - Base local verificada: `main` en `cd27cef723fb58403cb95ed2fb810a5cb7cb6314`
 - Branch: `codex/ticketera-password-recovery-v2`
-- PR: pendiente; la autenticación local de GitHub para `AlanTN13` está vencida.
+- PR: `AlanTN13/nexopsticketera#19` — `https://github.com/AlanTN13/nexopsticketera/pull/19`
 - Artefactos del intento 01: las ramas y el commit abortados documentados no existen en este clone y no fueron reutilizados.
 
 ## Alcance implementado
@@ -44,12 +44,6 @@ La implementación local está completa y validada. No se modificaron producció
 
 ## Bloqueos
 
-### BLOCKED_EXTERNAL — publicación GitHub
-
-- Causa: el token de `gh` para `AlanTN13` es inválido.
-- Acción mínima: reautenticar GitHub en esta máquina.
-- Después: publicar la branch, abrir la PR y adjuntar este checkpoint sin pedir una decisión técnica adicional.
-
 ### Gate externo — validación E2E no productiva
 
 Para declarar el flujo operativo se debe probar en el entorno no productivo autorizado:
@@ -63,7 +57,6 @@ Para declarar el flujo operativo se debe probar en el entorno no productivo auto
 
 ## Siguiente movimiento
 
-1. Reautenticar GitHub.
-2. Push de `codex/ticketera-password-recovery-v2` y apertura de PR.
-3. Ejecutar el recorrido E2E en el entorno no productivo con datos sintéticos.
-4. Corregir cualquier hallazgo, actualizar evidencia y llevar a review/merge.
+1. Ejecutar el recorrido E2E en el entorno no productivo con datos sintéticos.
+2. Corregir cualquier hallazgo y actualizar la evidencia de la PR.
+3. Llevar la PR a revisión/merge sin desplegar ni modificar producción desde este gate.
