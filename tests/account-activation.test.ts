@@ -33,9 +33,9 @@ describe("account activation", () => {
 
   it("rejects passwords that are too short or do not match", async () => {
     await expect(activateAccountAction({ error: null }, activationForm("short", "short"))).resolves.toEqual({
-      error: "La contraseña debe tener al menos 8 caracteres.",
+      error: "La contraseña debe tener al menos 12 caracteres.",
     });
-    await expect(activateAccountAction({ error: null }, activationForm("correcta1", "correcta2"))).resolves.toEqual({
+    await expect(activateAccountAction({ error: null }, activationForm("Segura-2026!", "Segura-2027!"))).resolves.toEqual({
       error: "Las contraseñas no coinciden.",
     });
     expect(getSupabaseServerClient).not.toHaveBeenCalled();
@@ -48,24 +48,27 @@ describe("account activation", () => {
       },
     });
 
-    await expect(activateAccountAction({ error: null }, activationForm("correcta1", "correcta1"))).rejects.toThrow(
+    await expect(activateAccountAction({ error: null }, activationForm("Segura-2026!", "Segura-2026!"))).rejects.toThrow(
       "redirect:/portal/login?reason=invite",
     );
   });
 
   it("updates the authenticated user's password and redirects to the portal", async () => {
     const updateUser = vi.fn().mockResolvedValue({ error: null });
+    const rpc = vi.fn().mockResolvedValue({ error: null });
     getSupabaseServerClient.mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } }, error: null }),
         updateUser,
       },
+      rpc,
     });
 
-    await expect(activateAccountAction({ error: null }, activationForm("correcta1", "correcta1"))).rejects.toThrow(
+    await expect(activateAccountAction({ error: null }, activationForm("Segura-2026!", "Segura-2026!"))).rejects.toThrow(
       "redirect:/portal?success=Cuenta%20activada%20correctamente.",
     );
-    expect(updateUser).toHaveBeenCalledWith({ password: "correcta1" });
+    expect(updateUser).toHaveBeenCalledWith({ password: "Segura-2026!" });
+    expect(rpc).toHaveBeenCalledWith("activate_current_user_profile");
   });
 
   it("keeps the activation form and returns a generic error when Supabase rejects the password update", async () => {
@@ -76,8 +79,28 @@ describe("account activation", () => {
       },
     });
 
-    await expect(activateAccountAction({ error: null }, activationForm("correcta1", "correcta1"))).resolves.toEqual({
+    await expect(activateAccountAction({ error: null }, activationForm("Segura-2026!", "Segura-2026!"))).resolves.toEqual({
       error: "No pudimos guardar esa contraseña. Probá con otra más segura.",
+    });
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("keeps the form when the password changed but profile activation fails", async () => {
+    getSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } }, error: null }),
+        updateUser: vi.fn().mockResolvedValue({ error: null }),
+      },
+      rpc: vi.fn().mockResolvedValue({ error: new Error("profile disabled") }),
+    });
+
+    await expect(
+      activateAccountAction(
+        { error: null },
+        activationForm("Segura-2026!", "Segura-2026!"),
+      ),
+    ).resolves.toEqual({
+      error: "La contraseña se guardó, pero no pudimos activar la cuenta. Intentá nuevamente.",
     });
     expect(redirect).not.toHaveBeenCalled();
   });

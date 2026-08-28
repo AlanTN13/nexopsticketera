@@ -16,11 +16,19 @@ describe("ticket creation idempotency", () => {
     expect(migration).toContain("on public.tickets (created_by_id, creation_key)");
   });
 
-  it("uses the actor and creation key conflict as the server-side retry boundary", () => {
+  it("delegates the actor and creation key retry boundary to the hardened RPC", () => {
     const store = fs.readFileSync(path.join(root, "src/lib/app-store.ts"), "utf8");
+    const migration = fs.readFileSync(
+      path.join(root, "supabase/migrations/20260828130000_data_integrity_boundary.sql"),
+      "utf8",
+    );
 
-    expect(store).toContain('onConflict: "created_by_id,creation_key"');
-    expect(store).toContain('ignoreDuplicates: true');
-    expect(store).toContain('.eq("creation_key", input.idempotencyKey)');
+    expect(store).toContain('client.rpc(\n    "create_ticket_with_history"');
+    expect(store).toContain("request_creation_key: input.idempotencyKey");
+    expect(migration).toContain("on conflict (created_by_id, creation_key) do nothing");
+    expect(migration).toContain("where created_by_id = actor_profile.id");
+    expect(migration).toContain("and creation_key = request_creation_key");
+    expect(migration).toContain("'created', inserted_ticket");
+    expect(store).toContain("if (rpcResult.created)");
   });
 });

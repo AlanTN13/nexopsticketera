@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --font-roboto: "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
+  --font-montserrat: "Avenir Next", "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
   --background: #f3f5f8;
   --background-deep: #e9edf3;
   --panel: rgba(255, 255, 255, 0.82);

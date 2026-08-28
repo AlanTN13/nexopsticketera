@@ -98,17 +98,6 @@ export function CreateUserForm({
           {REQUIRED_USER_TITLE_MESSAGE}
         </span>
       </Field>
-      <Field label="Contraseña inicial" name="password" required tone={tone}>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          minLength={8}
-          required
-          className={fieldClasses}
-          placeholder="Mínimo 8 caracteres"
-        />
-      </Field>
       <Field label="Rol" name="role" tone={tone}>
         <select id="role" name="role" className={fieldClasses} defaultValue={roles[0]}>
           {roles.map((role) => (
@@ -118,6 +107,9 @@ export function CreateUserForm({
           ))}
         </select>
       </Field>
+      <p className={`text-xs leading-5 ${tone === "light" ? "text-slate-600" : "text-[var(--muted)]"}`}>
+        La persona recibirá un enlace temporal para elegir su propia contraseña.
+      </p>
       {state.error ? (
         <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
           {state.error}

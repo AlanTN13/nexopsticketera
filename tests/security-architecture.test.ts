@@ -44,4 +44,20 @@ describe("security architecture", () => {
     expect(read("src/lib/app-store.ts")).toContain("remove(uploadedPaths)");
     expect(migration).not.toMatch(/service_role/i);
   });
+
+  it("enforces active profiles and platform-admin-only internal role grants", () => {
+    const migration = read(
+      "supabase/migrations/20260828120000_harden_active_users_and_role_assignment.sql",
+    );
+
+    expect(migration).toContain("alter type public.user_status add value if not exists 'disabled'");
+    expect(migration).toContain("and status = 'active'");
+    expect(migration).toContain("actor.role = 'platform_admin'");
+    expect(migration).toContain("existing.role = target_role and existing.status = target_status");
+    expect(migration).toContain('create policy "active users read visible profiles"');
+    expect(migration).toContain("create or replace function public.activate_current_user_profile()");
+    expect(migration).toContain(
+      "revoke all on function public.activate_current_user_profile() from public, anon, authenticated",
+    );
+  });
 });

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { TicketDatabase, UserProfile, isClientRole, isInternalRole } from "@/lib/ticketing";
+import { TicketDatabase, UserProfile, isActiveUser, isClientRole, isInternalRole } from "@/lib/ticketing";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function getClientSessionActorId() {
@@ -32,7 +32,8 @@ export async function getAuthenticatedActor(db: TicketDatabase) {
   const actorId = await getClientSessionActorId();
   if (!actorId) return null;
 
-  return db.users.find((user) => user.id === actorId) ?? null;
+  const actor = db.users.find((user) => user.id === actorId) ?? null;
+  return isActiveUser(actor) ? actor : null;
 }
 
 export async function requireAuthenticatedActor(db: TicketDatabase) {
@@ -58,7 +59,7 @@ export function getClientUsers(db: TicketDatabase): UserProfile[] {
 }
 
 export function isInternalActor(actor: UserProfile | null) {
-  return Boolean(actor && isInternalRole(actor.role));
+  return Boolean(isActiveUser(actor) && isInternalRole(actor.role));
 }
 
 export async function getAuthenticatedInternalActor(db: TicketDatabase) {

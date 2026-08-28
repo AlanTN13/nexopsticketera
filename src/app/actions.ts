@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { assertAuthenticatedActorId, clearClientSession, isInternalActor } from "@/lib/auth";
 import { addComment, createCompany, createTicket, createUser, getAppSnapshot, updateCompany, updateTicketWorkflow, updateUser } from "@/lib/app-store";
-import { COMPANY_PLANS, MAX_COMMENT_IMAGES, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES } from "@/lib/ticketing";
+import { COMPANY_PLANS, MAX_COMMENT_IMAGES, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES, USER_STATUSES } from "@/lib/ticketing";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { ticketDetailPath } from "@/lib/routing";
 import { requireUserTitle } from "@/lib/validation";
@@ -92,9 +92,9 @@ export async function loginClientAction(
 
   const db = await getAppSnapshot();
   const actor = db.users.find((user) => user.id === data.user.id) ?? null;
-  if (!actor) {
+  if (!actor || actor.status !== "active") {
     await client.auth.signOut();
-    return { error: "La cuenta existe en Auth, pero no tiene perfil operativo en la tiketera." };
+    return { error: "La cuenta no está habilitada para ingresar. Contactá a NexOps." };
   }
 
   redirect(isInternalActor(actor) ? routeWithActor("/backoffice", actor.id) : "/portal");
@@ -237,7 +237,6 @@ export async function createUserAction(
       email: getString(formData, "email"),
       title,
       role: assertInSet(getString(formData, "role"), USER_ROLES),
-      password: getString(formData, "password"),
     });
   } catch (error) {
     const message =
@@ -268,7 +267,6 @@ export async function createCompanyAction(formData: FormData): Promise<MutationS
       adminName: getString(formData, "adminName"),
       adminEmail: getString(formData, "adminEmail"),
       adminTitle: getString(formData, "adminTitle"),
-      adminPassword: getString(formData, "adminPassword"),
     });
     createdCompanyId = result.company.id;
   } catch (error) {
@@ -338,7 +336,7 @@ export async function updateUserAction(formData: FormData): Promise<MutationStat
       email: getString(formData, "email"),
       title: getString(formData, "title"),
       role: assertInSet(getString(formData, "role"), USER_ROLES),
-      password: getString(formData, "password") || undefined,
+      status: assertInSet(getString(formData, "status"), USER_STATUSES),
     });
   } catch (error) {
     const message =

@@ -1,4 +1,4 @@
-export const MINIMUM_PASSWORD_LENGTH = 8;
+export const MINIMUM_PASSWORD_LENGTH = 12;
 
 export function getPasswordValidationError(password: string, confirmation: string) {
   if (password.length < MINIMUM_PASSWORD_LENGTH) {

@@ -408,17 +408,9 @@ export function CreateCompanyForm({
           placeholder="Ej. Operaciones, Marketing, IT"
         />
       </Field>
-      <Field label="Contraseña temporal" name="adminPassword" tone={tone}>
-        <input
-          id="adminPassword"
-          name="adminPassword"
-          type="password"
-          minLength={8}
-          required
-          className={textInputClasses(tone)}
-          placeholder="Definí una contraseña inicial de al menos 8 caracteres"
-        />
-      </Field>
+      <p className={`text-xs leading-5 ${tone === "light" ? "text-slate-600" : "text-[var(--muted)]"}`}>
+        El responsable recibirá un enlace temporal para elegir su propia contraseña.
+      </p>
       <PendingSubmitButton
         idleLabel="Crear empresa"
         pendingLabel="Creando…"
@@ -586,7 +578,7 @@ export function UpdateUserForm({
           </select>
         </Field>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4">
         <Field label="Cargo" name={`title-${user.id}`} tone={tone}>
           <input
             id={`title-${user.id}`}
@@ -596,17 +588,21 @@ export function UpdateUserForm({
             className={textInputClasses(tone)}
           />
         </Field>
-        <Field label="Nueva contraseña" name={`password-${user.id}`} tone={tone}>
-          <input
-            id={`password-${user.id}`}
-            name="password"
-            type="password"
-            minLength={8}
-            className={textInputClasses(tone)}
-            placeholder="Dejá vacío para no cambiarla"
-          />
-        </Field>
       </div>
+      <Field label="Estado de acceso" name={`status-${user.id}`} tone={tone}>
+        <select
+          id={`status-${user.id}`}
+          name="status"
+          className={textInputClasses(tone)}
+          defaultValue={user.status}
+        >
+          {(user.status === "invited" ? ["invited", "disabled"] : ["active", "disabled"]).map((status) => (
+            <option key={status} value={status}>
+              {status === "active" ? "Activo" : status === "invited" ? "Invitación pendiente" : "Deshabilitado"}
+            </option>
+          ))}
+        </select>
+      </Field>
       <PendingSubmitButton
         idleLabel="Guardar usuario"
         pendingLabel="Guardando…"

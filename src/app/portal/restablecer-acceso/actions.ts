@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getPasswordValidationError } from "@/lib/account-activation";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
-export type AccountActivationState = {
+export type PasswordResetState = {
   error: string | null;
 };
 
@@ -13,10 +13,10 @@ function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
 }
 
-export async function activateAccountAction(
-  _previousState: AccountActivationState,
+export async function resetPasswordAction(
+  _previousState: PasswordResetState,
   formData: FormData,
-): Promise<AccountActivationState> {
+): Promise<PasswordResetState> {
   const password = getString(formData, "password");
   const confirmation = getString(formData, "confirmation");
   const validationError = getPasswordValidationError(password, confirmation);
@@ -29,26 +29,15 @@ export async function activateAccountAction(
   const { data, error: sessionError } = await supabase.auth.getUser();
 
   if (sessionError || !data.user) {
-    redirect("/portal/login?reason=invite");
+    redirect("/portal/login?reason=recovery");
   }
 
   const { error } = await supabase.auth.updateUser({ password });
-
   if (error) {
     return {
       error: "No pudimos guardar esa contraseña. Probá con otra más segura.",
     };
   }
 
-  const { error: activationError } = await supabase.rpc(
-    "activate_current_user_profile",
-  );
-
-  if (activationError) {
-    return {
-      error: "La contraseña se guardó, pero no pudimos activar la cuenta. Intentá nuevamente.",
-    };
-  }
-
-  redirect("/portal?success=Cuenta%20activada%20correctamente.");
+  redirect("/portal?success=Contrase%C3%B1a%20actualizada%20correctamente.");
 }

@@ -26,7 +26,7 @@ Los marcadores ayudan a clasificar, pero no habilitan borrado automático.
 - RLS A/B y Storage aprobados;
 - backup lógico vigente;
 - Leaked Password Protection resuelta o riesgo aceptado por escrito;
-- recuperación manual acordada hasta implementar autoservicio;
+- recuperación manual disponible como fallback hasta validar el autoservicio de extremo a extremo;
 - límites de adjuntos acordados;
 - canal de incidentes definido.
 
@@ -39,7 +39,7 @@ Los marcadores ayudan a clasificar, pero no habilitan borrado automático.
 - adjuntos sintéticos;
 - listado, filtros, detalle, comentarios e historial;
 - resolución/cierre visible;
-- recuperación de contraseña cuando esté implementada.
+- solicitud, entrega, callback PKCE, cambio de contraseña, expiración y no reutilización del enlace de recuperación;
 
 ### Backoffice
 

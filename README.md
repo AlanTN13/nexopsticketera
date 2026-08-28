@@ -97,9 +97,18 @@ El proyecto `tfonsiurhjmllqaknhgh` es la única base de desarrollo, piloto inter
 - `docs/INTERNAL_PILOT.md` para operar el piloto controlado;
 - `docs/PREPRODUCTION_CLEANUP.md` para inventario, backup, clasificación, limpieza y smoke test preproducción.
 
-## Invitaciones
+## Invitaciones y recuperación de acceso
 
-La V1 conserva creación administrativa directa con contraseña y `email_confirm`. No existe todavía aceptación por email, expiración de invitaciones ni recuperación visual de contraseña. Es deuda explícita y no debe presentarse como un flujo de invitación completo.
+Las altas administrativas generan una invitación de un solo uso y dejan el perfil en estado `invited`. La persona define su propia contraseña (mínimo 12 caracteres) y el perfil pasa a `active` mediante una RPC acotada. NexOps no conoce ni transmite contraseñas iniciales.
+
+La recuperación de contraseña usa el flujo PKCE de Supabase Auth:
+
+1. `/portal/recuperar-acceso` solicita el email y siempre responde sin revelar si la cuenta existe.
+2. Supabase envía el enlace con destino al callback público configurado mediante `NEXT_PUBLIC_APP_URL`.
+3. `/auth/callback` intercambia el código una sola vez y sólo admite `/portal/restablecer-acceso` como destino.
+4. La pantalla de restablecimiento exige una sesión Auth válida y actualiza únicamente la contraseña del usuario autenticado.
+
+Antes de considerarlo operativo se debe validar el recorrido completo en un entorno no productivo, incluida la entrega real del email, la URL permitida en Supabase y la expiración/reutilización del enlace.
 
 ## Fuente de verdad
 

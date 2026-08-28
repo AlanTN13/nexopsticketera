@@ -25,6 +25,7 @@ export const USER_ROLES = [
   "team_lead",
   "platform_admin",
 ] as const;
+export const USER_STATUSES = ["active", "invited", "disabled"] as const;
 export const MAX_TICKET_IMAGES = 3;
 export const MAX_COMMENT_IMAGES = 3;
 export const MAX_COMMENT_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -37,6 +38,7 @@ export type TicketArea = (typeof TICKET_AREAS)[number];
 export type TicketPriority = (typeof TICKET_PRIORITIES)[number];
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 export type UserRole = (typeof USER_ROLES)[number];
+export type UserStatus = (typeof USER_STATUSES)[number];
 
 export type Company = {
   id: string;
@@ -55,7 +57,7 @@ export type UserProfile = {
   name: string;
   email: string;
   role: UserRole;
-  status: "active" | "invited";
+  status: UserStatus;
   title: string;
   avatar: string;
 };
@@ -166,6 +168,42 @@ export function isClientRole(role: UserRole) {
 
 export function isInternalRole(role: UserRole) {
   return !isClientRole(role);
+}
+
+export function isActiveUser(user: UserProfile | null): user is UserProfile {
+  return user?.status === "active";
+}
+
+export function canAssignUserRole(
+  actor: UserProfile,
+  targetCompanyId: string | null,
+  role: UserRole,
+) {
+  if (!isActiveUser(actor) || !isRoleCompatibleWithCompany(role, targetCompanyId)) {
+    return false;
+  }
+
+  if (targetCompanyId === null) {
+    return actor.role === "platform_admin";
+  }
+
+  return (
+    actor.role === "platform_admin" ||
+    actor.role === "team_lead" ||
+    (actor.role === "client_admin" && actor.companyId === targetCompanyId)
+  );
+}
+
+export function canChangeUserRole(
+  actor: UserProfile,
+  target: UserProfile,
+  role: UserRole,
+) {
+  if (actor.id === target.id) {
+    return role === target.role;
+  }
+
+  return canAssignUserRole(actor, target.companyId, role);
 }
 
 export function canCreateTickets(role: UserRole) {

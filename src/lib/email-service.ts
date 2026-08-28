@@ -3,9 +3,37 @@ import "server-only";
 import { Resend } from "resend";
 
 import { NotificationEmail, escapeHtml, validEmail } from "@/lib/notification-events";
+export { getPublicAppUrl } from "@/lib/public-app-url";
 
 const FROM = "NexOps Soporte <soporte@nexopstech.com>";
 const REPLY_TO = "info@nexopstech.com";
+
+export async function sendAccountInvitationEmail(input: {
+  to: string;
+  name: string;
+  activationUrl: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("Falta configurar RESEND_API_KEY para enviar invitaciones.");
+  }
+
+  const resend = new Resend(apiKey);
+  const safeName = escapeHtml(input.name);
+  const safeUrl = escapeHtml(input.activationUrl);
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: [input.to],
+    replyTo: REPLY_TO,
+    subject: "Activá tu acceso a NexOps",
+    html: `<!doctype html><html lang="es"><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#172033"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:28px 12px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fff;border:1px solid #e2e8f0;border-radius:14px"><tr><td style="background:#172033;padding:22px 28px;color:#fff;font-size:20px;font-weight:800">NexOps</td></tr><tr><td style="padding:30px 28px"><h1 style="font-size:23px;margin:0 0 12px">Activá tu cuenta</h1><p style="font-size:15px;line-height:1.6;color:#475569">Hola ${safeName}, te invitaron a usar la Ticketera NexOps. Elegí tu contraseña desde el botón siguiente.</p><p style="margin:28px 0"><a href="${safeUrl}" style="display:inline-block;background:#5b48c7;border-radius:8px;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;text-decoration:none">Activar cuenta</a></p><p style="font-size:13px;line-height:1.5;color:#64748b">Si no esperabas esta invitación, podés ignorar el mensaje.</p></td></tr></table></td></tr></table></body></html>`,
+    text: `Hola ${input.name},\n\nTe invitaron a usar la Ticketera NexOps. Activá tu cuenta y elegí una contraseña desde este enlace:\n${input.activationUrl}\n\nSi no esperabas esta invitación, podés ignorar el mensaje.`,
+  });
+
+  if (error) {
+    throw new Error("No pudimos enviar la invitación por email.");
+  }
+}
 
 export async function sendNotificationEmail(email: NotificationEmail | null) {
   if (!email || !validEmail(email.to)) return;
@@ -41,26 +69,6 @@ export async function sendNotificationEmail(email: NotificationEmail | null) {
       event: email.idempotencyKey.split("/")[0],
       type: error instanceof Error ? error.name : "UnknownError",
     });
-  }
-}
-
-export function getPublicAppUrl() {
-  const configured =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
-    process.env.VERCEL_URL;
-
-  if (!configured) {
-    console.warn("[notifications] No se pudo construir el enlace: falta NEXT_PUBLIC_APP_URL.");
-    return null;
-  }
-
-  const withProtocol = /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
-  try {
-    return new URL(withProtocol).origin;
-  } catch {
-    console.warn("[notifications] No se pudo construir el enlace: la URL pública es inválida.");
-    return null;
   }
 }
 
