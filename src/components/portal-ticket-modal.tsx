@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { PointerEvent as ReactPointerEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 type AppModalProps = {
@@ -11,6 +11,13 @@ type AppModalProps = {
   maxWidthClassName?: string;
 };
 
+export function shouldCloseFromBackdropPointer(
+  startedOutsideDialog: boolean,
+  endedOutsideDialog: boolean,
+) {
+  return startedOutsideDialog && endedOutsideDialog;
+}
+
 export function AppModal({
   triggerLabel = "+ Nuevo ticket",
   title,
@@ -19,6 +26,27 @@ export function AppModal({
   maxWidthClassName = "max-w-4xl",
 }: AppModalProps) {
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const pointerStartedOutsideDialog = useRef(false);
+
+  const isOutsideDialog = (event: ReactPointerEvent<HTMLDivElement>) =>
+    !dialogRef.current?.contains(event.target as Node);
+
+  const handleBackdropPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    pointerStartedOutsideDialog.current = isOutsideDialog(event);
+  };
+
+  const handleBackdropPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const shouldClose = shouldCloseFromBackdropPointer(
+      pointerStartedOutsideDialog.current,
+      isOutsideDialog(event),
+    );
+    pointerStartedOutsideDialog.current = false;
+
+    if (shouldClose) {
+      setOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) {
@@ -55,12 +83,16 @@ export function AppModal({
         ? createPortal(
             <div
               className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-[rgba(15,23,42,0.48)] p-4 backdrop-blur-md sm:p-6"
-              onClick={() => setOpen(false)}
+              onPointerCancel={() => {
+                pointerStartedOutsideDialog.current = false;
+              }}
+              onPointerDown={handleBackdropPointerDown}
+              onPointerUp={handleBackdropPointerUp}
             >
               <div className="flex min-h-full w-full items-center justify-center">
                 <div
+                  ref={dialogRef}
                   className={`relative w-full ${maxWidthClassName} rounded-[32px] border border-[rgba(17,24,39,0.08)] bg-white shadow-[0_30px_100px_rgba(17,24,39,0.22)]`}
-                  onClick={(event) => event.stopPropagation()}
                 >
                   <div className="flex items-start justify-between gap-4 border-b border-[rgba(17,24,39,0.06)] px-6 py-5">
                     <div>
