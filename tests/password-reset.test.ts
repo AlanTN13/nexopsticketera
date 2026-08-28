@@ -29,9 +29,9 @@ describe("password reset", () => {
   it("reuses the account password validation before calling Supabase", async () => {
     await expect(
       resetPasswordAction({ error: null }, passwordForm("short", "short")),
-    ).resolves.toEqual({ error: "La contraseña debe tener al menos 8 caracteres." });
+    ).resolves.toEqual({ error: "La contraseña debe tener al menos 12 caracteres." });
     await expect(
-      resetPasswordAction({ error: null }, passwordForm("correcta1", "correcta2")),
+      resetPasswordAction({ error: null }, passwordForm("Segura-2026!", "Segura-2027!")),
     ).resolves.toEqual({ error: "Las contraseñas no coinciden." });
 
     expect(getSupabaseServerClient).not.toHaveBeenCalled();
@@ -45,7 +45,7 @@ describe("password reset", () => {
     });
 
     await expect(
-      resetPasswordAction({ error: null }, passwordForm("correcta1", "correcta1")),
+      resetPasswordAction({ error: null }, passwordForm("Segura-2026!", "Segura-2026!")),
     ).rejects.toThrow("redirect:/portal/login?reason=recovery");
   });
 
@@ -59,11 +59,11 @@ describe("password reset", () => {
     });
 
     await expect(
-      resetPasswordAction({ error: null }, passwordForm("correcta1", "correcta1")),
+      resetPasswordAction({ error: null }, passwordForm("Segura-2026!", "Segura-2026!")),
     ).rejects.toThrow(
       "redirect:/portal?success=Contrase%C3%B1a%20actualizada%20correctamente.",
     );
-    expect(updateUser).toHaveBeenCalledWith({ password: "correcta1" });
+    expect(updateUser).toHaveBeenCalledWith({ password: "Segura-2026!" });
   });
 
   it("returns a generic error when Supabase rejects the new password", async () => {
@@ -75,7 +75,7 @@ describe("password reset", () => {
     });
 
     await expect(
-      resetPasswordAction({ error: null }, passwordForm("correcta1", "correcta1")),
+      resetPasswordAction({ error: null }, passwordForm("Segura-2026!", "Segura-2026!")),
     ).resolves.toEqual({
       error: "No pudimos guardar esa contraseña. Probá con otra más segura.",
     });

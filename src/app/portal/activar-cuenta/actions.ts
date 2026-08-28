@@ -40,5 +40,15 @@ export async function activateAccountAction(
     };
   }
 
+  const { error: activationError } = await supabase.rpc(
+    "activate_current_user_profile",
+  );
+
+  if (activationError) {
+    return {
+      error: "La contraseña se guardó, pero no pudimos activar la cuenta. Intentá nuevamente.",
+    };
+  }
+
   redirect("/portal?success=Cuenta%20activada%20correctamente.");
 }

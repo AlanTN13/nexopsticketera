@@ -99,7 +99,7 @@ El proyecto `tfonsiurhjmllqaknhgh` es la única base de desarrollo, piloto inter
 
 ## Invitaciones y recuperación de acceso
 
-La V1 conserva creación administrativa directa con contraseña y `email_confirm`. La aceptación por email y la expiración de invitaciones siguen siendo deuda explícita; no debe presentarse como un flujo de invitación completo.
+Las altas administrativas generan una invitación de un solo uso y dejan el perfil en estado `invited`. La persona define su propia contraseña (mínimo 12 caracteres) y el perfil pasa a `active` mediante una RPC acotada. NexOps no conoce ni transmite contraseñas iniciales.
 
 La recuperación de contraseña usa el flujo PKCE de Supabase Auth:
 

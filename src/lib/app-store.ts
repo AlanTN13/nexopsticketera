@@ -3,7 +3,7 @@ import "server-only";
 import { PostgrestError } from "@supabase/supabase-js";
 
 import { canCommentOnTicket, canCreateCompanyTicket, canUpdateTicketWorkflow } from "@/lib/authorization";
-import { getPublicAppUrl, sendNotificationEmail } from "@/lib/email-service";
+import { getPublicAppUrl, sendAccountInvitationEmail, sendNotificationEmail } from "@/lib/email-service";
 import {
   buildCommentNotification,
   buildStatusChangedNotification,
@@ -15,7 +15,6 @@ import {
   Company,
   CompanyPlan,
   MAX_TICKET_CONTEXT_URLS,
-  MAX_TICKET_IMAGES,
   TicketArea,
   TicketAttachment,
   TicketComment,
@@ -27,12 +26,15 @@ import {
   TicketType,
   UserProfile,
   UserRole,
+  UserStatus,
+  canAssignUserRole,
+  canChangeUserRole,
   canManageGlobalCatalog,
   isClientRole,
   isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";
 import { requireUserTitle } from "@/lib/validation";
-import { validateCommentImages } from "@/lib/comment-image-validation";
+import { validateCommentImages, validateTicketImages } from "@/lib/comment-image-validation";
 
 export type CreateTicketInput = {
   actorId: string;
@@ -69,7 +71,6 @@ export type CreateUserInput = {
   email: string;
   role: UserRole;
   title: string;
-  password: string;
 };
 
 export type UpdateUserInput = {
@@ -79,7 +80,7 @@ export type UpdateUserInput = {
   email: string;
   role: UserRole;
   title: string;
-  password?: string;
+  status: UserStatus;
 };
 
 export type CreateCompanyInput = {
@@ -90,7 +91,6 @@ export type CreateCompanyInput = {
   adminName: string;
   adminEmail: string;
   adminTitle: string;
-  adminPassword: string;
 };
 
 export type UpdateCompanyInput = {
@@ -175,7 +175,7 @@ type HistoryRow = {
 
 function ensureActor(db: TicketDatabase, actorId: string) {
   const actor = db.users.find((user) => user.id === actorId);
-  if (!actor) {
+  if (!actor || actor.status !== "active") {
     throw new Error("No pudimos encontrar el usuario actual.");
   }
   return actor;
@@ -251,13 +251,17 @@ function mapCompany(row: CompanyRow): Company {
 }
 
 function mapUser(row: UserRow): UserProfile {
+  const status = (["active", "invited", "disabled"] as const).find(
+    (candidate) => candidate === row.status,
+  ) ?? "invited";
+
   return {
     id: row.id,
     companyId: row.company_id,
     name: row.name,
     email: row.email,
     role: row.role as UserRole,
-    status: row.status === "active" ? "active" : "invited",
+    status,
     title: row.title ?? "",
     avatar: row.avatar ?? avatarFromName(row.name),
   };
@@ -363,9 +367,7 @@ async function uploadTicketImages(input: {
     return [];
   }
 
-  if (input.attachments.length > MAX_TICKET_IMAGES) {
-    throw new Error(`Solo podés adjuntar hasta ${MAX_TICKET_IMAGES} imágenes por ticket.`);
-  }
+  await validateTicketImages(input.attachments);
 
   const client = await getSupabaseServerClient();
   const createdAttachments: TicketAttachment[] = [];
@@ -386,19 +388,13 @@ async function uploadTicketImages(input: {
       throw new Error(uploadError.message);
     }
 
-    const { data, error } = await client
-      .from("ticket_attachments")
-      .insert({
-        ticket_id: input.ticketId,
-        uploaded_by_id: input.actorId,
-        storage_path: storagePath,
-        file_name: file.name,
-        size_bytes: file.size,
-        mime_type: file.type,
-        kind: "screenshot",
-      })
-      .select("*")
-      .single();
+    const { data, error } = await client.rpc("register_ticket_attachment", {
+      target_ticket_id: input.ticketId,
+      attachment_storage_path: storagePath,
+      attachment_file_name: file.name,
+      attachment_size_bytes: file.size,
+      attachment_mime_type: file.type,
+    });
 
     if (error) {
       await client.storage.from("ticket-attachments").remove([storagePath]);
@@ -552,58 +548,15 @@ function assertContextUrls(contextUrls: string[]) {
   }
 }
 
-async function createTicketHistoryEntry(input: {
-  ticketId: string;
-  actorId: string;
-  message: string;
-}) {
-  const client = await getSupabaseServerClient();
-  const { error } = await client.from("ticket_history").insert({
-    ticket_id: input.ticketId,
-    actor_id: input.actorId,
-    event_type: "created",
-    message: input.message,
-  });
-
-  assertNoError(error);
-}
-
 async function createTicketResources(input: {
   ticketId: string;
   actorId: string;
-  actorName: string;
-  ticketCode: string;
-  contextUrls: string[];
   attachments: File[];
 }) {
-  assertContextUrls(input.contextUrls);
-
-  const uploadedAttachments = await uploadTicketImages({
+  await uploadTicketImages({
     ticketId: input.ticketId,
     actorId: input.actorId,
     attachments: input.attachments,
-  });
-
-  const resourceNotes = [];
-  if (input.contextUrls.length > 0) {
-    resourceNotes.push(
-      `${input.contextUrls.length} link${input.contextUrls.length === 1 ? "" : "s"} de contexto`,
-    );
-  }
-  if (uploadedAttachments.length > 0) {
-    resourceNotes.push(
-      `${uploadedAttachments.length} imagen${uploadedAttachments.length === 1 ? "" : "es"} adjunta${uploadedAttachments.length === 1 ? "" : "s"}`,
-    );
-  }
-
-  const baseMessage = `${input.actorName} creó el ticket ${input.ticketCode}`;
-  const resourceMessage =
-    resourceNotes.length > 0 ? ` y sumó ${resourceNotes.join(" y ")}` : "";
-
-  await createTicketHistoryEntry({
-    ticketId: input.ticketId,
-    actorId: input.actorId,
-    message: `${baseMessage}${resourceMessage}.`,
   });
 }
 
@@ -613,23 +566,20 @@ async function createSupabaseUserProfile(input: {
   name: string;
   role: UserRole;
   title: string;
-  password: string;
 }) {
-  const client = await getSupabaseServerClient();
   const adminClient = getSupabaseAdminClient();
-  if (input.password.length < 8) {
-    throw new Error("La contraseña debe tener al menos 8 caracteres.");
+  const appUrl = getPublicAppUrl();
+  if (!appUrl) {
+    throw new Error("Falta configurar NEXT_PUBLIC_APP_URL para enviar invitaciones.");
   }
 
-  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+  const { data: authData, error: authError } = await adminClient.auth.admin.generateLink({
+    type: "invite",
     email: input.email,
-    password: input.password,
-    email_confirm: true,
-    user_metadata: {
-      name: input.name,
-    },
-    app_metadata: {
-      role: input.role,
+    options: {
+      data: {
+        name: input.name,
+      },
     },
   });
 
@@ -638,8 +588,22 @@ async function createSupabaseUserProfile(input: {
   }
 
   const authUser = authData.user;
+  const tokenHash = authData.properties?.hashed_token;
   if (!authUser) {
     throw new Error("Supabase no devolvió el usuario creado.");
+  }
+  if (!tokenHash) {
+    await adminClient.auth.admin.deleteUser(authUser.id);
+    throw new Error("Supabase no devolvió un enlace de activación válido.");
+  }
+
+  const { error: metadataError } = await adminClient.auth.admin.updateUserById(authUser.id, {
+    app_metadata: { role: input.role },
+    user_metadata: { name: input.name },
+  });
+  if (metadataError) {
+    await adminClient.auth.admin.deleteUser(authUser.id);
+    throw new Error(metadataError.message);
   }
 
   const profile = {
@@ -648,12 +612,12 @@ async function createSupabaseUserProfile(input: {
     name: input.name,
     email: input.email.toLowerCase(),
     role: input.role,
-    status: "active",
+    status: "invited",
     title: input.title,
     avatar: avatarFromName(input.name),
   };
 
-  const { data, error } = await client
+  const { data, error } = await adminClient
     .from("users")
     .insert(profile)
     .select("*")
@@ -662,6 +626,21 @@ async function createSupabaseUserProfile(input: {
   if (error) {
     await adminClient.auth.admin.deleteUser(authUser.id);
     throw new Error(error.message);
+  }
+
+  const activationUrl = new URL("/auth/callback", appUrl);
+  activationUrl.searchParams.set("token_hash", tokenHash);
+  activationUrl.searchParams.set("type", "invite");
+
+  try {
+    await sendAccountInvitationEmail({
+      to: profile.email,
+      name: profile.name,
+      activationUrl: activationUrl.toString(),
+    });
+  } catch (invitationError) {
+    await adminClient.auth.admin.deleteUser(authUser.id);
+    throw invitationError;
   }
 
   return mapUser(data as UserRow);
@@ -686,58 +665,42 @@ async function createTicketInSupabase(input: {
   }
 
   assertContextUrls(input.contextUrls);
+  await validateTicketImages(input.attachments);
 
   const client = await getSupabaseServerClient();
-  const payload = {
-    company_id: actor.companyId,
-    title: input.title,
-    description: input.description,
-    context_urls: input.contextUrls,
-    type: input.type,
-    area: input.area,
-    priority: input.priority,
-    status: "new",
-    created_by_id: actor.id,
-    assigned_to_id: null,
-    creation_key: input.idempotencyKey,
-  };
-
-  const { data: ticketData, error: ticketError } = await client
-    .from("tickets")
-    .upsert(payload, {
-      onConflict: "created_by_id,creation_key",
-      ignoreDuplicates: true,
-    })
-    .select("*")
-    .maybeSingle();
+  const { data: ticketData, error: ticketError } = await client.rpc(
+    "create_ticket_with_history",
+    {
+      request_creation_key: input.idempotencyKey,
+      ticket_title: input.title,
+      ticket_description: input.description,
+      ticket_context_urls: input.contextUrls,
+      ticket_type: input.type,
+      ticket_area: input.area,
+    },
+  );
 
   assertNoError(ticketError);
-
-  if (!ticketData) {
-    const { data: existingTicket, error: existingTicketError } = await client
-      .from("tickets")
-      .select("*")
-      .eq("created_by_id", actor.id)
-      .eq("creation_key", input.idempotencyKey)
-      .single();
-
-    assertNoError(existingTicketError);
-    return mapTicket(existingTicket as TicketRow);
-  }
-
-  await createTicketResources({
-    ticketId: String(ticketData.id),
-    actorId: actor.id,
-    actorName: actor.name,
-    ticketCode: String(ticketData.code),
-    contextUrls: input.contextUrls,
-    attachments: input.attachments,
-  });
-  const ticket = mapTicket(ticketData as TicketRow);
-  const notificationContext = getNotificationContext(db, actor, ticket, "internal");
-  await sendNotificationEmail(
-    notificationContext ? buildTicketCreatedNotification(notificationContext) : null,
+  const rpcResult = assertData(
+    ticketData as { ticket: TicketRow; created: boolean } | null,
+    "No pudimos crear el ticket.",
   );
+  const ticketRow = rpcResult.ticket;
+
+  if (rpcResult.created) {
+    await createTicketResources({
+      ticketId: String(ticketRow.id),
+      actorId: actor.id,
+      attachments: input.attachments,
+    });
+  }
+  const ticket = mapTicket(ticketRow);
+  if (rpcResult.created) {
+    const notificationContext = getNotificationContext(db, actor, ticket, "internal");
+    await sendNotificationEmail(
+      notificationContext ? buildTicketCreatedNotification(notificationContext) : null,
+    );
+  }
 
   return ticket;
 }
@@ -828,76 +791,19 @@ async function updateTicketWorkflowInSupabase(input: {
   }
 
   const previousStatus = ticket.status;
-  const previousPriority = ticket.priority;
-  const previousAssignee = ticket.assignedToId;
-
   const client = await getSupabaseServerClient();
-  const { error: updateError } = await client
-    .from("tickets")
-    .update({
-      status: input.status,
-      priority: input.priority,
-      assigned_to_id: input.assignedToId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", ticket.id);
+  const { data: statusHistoryId, error: updateError } = await client.rpc(
+    "update_ticket_workflow_with_history",
+    {
+      target_ticket_id: ticket.id,
+      next_status: input.status,
+      next_priority: input.priority,
+      next_assigned_to_id: input.assignedToId,
+    },
+  );
   assertNoError(updateError);
 
-  const historyRows: Array<{
-    ticket_id: string;
-    actor_id: string;
-    event_type: string;
-    message: string;
-  }> = [];
-
-  if (previousStatus !== input.status) {
-    historyRows.push({
-      ticket_id: ticket.id,
-      actor_id: actor.id,
-      event_type: "status_changed",
-      message: `${actor.name} cambió el estado a ${input.status}.`,
-    });
-  }
-
-  if (previousPriority !== input.priority) {
-    historyRows.push({
-      ticket_id: ticket.id,
-      actor_id: actor.id,
-      event_type: "priority_changed",
-      message: `${actor.name} cambió la prioridad a ${input.priority}.`,
-    });
-  }
-
-  if (previousAssignee !== input.assignedToId) {
-    const assignee = db.users.find((user) => user.id === input.assignedToId);
-    historyRows.push({
-      ticket_id: ticket.id,
-      actor_id: actor.id,
-      event_type: "assigned",
-      message: assignee
-        ? `${actor.name} asignó el ticket a ${assignee.name}.`
-        : `${actor.name} dejó el ticket sin asignar.`,
-    });
-  }
-
-  let statusHistoryId: string | null = null;
-  if (historyRows.length > 0) {
-    const { data: historyData, error: historyError } = await client
-      .from("ticket_history")
-      .insert(historyRows)
-      .select("id,event_type");
-    assertNoError(historyError);
-    const historyRecords = assertData(
-      historyData,
-      "No pudimos recuperar el historial del workflow.",
-    );
-    const statusHistory = historyRecords.find(
-      (entry) => String(entry.event_type) === "status_changed",
-    );
-    statusHistoryId = statusHistory ? String(statusHistory.id) : null;
-  }
-
-  if (previousStatus !== input.status && statusHistoryId) {
+  if (previousStatus !== input.status && typeof statusHistoryId === "string") {
     const notificationContext = getNotificationContext(db, actor, ticket, "client");
     await sendNotificationEmail(
       notificationContext
@@ -919,17 +825,12 @@ async function createUserInSupabase(input: {
   email: string;
   role: UserRole;
   title: string;
-  password: string;
 }) {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
   const title = requireUserTitle(input.title);
 
-  const sameCompany = actor.companyId === input.companyId;
-  const canManageClientSide = actor.role === "client_admin" && sameCompany;
-  const canManagePlatform = canManageGlobalCatalog(actor.role);
-
-  if (!canManageClientSide && !canManagePlatform) {
+  if (!canAssignUserRole(actor, input.companyId, input.role)) {
     throw new Error("No tenés permisos para gestionar usuarios.");
   }
 
@@ -945,7 +846,6 @@ async function createUserInSupabase(input: {
     name: input.name,
     role: input.role,
     title,
-    password: input.password,
   });
 }
 
@@ -956,7 +856,7 @@ async function updateUserInSupabase(input: {
   email: string;
   role: UserRole;
   title: string;
-  password?: string;
+  status: UserStatus;
 }) {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
@@ -966,16 +866,15 @@ async function updateUserInSupabase(input: {
     throw new Error("No pudimos encontrar el usuario a editar.");
   }
 
-  const sameCompany = actor.companyId === target.companyId;
-  const canManageClientSide = actor.role === "client_admin" && sameCompany;
-  const canManagePlatform = canManageGlobalCatalog(actor.role);
-
-  if (!canManageClientSide && !canManagePlatform) {
+  if (!canChangeUserRole(actor, target, input.role)) {
     throw new Error("No tenés permisos para editar usuarios.");
   }
 
-  if (input.password && input.password.length < 8) {
-    throw new Error("La nueva contraseña debe tener al menos 8 caracteres.");
+  const allowedStatuses = target.status === "invited"
+    ? (["invited", "disabled"] as UserStatus[])
+    : (["active", "disabled"] as UserStatus[]);
+  if (!allowedStatuses.includes(input.status) || (actor.id === target.id && input.status !== target.status)) {
+    throw new Error("No tenés permisos para cambiar ese estado de acceso.");
   }
 
   const normalizedEmail = input.email.toLowerCase();
@@ -989,12 +888,9 @@ async function updateUserInSupabase(input: {
 
   assertRoleAssignment(input.role, target.companyId);
 
-  const client = await getSupabaseServerClient();
   const adminClient = getSupabaseAdminClient();
   const authPayload: {
     email: string;
-    email_confirm: true;
-    password?: string;
     user_metadata: {
       name: string;
     };
@@ -1003,7 +899,6 @@ async function updateUserInSupabase(input: {
     };
   } = {
     email: normalizedEmail,
-    email_confirm: true,
     user_metadata: {
       name: input.name,
     },
@@ -1012,22 +907,18 @@ async function updateUserInSupabase(input: {
     },
   };
 
-  if (input.password) {
-    authPayload.password = input.password;
-  }
-
   const { error: authError } = await adminClient.auth.admin.updateUserById(target.id, authPayload);
   if (authError) {
     throw new Error(authError.message);
   }
 
-  const { data, error } = await client
+  const { data, error } = await adminClient
     .from("users")
     .update({
       name: input.name,
       email: normalizedEmail,
       role: input.role,
-      status: "active",
+      status: input.status,
       title: input.title,
       avatar: avatarFromName(input.name),
     })
@@ -1047,7 +938,6 @@ async function createCompanyInSupabase(input: {
   adminName: string;
   adminEmail: string;
   adminTitle: string;
-  adminPassword: string;
 }) {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
@@ -1061,8 +951,7 @@ async function createCompanyInSupabase(input: {
     !input.industry ||
     !input.adminName ||
     !input.adminEmail ||
-    !input.adminTitle ||
-    !input.adminPassword
+    !input.adminTitle
   ) {
     throw new Error("Empresa, industria y admin inicial son obligatorios.");
   }
@@ -1101,7 +990,6 @@ async function createCompanyInSupabase(input: {
       name: input.adminName,
       role: "client_admin",
       title: input.adminTitle,
-      password: input.adminPassword,
     });
 
     return { company: mapCompany(companyRecord as CompanyRow), adminUser };
