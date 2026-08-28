@@ -67,6 +67,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
             {reason === "session" ? <div className="mt-5"><InlineNotice tone="error">Tu sesión venció. Ingresá nuevamente para continuar.</InlineNotice></div> : null}
             {reason === "invite" ? <div className="mt-5"><InlineNotice tone="error">El enlace de acceso no es válido o venció. Pedí una nueva invitación a NexOps.</InlineNotice></div> : null}
+            {reason === "recovery" ? <div className="mt-5"><InlineNotice tone="error">El enlace de recuperación no es válido o venció. Solicitá uno nuevo.</InlineNotice></div> : null}
             <div className="mt-6">
               <LoginClientForm />
             </div>

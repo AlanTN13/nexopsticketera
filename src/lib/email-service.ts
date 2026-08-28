@@ -3,6 +3,7 @@ import "server-only";
 import { Resend } from "resend";
 
 import { NotificationEmail, escapeHtml, validEmail } from "@/lib/notification-events";
+export { getPublicAppUrl } from "@/lib/public-app-url";
 
 const FROM = "NexOps Soporte <soporte@nexopstech.com>";
 const REPLY_TO = "info@nexopstech.com";
@@ -41,26 +42,6 @@ export async function sendNotificationEmail(email: NotificationEmail | null) {
       event: email.idempotencyKey.split("/")[0],
       type: error instanceof Error ? error.name : "UnknownError",
     });
-  }
-}
-
-export function getPublicAppUrl() {
-  const configured =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
-    process.env.VERCEL_URL;
-
-  if (!configured) {
-    console.warn("[notifications] No se pudo construir el enlace: falta NEXT_PUBLIC_APP_URL.");
-    return null;
-  }
-
-  const withProtocol = /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
-  try {
-    return new URL(withProtocol).origin;
-  } catch {
-    console.warn("[notifications] No se pudo construir el enlace: la URL pública es inválida.");
-    return null;
   }
 }
 

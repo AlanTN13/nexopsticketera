@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { LoginClientState, loginClientAction } from "@/app/actions";
@@ -43,6 +44,12 @@ export function LoginClientForm() {
           placeholder="Ingresá tu contraseña"
         />
       </label>
+
+      <div className="flex justify-end">
+        <Link className="text-sm font-semibold text-[#5b48c7] hover:text-[#4330a6]" href="/portal/recuperar-acceso">
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </div>
 
       {state.error ? (
         <div className="rounded-[18px] border border-rose-300/30 bg-rose-50 px-4 py-3 text-sm text-rose-700">
