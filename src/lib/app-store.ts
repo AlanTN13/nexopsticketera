@@ -14,7 +14,6 @@ import { parseTicketReference, ticketDetailPath } from "@/lib/routing";
 import {
   Company,
   CompanyPlan,
-  MAX_TICKET_CONTEXT_URLS,
   TicketArea,
   TicketAttachment,
   TicketComment,
@@ -35,6 +34,7 @@ import {
 } from "@/lib/ticketing";
 import { requireUserTitle } from "@/lib/validation";
 import { validateCommentImages, validateTicketImages } from "@/lib/comment-image-validation";
+import { getSafeTicketContextUrls, normalizeTicketContextUrls } from "@/lib/ticket-context-urls";
 
 export type CreateTicketInput = {
   actorId: string;
@@ -274,7 +274,7 @@ function mapTicket(row: TicketRow): TicketRecord {
     companyId: row.company_id,
     title: row.title,
     description: row.description,
-    contextUrls: Array.isArray(row.context_urls) ? row.context_urls : [],
+    contextUrls: getSafeTicketContextUrls(row.context_urls),
     type: row.type as TicketType,
     area: row.area as TicketArea,
     priority: row.priority as TicketPriority,
@@ -525,29 +525,6 @@ async function getVisibleTicketReferenceFromSupabase(reference: string) {
   return { id: String(data.id), code: String(data.code) };
 }
 
-function assertContextUrls(contextUrls: string[]) {
-  if (contextUrls.length > MAX_TICKET_CONTEXT_URLS) {
-    throw new Error(`Solo podés adjuntar hasta ${MAX_TICKET_CONTEXT_URLS} links por ticket.`);
-  }
-
-  for (const item of contextUrls) {
-    if (!item) {
-      continue;
-    }
-
-    let parsedUrl: URL;
-    try {
-      parsedUrl = new URL(item);
-    } catch {
-      throw new Error("Uno de los links asociados al ticket no es una URL válida.");
-    }
-
-    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-      throw new Error("Los links del ticket deben comenzar con http:// o https://.");
-    }
-  }
-}
-
 async function createTicketResources(input: {
   ticketId: string;
   actorId: string;
@@ -664,7 +641,7 @@ async function createTicketInSupabase(input: {
     throw new Error("Solo usuarios cliente pueden crear tickets en este entorno.");
   }
 
-  assertContextUrls(input.contextUrls);
+  const contextUrls = normalizeTicketContextUrls(input.contextUrls);
   await validateTicketImages(input.attachments);
 
   const client = await getSupabaseServerClient();
@@ -674,7 +651,7 @@ async function createTicketInSupabase(input: {
       request_creation_key: input.idempotencyKey,
       ticket_title: input.title,
       ticket_description: input.description,
-      ticket_context_urls: input.contextUrls,
+      ticket_context_urls: contextUrls,
       ticket_type: input.type,
       ticket_area: input.area,
     },

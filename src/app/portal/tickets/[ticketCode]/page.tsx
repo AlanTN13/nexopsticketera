@@ -7,6 +7,7 @@ import { getTicketById, getTicketHistory, getUser, getVisibleComments } from "@/
 import { ticketDetailPath } from "@/lib/routing";
 import { canCommentOnTickets, formatRelativeDate, getTicketNextStep, translateHistoryMessage } from "@/lib/ticketing";
 import { CommentAttachments } from "@/components/comment-attachments";
+import { TicketContextLinks } from "@/components/ticket-context-links";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ ticketCode: string }>; searchParams: Promise<{ success?: string }> };
@@ -43,7 +44,7 @@ export default async function PortalTicketDetail({ params, searchParams }: Props
         <div className="mt-4 border-t border-slate-200 pt-4">{canCommentOnTickets(actor.role) ? <AddCommentForm actor={actor} ticketId={ticket.id} returnPath={canonicalPath} label="Escribí un mensaje" submitLabel="Enviar mensaje" tone="light" /> : <EmptyState title="Sin permisos para comentar" detail="Podés seguir el ticket, pero no publicar mensajes." tone="light" />}</div>
       </SectionCard>
       <div className="grid content-start gap-3">
-        <SectionCard title="Descripción" tone="light"><p className="whitespace-pre-line text-sm leading-6 text-slate-700">{ticket.description}</p>{ticket.contextUrls.length || attachments.length ? <details className="mt-3 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-sm font-semibold text-slate-800">Archivos y enlaces ({ticket.contextUrls.length + attachments.length})</summary><div className="mt-2 grid gap-2">{ticket.contextUrls.map((url) => <a key={url} href={url} target="_blank" rel="noreferrer" className="break-all text-sm text-violet-700 underline">{url}</a>)}{attachments.map((item) => <a key={item.id} href={item.url} className="text-sm text-violet-700 underline">{item.name}</a>)}</div></details> : null}</SectionCard>
+        <SectionCard title="Descripción" tone="light"><p className="whitespace-pre-line text-sm leading-6 text-slate-700">{ticket.description}</p>{ticket.contextUrls.length ? <div className="mt-3 border-t border-slate-200 pt-3"><p className="mb-2 text-sm font-semibold text-slate-800">Enlaces aportados ({ticket.contextUrls.length})</p><TicketContextLinks urls={ticket.contextUrls} /></div> : null}{attachments.length ? <details className="mt-3 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-sm font-semibold text-slate-800">Archivos adjuntos ({attachments.length})</summary><div className="mt-2 grid gap-2">{attachments.map((item) => <a key={item.id} href={item.url} className="text-sm text-violet-700 underline">{item.name}</a>)}</div></details> : null}</SectionCard>
         <details className="rounded-xl border border-slate-200 bg-white"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-900">Historial ({history.length})</summary><div className="grid gap-2 border-t border-slate-200 p-3">{history.map((entry) => <div key={entry.id} className="text-sm text-slate-700"><p>{translateHistoryMessage(entry.message)}</p><TimelineDate value={entry.createdAt} tone="light" /></div>)}</div></details>
       </div>
     </div>
