@@ -89,11 +89,11 @@ select {
 }
 
 .radar-product {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 .radar-product :is(a, button, summary):focus-visible {
-  outline: 2px solid #a78bfa;
+  outline: 2px solid #6749c7;
   outline-offset: 3px;
 }
 
