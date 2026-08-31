@@ -1,6 +1,13 @@
-# NexOps Ticketing
+# Portal NexOps
 
-Ticketera multiempresa en Next.js 16 con Supabase como único backend de ejecución.
+Portal multiempresa en Next.js 16 con Supabase como único backend de ejecución. La Ticketera continúa como el módulo **Soporte** y la reportería de marketing de NexOps vive en **Métricas**, bajo una sola sesión.
+
+Rutas de cliente:
+
+- `/portal`: Inicio.
+- `/portal/soporte`: tickets y seguimiento.
+- `/portal/metricas`: reportería habilitada por empresa.
+- `/portal/tickets/[ticketCode]`: enlaces históricos y detalle de ticket compatibles.
 
 ## Arquitectura V1
 
@@ -29,14 +36,19 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 RESEND_API_KEY=
-NEXT_PUBLIC_APP_URL=https://soporte.nexopstech.com
+NEXT_PUBLIC_APP_URL=https://portal.nexopstech.com
+PORTAL_METRICS_META_SHEET_URL=
+PORTAL_METRICS_MAILCHIMP_SHEET_URL=
+PORTAL_METRICS_COMPANY_CONFIG=
 ```
 
 La clave publicable puede estar en el frontend y queda limitada por grants y RLS. `SUPABASE_SERVICE_ROLE_KEY` es server-only y solo es necesaria para crear o editar usuarios desde acciones administrativas. Nunca debe llevar prefijo `NEXT_PUBLIC_`.
 
 La variable legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` sigue aceptada durante la migración, pero los proyectos nuevos deben usar la clave publicable.
 
-`RESEND_API_KEY` es server-only y no debe llevar el prefijo `NEXT_PUBLIC_`. `NEXT_PUBLIC_APP_URL` define el origen de los enlaces “Ver ticket” y en producción apunta al dominio validado `https://soporte.nexopstech.com`. El servicio también acepta `VERCEL_PROJECT_PRODUCTION_URL` o `VERCEL_URL` como fallback para entornos temporales y nunca construye enlaces a partir de headers del navegador.
+`RESEND_API_KEY` es server-only y no debe llevar el prefijo `NEXT_PUBLIC_`. `NEXT_PUBLIC_APP_URL` define el origen de los enlaces “Ver ticket”; el objetivo del Portal es `https://portal.nexopstech.com`. El servicio también acepta `VERCEL_PROJECT_PRODUCTION_URL` o `VERCEL_URL` como fallback para entornos temporales y nunca construye enlaces a partir de headers del navegador.
+
+Las variables `PORTAL_METRICS_*_SHEET_URL` son server-only. El navegador no recibe las URLs de Google Sheets: el servidor descarga el CSV desde una lista de hosts permitidos y filtra la cuenta usando la empresa de la sesión. `PORTAL_METRICS_COMPANY_CONFIG` permite habilitar/deshabilitar Métricas o sobreescribir el identificador de reportería por slug, sin crear planes comerciales ni otra autenticación. Ver `docs/PORTAL_NEXOPS_V1.md`.
 
 ## Notificaciones por email
 
@@ -72,6 +84,8 @@ npm run dev
 
 - Login: `http://localhost:3000/portal/login`
 - Portal: `http://localhost:3000/portal`
+- Soporte: `http://localhost:3000/portal/soporte`
+- Métricas: `http://localhost:3000/portal/metricas`
 - Backoffice: `http://localhost:3000/backoffice`
 - Diagnóstico: `http://localhost:3000/setup`
 

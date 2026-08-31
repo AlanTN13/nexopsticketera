@@ -61,3 +61,33 @@ select {
   background: rgba(67, 48, 166, 0.18);
   color: var(--foreground);
 }
+
+.portal-metrics-skin {
+  color: var(--foreground);
+}
+
+.portal-metrics-skin :is(button, input, select):focus-visible {
+  outline: 2px solid #7c5bff;
+  outline-offset: 2px;
+}
+
+.portal-metrics-skin table {
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-metrics-skin table thead tr {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.portal-metrics-skin table th {
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.portal-metrics-skin .rounded-2xl {
+  border-radius: 0.75rem;
+}

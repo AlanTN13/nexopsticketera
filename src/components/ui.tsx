@@ -133,7 +133,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
       />
       <div>
         <p className="text-sm font-bold tracking-tight text-slate-950">NexOps</p>
-        <p className="text-[11px] font-medium text-[#5b48c7]">Help Center</p>
+        <p className="text-[11px] font-medium text-[#5b48c7]">Portal clientes</p>
       </div>
     </div>
   );
