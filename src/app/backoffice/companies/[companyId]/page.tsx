@@ -41,6 +41,7 @@ export default async function BackofficeCompanyDetail({
           { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
           { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true },
           { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
+          ...(actor.role === "platform_admin" ? [{ href: "/portal/radar", label: "Radar" }] : []),
         ]}
         actions={<NavButton href={withActor("/backoffice/companies", actor.id)} label="Volver a empresas" muted tone="light" />}
       >
@@ -68,6 +69,7 @@ export default async function BackofficeCompanyDetail({
         { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
         { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true },
         { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
+        ...(actor.role === "platform_admin" ? [{ href: "/portal/radar", label: "Radar" }] : []),
       ]}
       actions={
         <>
