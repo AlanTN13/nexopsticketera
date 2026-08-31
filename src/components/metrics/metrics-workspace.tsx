@@ -48,7 +48,7 @@ export function MetricsWorkspace({
   metaRows: SheetRow[];
   mailchimpRows: MailchimpCampaignRow[];
 }) {
-  const [channel, setChannel] = useState<Channel>(metaRows.length > 0 ? "meta" : "emailing");
+  const [channel, setChannel] = useState<Channel>("meta");
   const [dateRange, setDateRange] = useState<DateRangeFilter>(() => period("30d"));
   const filteredMetaRows = useMemo(
     () => filterRowsByDateRange(metaRows, dateRange.start, dateRange.end),
@@ -107,6 +107,7 @@ export function MetricsWorkspace({
         <ClientDashboard
           client={client}
           rows={filteredMetaRows}
+          hasSourceData={metaRows.length > 0}
           dateRangeLabel={PERIODS.find((item) => item.value === dateRange.preset)?.label ?? "Período"}
         />
       ) : (
