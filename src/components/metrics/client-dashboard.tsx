@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react/no-unescaped-entities, react-hooks/exhaustive-deps */
+/* eslint-disable @next/next/no-img-element, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
@@ -202,7 +202,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       label: "Inversión",
       category: "Inversión",
       align: "right",
-      renderCell: (r) => <span className="font-mono text-slate-900 font-medium">{formatCurrency(r.amountSpent)}</span>,
+      renderCell: (r) => <span className=" text-slate-900 font-medium">{formatCurrency(r.amountSpent)}</span>,
       getSortValue: (r) => r.amountSpent || 0,
     },
     primaryMetricValue: {
@@ -219,7 +219,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       shortLabel: "CP Resultado",
       category: "Costos",
       align: "right",
-      renderCell: (r) => <span className="font-mono font-semibold text-emerald-700">{formatCurrency(r.costPerResult)}</span>,
+      renderCell: (r) => <span className=" font-semibold text-emerald-700">{formatCurrency(r.costPerResult)}</span>,
       getSortValue: (r) => r.costPerResult || 0,
     },
     impressions: {
@@ -227,7 +227,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       label: "Impresiones",
       category: "Alcance",
       align: "right",
-      renderCell: (r) => <span className="font-mono text-slate-700">{formatNumber(r.impressions)}</span>,
+      renderCell: (r) => <span className=" text-slate-700">{formatNumber(r.impressions)}</span>,
       getSortValue: (r) => r.impressions || 0,
     },
     cpm: {
@@ -236,7 +236,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       category: "Costos",
       align: "right",
       renderCell: (r) => (
-        <span className="font-mono text-slate-700">
+        <span className=" text-slate-700">
           {formatCurrency(r.impressions > 0 ? (r.amountSpent / r.impressions) * 1000 : 0)}
         </span>
       ),
@@ -244,10 +244,10 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     },
     clicks: {
       id: "clicks",
-      label: "Clicks",
+      label: "Clics",
       category: "Tráfico",
       align: "right",
-      renderCell: (r) => <span className="font-mono text-slate-700">{formatNumber(r.clicks || 0)}</span>,
+      renderCell: (r) => <span className=" text-slate-700">{formatNumber(r.clicks || 0)}</span>,
       getSortValue: (r) => r.clicks || 0,
     },
     cpc: {
@@ -256,7 +256,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       category: "Costos",
       align: "right",
       renderCell: (r) => (
-        <span className="font-mono text-slate-700">
+        <span className=" text-slate-700">
           {formatCurrency(r.clicks && r.clicks > 0 ? r.amountSpent / r.clicks : 0)}
         </span>
       ),
@@ -268,7 +268,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       category: "Rendimiento",
       align: "right",
       renderCell: (r) => (
-        <span className="font-mono text-slate-700">
+        <span className=" text-slate-700">
           {r.impressions > 0 ? `${((r.clicks / r.impressions) * 100).toFixed(2)}%` : "0.00%"}
         </span>
       ),
@@ -280,7 +280,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       shortLabel: "Conversaciones",
       category: "Mensajes",
       align: "right",
-      renderCell: (r) => <span className="font-mono text-slate-900">{formatNumber(r.messagingConversationsStarted || 0)}</span>,
+      renderCell: (r) => <span className=" text-slate-900">{formatNumber(r.messagingConversationsStarted || 0)}</span>,
       getSortValue: (r) => r.messagingConversationsStarted || 0,
     },
     costPerLead: {
@@ -295,7 +295,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             : r.messagingConversationsStarted > 0
             ? r.amountSpent / r.messagingConversationsStarted
             : r.costPerResult;
-        return <span className="font-mono text-emerald-700">{formatCurrency(val)}</span>;
+        return <span className=" text-emerald-700">{formatCurrency(val)}</span>;
       },
       getSortValue: (r) =>
         r.leads > 0
@@ -310,7 +310,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       category: "Resultados",
       align: "right",
       renderCell: (r) => (
-        <span className="font-mono text-slate-900 font-semibold">
+        <span className=" text-slate-900 font-semibold">
           {formatNumber(r.purchases > 0 ? r.purchases : r.leads > 0 ? r.leads : r.primaryMetricValue)}
         </span>
       ),
@@ -323,7 +323,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       category: "Costos",
       align: "right",
       renderCell: (r) => (
-        <span className="font-mono text-emerald-700 font-semibold">
+        <span className=" text-emerald-700 font-semibold">
           {formatCurrency(r.purchases > 0 ? r.amountSpent / r.purchases : r.costPerResult)}
         </span>
       ),
@@ -335,7 +335,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       category: "Ingresos",
       align: "right",
       renderCell: (r) => (
-        <span className="font-mono text-emerald-800 font-semibold">
+        <span className=" text-emerald-800 font-semibold">
           {formatCurrency(r.purchaseValue || 0)}
         </span>
       ),
@@ -354,7 +354,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             ? r.purchaseValue / r.amountSpent
             : undefined;
         return (
-          <span className="font-mono font-bold text-emerald-600">
+          <span className=" font-bold text-emerald-600">
             {val !== undefined ? `${val.toFixed(2)}x` : "-"}
           </span>
         );
@@ -372,7 +372,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       category: "Social",
       align: "right",
       renderCell: (r) => (
-        <span className="font-mono font-medium text-cyan-800">
+        <span className=" font-medium text-cyan-800">
           {formatNumber(r.followsOrLikes || 0)}
         </span>
       ),
@@ -383,7 +383,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       label: "Hook Rate (3s)",
       category: "Video",
       align: "right",
-      renderCell: (r) => <span className="font-mono text-slate-700">{(r.hookRate || 0).toFixed(1)}%</span>,
+      renderCell: (r) => <span className=" text-slate-700">{(r.hookRate || 0).toFixed(1)}%</span>,
       getSortValue: (r) => r.hookRate || 0,
     },
     retentionRate: {
@@ -392,7 +392,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       category: "Video",
       align: "right",
       renderCell: (r) => (
-        <span className="font-mono text-slate-700">
+        <span className=" text-slate-700">
           {"retentionRate" in r && r.retentionRate !== undefined ? `${r.retentionRate.toFixed(1)}%` : "-"}
         </span>
       ),
@@ -636,7 +636,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     },
     clicks: {
       id: "clicks",
-      label: "Clicks",
+      label: "Clics",
       icon: <MousePointerClick className="w-3.5 h-3.5" />,
       getValue: (m) => formatNumber(m.clicks),
       category: "Tráfico",
@@ -660,7 +660,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     },
     conversations: {
       id: "conversations",
-      label: "Conversasiones iniciadas",
+      label: "Conversaciones iniciadas",
       icon: <MessageSquare className="w-3.5 h-3.5" />,
       getValue: (m) => formatNumber(m.messagingConversationsStarted),
       category: "Mensajes",
@@ -668,7 +668,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     },
     costPerLead: {
       id: "costPerLead",
-      label: "CP lead",
+      label: "Costo por resultado",
       icon: <Users className="w-3.5 h-3.5" />,
       getValue: (m) =>
         formatCurrency(
@@ -794,7 +794,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       label: primaryMetricLabel,
       description: `Volumen de ${primaryMetricLabel.toLowerCase()}`,
       unit: "count",
-      color: client.primaryColor || "#3b82f6",
+      color: "#4330a6",
       gradientId: "primaryGradient",
       yAxisId: "right",
     },
@@ -821,7 +821,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       label: "Clics",
       description: "Total de clics en los anuncios",
       unit: "count",
-      color: "#6366f1",
+      color: "#7c5bff",
       gradientId: "clicksGradient",
       yAxisId: "right",
     },
@@ -865,20 +865,16 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
   if (rows.length === 0) {
     return (
-      <div className="p-8 max-w-7xl mx-auto animate-fadeIn">
+      <div className="p-4 sm:p-5 animate-fadeIn">
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-4 shadow-xs">
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
             <FileSpreadsheet className="w-6 h-6" />
           </div>
           <h3 className="text-base font-bold text-slate-900">
-            No se encontraron datos para la cuenta "{client.accountName}"
+            Todavía no hay datos disponibles para {client.name}
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Verifica que la cuenta en el Google Sheet coincida exactamente con{" "}
-            <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-semibold">
-              {client.accountName}
-            </code>{" "}
-            o amplía el rango de fechas seleccionado.
+            Probá ampliar el período seleccionado. Si el estado continúa, escribinos desde Soporte para revisar la actualización de la reportería.
           </p>
         </div>
       </div>
@@ -902,40 +898,34 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       return <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/th:text-slate-500 transition-colors" />;
     }
     return direction === "desc" ? (
-      <ArrowDown className="w-3.5 h-3.5 text-indigo-600 font-bold" />
+      <ArrowDown className="w-3.5 h-3.5 text-violet-600 font-bold" />
     ) : (
-      <ArrowUp className="w-3.5 h-3.5 text-indigo-600 font-bold" />
+      <ArrowUp className="w-3.5 h-3.5 text-violet-600 font-bold" />
     );
   };
 
   return (
     <div
       id="client-dashboard"
-      className="p-8 space-y-7 animate-fadeIn max-w-7xl mx-auto"
-      style={
-        {
-          "--client-primary": client.primaryColor,
-          "--client-secondary": client.secondaryColor,
-        } as React.CSSProperties
-      }
+      className="p-4 space-y-4 sm:p-5 animate-fadeIn"
     >
       {/* ACTIVE DRILL-DOWN FILTER BANNER */}
       {selectedFilter && (
-        <div className="bg-indigo-50/90 border border-indigo-200/90 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs animate-fadeIn">
+        <div className="bg-violet-50/90 border border-violet-200/90 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs animate-fadeIn">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg shrink-0">
+            <div className="p-2 bg-violet-100 text-violet-700 rounded-lg shrink-0">
               <Filter className="w-4 h-4" />
             </div>
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-indigo-900 font-semibold">
+                <span className="text-violet-900 font-semibold">
                   Filtrando vista por {selectedFilter.type === "campaign" ? "Campaña" : "Creativo"}:
                 </span>
-                <span className="font-bold text-indigo-950 font-mono bg-white px-2 py-0.5 rounded border border-indigo-200">
+                <span className="font-bold text-violet-950  bg-white px-2 py-0.5 rounded border border-violet-200">
                   {selectedFilter.name}
                 </span>
               </div>
-              <p className="text-indigo-700/80 text-[11px]">
+              <p className="text-violet-700/80 text-[11px]">
                 Mostrando indicadores y evolución exclusiva de esta selección ({filteredRows.length} registros).
               </p>
             </div>
@@ -943,7 +933,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
           <button
             onClick={() => setSelectedFilter(null)}
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white border border-indigo-200 text-indigo-700 font-semibold hover:bg-indigo-100 transition-colors shrink-0 text-xs cursor-pointer shadow-2xs self-start sm:self-auto"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white border border-violet-200 text-violet-700 font-semibold hover:bg-violet-100 transition-colors shrink-0 text-xs cursor-pointer shadow-2xs self-start sm:self-auto"
           >
             <X className="w-3.5 h-3.5" />
             <span>Ver Cuenta Completa</span>
@@ -955,10 +945,10 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold text-[#596273]">
               Indicadores Principales
             </span>
-            <span className="text-[11px] font-mono font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200/70">
+            <span className="text-[11px]  font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200/70">
               {selectedKpis.length}/8 activos
             </span>
           </div>
@@ -968,7 +958,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               setTempKpiSelection([...selectedKpis]);
               setIsKpiModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-violet-600 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs transition-colors cursor-pointer"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span>Personalizar 8 Indicadores</span>
@@ -986,7 +976,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               >
                 <div className="flex items-center justify-between text-slate-400 gap-2">
                   <span
-                    className="text-xs font-semibold uppercase tracking-wider text-slate-500 truncate"
+                    className="text-xs font-medium text-[#6b7280] truncate"
                     title={def.label}
                   >
                     {def.label}
@@ -1016,7 +1006,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               <h3 className="text-base font-bold text-slate-900 tracking-tight">
                 Evolución Diaria
               </h3>
-              <span className="text-[11px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-mono border border-indigo-100">
+              <span className="text-[11px] font-semibold bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full  border border-violet-100">
                 {selectedMetrics.length}/3 seleccionados
               </span>
             </div>
@@ -1035,7 +1025,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
                 className={`inline-flex items-center justify-between gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer shadow-2xs ${
                   isDropdownOpen
-                    ? "bg-slate-900 text-white border-slate-900 ring-2 ring-indigo-500/20"
+                    ? "bg-slate-900 text-white border-slate-900 ring-2 ring-violet-500/20"
                     : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400"
                 }`}
                 aria-expanded={isDropdownOpen}
@@ -1044,7 +1034,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   <span className="font-semibold">Seleccionar Indicadores</span>
                   <span
                     className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      isDropdownOpen ? "bg-indigo-500 text-white" : "bg-slate-100 text-slate-700"
+                      isDropdownOpen ? "bg-violet-500 text-white" : "bg-slate-100 text-slate-700"
                     }`}
                   >
                     {selectedMetrics.length}
@@ -1071,7 +1061,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                     </div>
                     <button
                       onClick={handleResetMetrics}
-                      className="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 cursor-pointer"
+                      className="text-[10px] text-violet-600 hover:text-violet-800 font-semibold flex items-center gap-1 cursor-pointer"
                       title="Restablecer a Inversión y Conversaciones"
                     >
                       <RotateCcw className="w-2.5 h-2.5" />
@@ -1162,16 +1152,16 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   <stop offset="95%" stopColor="#64748b" stopOpacity={0.0} />
                 </linearGradient>
                 <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={client.primaryColor || "#3b82f6"} stopOpacity={0.28} />
-                  <stop offset="95%" stopColor={client.primaryColor || "#3b82f6"} stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#4330a6" stopOpacity={0.28} />
+                  <stop offset="95%" stopColor="#4330a6" stopOpacity={0.0} />
                 </linearGradient>
                 <linearGradient id="cpaGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                 </linearGradient>
                 <linearGradient id="clicksGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#7c5bff" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#7c5bff" stopOpacity={0.0} />
                 </linearGradient>
                 <linearGradient id="impressionsGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.25} />
@@ -1288,7 +1278,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="text-[11px] text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 hidden sm:flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3 text-indigo-500 shrink-0" />
+              <Sparkles className="w-3 h-3 text-violet-500 shrink-0" />
               <span>Clic en encabezado para ordenar | Clic en fila para filtrar</span>
             </span>
 
@@ -1299,7 +1289,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 setTempTableColSelection(selectedTableColumns);
                 setIsTableColModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100/90 border border-indigo-200/80 rounded-lg transition-all shadow-2xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-violet-700 bg-violet-50/80 hover:bg-violet-100/90 border border-violet-200/80 rounded-lg transition-all shadow-2xs cursor-pointer"
               title="Personalizar columnas e indicadores visibles de la tabla"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -1360,7 +1350,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                       onClick={() => handleToggleFilter("creative", creative.creativeName)}
                       className={`cursor-pointer transition-colors group ${
                         isSelected
-                          ? "bg-indigo-50/90 font-medium ring-1 ring-inset ring-indigo-200"
+                          ? "bg-violet-50/90 font-medium ring-1 ring-inset ring-violet-200"
                           : "hover:bg-slate-50/70"
                       }`}
                       title={
@@ -1377,7 +1367,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="relative group/thumb w-8 h-8 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center hover:ring-2 hover:ring-indigo-500 hover:border-indigo-500 transition-all cursor-pointer shadow-2xs"
+                              className="relative group/thumb w-8 h-8 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center hover:ring-2 hover:ring-violet-500 hover:border-violet-500 transition-all cursor-pointer shadow-2xs"
                               title="Abrir enlace del anuncio en Facebook"
                             >
                               {creative.thumbnailUrl && creative.thumbnailUrl.trim().length > 0 ? (
@@ -1418,7 +1408,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                             <div className="flex items-center gap-1.5">
                               <span
                                 className={`font-semibold block truncate ${
-                                  isSelected ? "text-indigo-950" : "text-slate-900 group-hover:text-indigo-600"
+                                  isSelected ? "text-violet-950" : "text-slate-900 group-hover:text-violet-600"
                                 }`}
                                 title={creative.creativeName}
                               >
@@ -1430,7 +1420,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="text-slate-400 hover:text-indigo-600 transition-colors shrink-0"
+                                  className="text-slate-400 hover:text-violet-600 transition-colors shrink-0"
                                   title="Abrir enlace en Facebook"
                                 >
                                   <ExternalLink className="w-3 h-3" />
@@ -1456,12 +1446,12 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
                       <td className="py-2.5 px-4 text-center">
                         {isSelected ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-white border border-indigo-300 px-2 py-0.5 rounded-full shadow-2xs">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-700 bg-white border border-violet-300 px-2 py-0.5 rounded-full shadow-2xs">
                             <Check className="w-2.5 h-2.5" />
                             <span>Activo</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400 group-hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
+                          <span className="text-[10px] text-slate-400 group-hover:text-violet-600 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
                             Filtrar ↵
                           </span>
                         )}
@@ -1536,7 +1526,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                       onClick={() => handleToggleFilter("campaign", camp.campaignName)}
                       className={`cursor-pointer transition-colors group ${
                         isSelected
-                          ? "bg-indigo-50/90 font-medium ring-1 ring-inset ring-indigo-200"
+                          ? "bg-violet-50/90 font-medium ring-1 ring-inset ring-violet-200"
                           : "hover:bg-slate-50/70"
                       }`}
                       title={
@@ -1547,8 +1537,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                     >
                       <td className="py-2.5 px-4 font-semibold text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50/70 z-10">
                         <div className="flex items-center gap-2 max-w-[240px] sm:max-w-[300px]">
-                          <Layers className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-500"}`} />
-                          <span className={`truncate ${isSelected ? "text-indigo-950" : "group-hover:text-indigo-600"}`} title={camp.campaignName}>
+                          <Layers className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-violet-600" : "text-slate-400 group-hover:text-violet-500"}`} />
+                          <span className={`truncate ${isSelected ? "text-violet-950" : "group-hover:text-violet-600"}`} title={camp.campaignName}>
                             {camp.campaignName}
                           </span>
                         </div>
@@ -1569,12 +1559,12 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
                       <td className="py-2.5 px-4 text-center">
                         {isSelected ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-white border border-indigo-300 px-2 py-0.5 rounded-full shadow-2xs">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-700 bg-white border border-violet-300 px-2 py-0.5 rounded-full shadow-2xs">
                             <Check className="w-2.5 h-2.5" />
                             <span>Activo</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400 group-hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
+                          <span className="text-[10px] text-slate-400 group-hover:text-violet-600 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
                             Filtrar ↵
                           </span>
                         )}
@@ -1609,7 +1599,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                  <SlidersHorizontal className="w-4 h-4 text-violet-600" />
                   <h3 className="text-base font-bold text-slate-900">
                     Personalizar Indicadores de la Cuenta
                   </h3>
@@ -1632,7 +1622,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-700">Estado de selección:</span>
                   <span
-                    className={`font-mono font-bold px-2 py-0.5 rounded-full ${
+                    className={` font-bold px-2 py-0.5 rounded-full ${
                       tempKpiSelection.length === 8
                         ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                         : "bg-amber-100 text-amber-800 border border-amber-200"
@@ -1644,7 +1634,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 <button
                   type="button"
                   onClick={handleResetKpiSelection}
-                  className="text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center gap-1 cursor-pointer"
+                  className="text-violet-600 hover:text-violet-800 font-semibold inline-flex items-center gap-1 cursor-pointer"
                 >
                   <RotateCcw className="w-3 h-3" />
                   <span>Valores sugeridos</span>
@@ -1670,7 +1660,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                       onClick={() => handleToggleKpiInModal(id)}
                       className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                         isSelected
-                          ? "bg-indigo-50/70 border-indigo-300 shadow-2xs"
+                          ? "bg-violet-50/70 border-violet-300 shadow-2xs"
                           : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/70"
                       }`}
                     >
@@ -1678,7 +1668,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                         <div
                           className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                             isSelected
-                              ? "bg-indigo-600 text-white shadow-2xs"
+                              ? "bg-violet-600 text-white shadow-2xs"
                               : "bg-slate-100 text-slate-500"
                           }`}
                         >
@@ -1689,19 +1679,19 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                             <span className="text-xs font-bold text-slate-900 truncate">
                               {def.label}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-slate-400 ">
                               ({def.category})
                             </span>
                           </div>
                           <span className="text-[11px] text-slate-500 block truncate">
-                            Valor actual: <strong className="text-slate-800 font-mono">{def.getValue(metrics)}</strong>
+                            Valor actual: <strong className="text-slate-800 ">{def.getValue(metrics)}</strong>
                           </span>
                         </div>
                       </div>
 
                       <div className="shrink-0 flex items-center">
                         {isSelected ? (
-                          <div className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center font-mono font-bold text-[10px] shadow-2xs">
+                          <div className="w-5 h-5 rounded-full bg-violet-600 text-white flex items-center justify-center  font-bold text-[10px] shadow-2xs">
                             {selectionIndex + 1}
                           </div>
                         ) : (
@@ -1733,7 +1723,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   disabled={tempKpiSelection.length !== 8}
                   className={`px-5 py-2 rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 ${
                     tempKpiSelection.length === 8
-                      ? "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+                      ? "bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"
                       : "bg-slate-200 text-slate-400 cursor-not-allowed"
                   }`}
                 >
@@ -1757,7 +1747,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                  <SlidersHorizontal className="w-4 h-4 text-violet-600" />
                   <h3 className="text-base font-bold text-slate-900">
                     Personalizar Columnas de Tablas
                   </h3>
@@ -1779,7 +1769,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               <div className="flex flex-wrap items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs gap-2">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-700">Columnas activas:</span>
-                  <span className="font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
+                  <span className=" font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200">
                     {tempTableColSelection.length} seleccionadas
                   </span>
                 </div>
@@ -1787,7 +1777,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   <button
                     type="button"
                     onClick={handleSelectAllTableColumns}
-                    className="text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center gap-1 cursor-pointer text-xs"
+                    className="text-violet-600 hover:text-violet-800 font-semibold inline-flex items-center gap-1 cursor-pointer text-xs"
                   >
                     <span>Seleccionar todas</span>
                   </button>
@@ -1815,7 +1805,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                       onClick={() => handleToggleTableColumnInModal(key)}
                       className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                         isSelected
-                          ? "bg-indigo-50/70 border-indigo-300 shadow-2xs"
+                          ? "bg-violet-50/70 border-violet-300 shadow-2xs"
                           : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
                       }`}
                     >
@@ -1823,7 +1813,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                         <div className="flex items-center gap-2">
                           <span
                             className={`text-xs font-bold truncate ${
-                              isSelected ? "text-indigo-950" : "text-slate-800"
+                              isSelected ? "text-violet-950" : "text-slate-800"
                             }`}
                           >
                             {col.label}
@@ -1836,7 +1826,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
                       <div className="shrink-0 flex items-center">
                         {isSelected ? (
-                          <div className="w-5 h-5 rounded-md bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                          <div className="w-5 h-5 rounded-md bg-violet-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
                             <Check className="w-3.5 h-3.5" />
                           </div>
                         ) : (
@@ -1868,7 +1858,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   disabled={tempTableColSelection.length === 0}
                   className={`px-5 py-2 rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 ${
                     tempTableColSelection.length > 0
-                      ? "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+                      ? "bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"
                       : "bg-slate-200 text-slate-400 cursor-not-allowed"
                   }`}
                 >

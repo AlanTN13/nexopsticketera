@@ -56,19 +56,21 @@ export function MetricsWorkspace({
   );
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
-      <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+    <section className="portal-metrics-skin overflow-hidden rounded-xl border border-slate-200 bg-[#f9fafb] shadow-sm">
+      <div className="border-b border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-700">Reportería de marketing</p>
-            <h2 className="mt-1 text-xl font-extrabold tracking-tight text-slate-950">{client.name}</h2>
+            <p className="text-xs font-semibold text-[#6d5bd0]">Reportería de marketing</p>
+            <h2 className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#111827]">{client.name}</h2>
+            <p className="mt-1 text-sm text-[#596273]">Indicadores y campañas de la cuenta vinculada a tu empresa.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1" aria-label="Canal de reportería">
+            <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-1" aria-label="Canal de reportería">
               <button
                 type="button"
                 onClick={() => setChannel("meta")}
-                className={`min-h-10 rounded-lg px-4 text-sm font-semibold ${channel === "meta" ? "bg-slate-950 text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}
+                aria-pressed={channel === "meta"}
+                className={`min-h-10 rounded-lg px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${channel === "meta" ? "bg-[#4330a6] text-white shadow-sm" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
               >
                 Meta Ads
               </button>
@@ -76,19 +78,20 @@ export function MetricsWorkspace({
                 <button
                   type="button"
                   onClick={() => setChannel("emailing")}
-                  className={`min-h-10 rounded-lg px-4 text-sm font-semibold ${channel === "emailing" ? "bg-slate-950 text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}
+                  aria-pressed={channel === "emailing"}
+                  className={`min-h-10 rounded-lg px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${channel === "emailing" ? "bg-[#4330a6] text-white shadow-sm" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
                 >
                   Emailing
                 </button>
               ) : null}
             </div>
             {channel === "meta" ? (
-              <label className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
+              <label className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
                 Período
                 <select
                   value={dateRange.preset}
                   onChange={(event) => setDateRange(period(event.target.value as DateRangeFilter["preset"]))}
-                  className="bg-transparent font-semibold text-slate-950 outline-none"
+                  className="bg-transparent pr-5 font-semibold text-slate-950 outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                 >
                   {PERIODS.map((item) => (
                     <option key={item.value} value={item.value}>{item.label}</option>
@@ -109,6 +112,6 @@ export function MetricsWorkspace({
       ) : (
         <ClientEmailingDashboard client={client} allMailchimpRows={mailchimpRows} />
       )}
-    </div>
+    </section>
   );
 }

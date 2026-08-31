@@ -45,13 +45,11 @@ import { calculateMailchimpMetrics, filterMailchimpRowsForClient } from "@/featu
 interface ClientEmailingDashboardProps {
   client: Client;
   allMailchimpRows: MailchimpCampaignRow[];
-  onOpenSettings?: () => void;
 }
 
 export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = ({
   client,
   allMailchimpRows,
-  onOpenSettings,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>("all");
@@ -151,64 +149,37 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
   // If no campaigns detected for this client
   if (clientRows.length === 0) {
     return (
-      <div className="p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 sm:p-5">
         {/* Banner */}
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-xs">
-          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-200/60 shadow-xs">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 text-center shadow-xs sm:p-8">
+          <div className="w-12 h-12 bg-violet-50 text-[#4330a6] rounded-xl flex items-center justify-center mx-auto mb-4 border border-violet-200 shadow-xs">
             <Mail className="w-7 h-7" />
           </div>
           <h2 className="text-xl font-bold text-slate-800">
-            Sin Campañas de Mailchimp Registradas para {client.name}
+            Todavía no hay campañas disponibles para {client.name}
           </h2>
           <p className="text-sm text-slate-500 max-w-lg mx-auto mt-2 leading-relaxed">
-            {client.mailchimpName ? (
-              <>
-                La cuenta configurada para este cliente es{" "}
-                <span className="font-mono font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">
-                  {client.mailchimpName}
-                </span>
-                , pero aún no se registran filas con este identificador en la hoja{" "}
-                <code className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Mailchimp</code>.
-              </>
-            ) : (
-              <>
-                Aún no has configurado el nombre de cuenta de Mailchimp para este cliente. Puedes asignarlo en la edición de cliente o asegurarte de que coincida con la columna <code className="text-slate-700 font-mono">mailchimp_name</code>.
-              </>
-            )}
+            Cuando existan envíos asociados a tu empresa vas a ver aquí su rendimiento. Si esperabas información, escribinos desde Soporte.
           </p>
-
-          <div className="mt-6 flex items-center justify-center gap-3">
-            {onOpenSettings && (
-              <button
-                onClick={onOpenSettings}
-                className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer shadow-xs"
-              >
-                Configurar Hoja Mailchimp
-              </button>
-            )}
-          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 space-y-4 sm:p-5">
       {/* Top Banner / Account Header */}
       <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs font-bold text-lg"
-            style={{ backgroundColor: client.primaryColor || "#fe9901" }}
-          >
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-[#4330a6] text-white shrink-0 shadow-xs font-bold text-lg">
             <Mail className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-slate-900 leading-tight">
-                Módulo Emailing & Mailchimp
+                Emailing y Mailchimp
               </h1>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded-full border border-amber-200/80 font-mono">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-violet-50 text-violet-800 px-2.5 py-0.5 rounded-full border border-violet-200 ">
                 Cuenta: {client.mailchimpName || client.accountName}
               </span>
               {clientRows[0]?.audience && (
@@ -227,18 +198,18 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
         {/* Global summary badge */}
         <div className="flex items-center gap-4 border-t md:border-t-0 md:border-l border-slate-100 pt-3 md:pt-0 md:pl-5">
           <div>
-            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block font-medium">
-              Total Campañas
+            <span className="text-[10px] uppercase  tracking-wider text-slate-400 block font-medium">
+              Campañas
             </span>
-            <span className="text-lg font-bold text-slate-900 font-mono">
+            <span className="text-lg font-bold text-slate-900 ">
               {metrics.totalCampaigns}
             </span>
           </div>
           <div>
-            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block font-medium">
-              Último Envío
+            <span className="text-[10px] uppercase  tracking-wider text-slate-400 block font-medium">
+              Último envío
             </span>
-            <span className="text-xs font-semibold text-slate-700 font-mono block mt-0.5">
+            <span className="text-xs font-semibold text-slate-700  block mt-0.5">
               {clientRows[0]?.rawSendDate || clientRows[0]?.sendDate || "-"}
             </span>
           </div>
@@ -250,7 +221,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
         {/* 1. Entregabilidad & Envíos */}
         <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">
+            <span className="text-xs font-medium text-[#6b7280] ">
               Envíos & Entrega
             </span>
             <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -259,7 +230,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
           </div>
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 font-mono">
+              <span className="text-2xl font-bold text-slate-900 ">
                 {metrics.totalDelivered.toLocaleString("es-AR")}
               </span>
               <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/50">
@@ -275,8 +246,8 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
         {/* 2. Aperturas & Open Rate */}
         <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">
-              Open Rate Promedio
+            <span className="text-xs font-medium text-[#6b7280] ">
+              Tasa de apertura
             </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <CheckCircle2 className="w-4 h-4" />
@@ -284,7 +255,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
           </div>
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 font-mono">
+              <span className="text-2xl font-bold text-slate-900 ">
                 {metrics.avgOpenRate}%
               </span>
               <span className="text-[11px] text-slate-500 font-medium">
@@ -300,19 +271,19 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
         {/* 3. Clics, CTR & CTOR */}
         <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">
+            <span className="text-xs font-medium text-[#6b7280] ">
               Clics & CTOR
             </span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
               <MousePointerClick className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 font-mono">
+              <span className="text-2xl font-bold text-slate-900 ">
                 {metrics.totalUniqueClicks.toLocaleString("es-AR")}
               </span>
-              <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/50" title="Click to Open Rate: Clics / Aperturas">
+              <span className="text-xs font-semibold text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-200/50" title="Click to Open Rate: Clics / Aperturas">
                 {metrics.avgCtor}% CTOR
               </span>
             </div>
@@ -325,7 +296,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
         {/* 4. Higiene de Lista (Bajas & Rebotes) */}
         <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">
+            <span className="text-xs font-medium text-[#6b7280] ">
               Higiene & Bajas
             </span>
             <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -334,7 +305,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
           </div>
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 font-mono">
+              <span className="text-2xl font-bold text-slate-900 ">
                 {metrics.totalUnsubscribes}
               </span>
               <span className="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
@@ -354,18 +325,18 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
           <div>
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <BarChart2 className="w-4 h-4 text-slate-700" />
-              Evolución de Rendimiento por Campaña
+              Evolución por campaña
             </h2>
             <p className="text-xs text-slate-500">
               Aperturas únicas y tasa de apertura (Open Rate %) a lo largo de las fechas de envío
             </p>
           </div>
-          <div className="flex items-center gap-3 text-xs font-medium text-slate-600 font-mono">
+          <div className="flex items-center gap-3 text-xs font-medium text-slate-600 ">
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-xs bg-slate-700" /> Aperturas Únicas
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" /> Open Rate %
+              <span className="w-2.5 h-2.5 rounded-full bg-violet-600" /> Open Rate %
             </span>
           </div>
         </div>
@@ -391,27 +362,27 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                     return (
                       <div className="bg-slate-900 text-white p-3 rounded-lg shadow-lg text-xs max-w-xs space-y-1">
                         <p className="font-bold text-slate-100 truncate">{data.subject}</p>
-                        <p className="text-slate-400 font-mono">{data.fullDate}</p>
+                        <p className="text-slate-400 ">{data.fullDate}</p>
                         <div className="pt-1.5 space-y-1 border-t border-slate-800">
                           <p className="flex justify-between">
                             <span className="text-slate-300">Aperturas Únicas:</span>
-                            <span className="font-mono font-bold text-slate-100">{data.aperturas}</span>
+                            <span className=" font-bold text-slate-100">{data.aperturas}</span>
                           </p>
                           <p className="flex justify-between">
                             <span className="text-slate-300">Open Rate:</span>
-                            <span className="font-mono font-bold text-indigo-300">{data.openRate}%</span>
+                            <span className=" font-bold text-violet-300">{data.openRate}%</span>
                           </p>
                           <p className="flex justify-between">
                             <span className="text-slate-300">Clics Únicos:</span>
-                            <span className="font-mono font-bold text-amber-400">{data.clics}</span>
+                            <span className=" font-bold text-amber-400">{data.clics}</span>
                           </p>
                           <p className="flex justify-between">
                             <span className="text-slate-300">CTOR (Interacción):</span>
-                            <span className="font-mono font-bold text-cyan-300">{data.ctor}%</span>
+                            <span className=" font-bold text-cyan-300">{data.ctor}%</span>
                           </p>
                           <p className="flex justify-between">
                             <span className="text-slate-300">Enviados:</span>
-                            <span className="font-mono text-slate-400">{data.enviados}</span>
+                            <span className=" text-slate-400">{data.enviados}</span>
                           </p>
                         </div>
                       </div>
@@ -436,7 +407,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
               Historial de Campañas Enviadas ({displayedCampaigns.length})
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Haz clic en cualquier campaña para consultar el desglose exhaustivo de rebotes, errores y reportes.
+              Hacé clic en una campaña para consultar entregas, rebotes y reportes.
             </p>
           </div>
 
@@ -467,7 +438,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px] font-mono">
+              <tr className="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px] ">
                 <th
                   onClick={() => toggleSort("date")}
                   className="py-3 px-4 cursor-pointer hover:text-slate-900 transition-colors"
@@ -526,7 +497,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                   className="hover:bg-amber-50/30 transition-colors cursor-pointer group"
                 >
                   {/* Fecha */}
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+                  <td className="py-3 px-4 whitespace-nowrap text-slate-600  text-[11px]">
                     <div className="font-semibold text-slate-800">
                       {camp.rawSendDate ? camp.rawSendDate.split(" ")[0] : camp.sendDate}
                     </div>
@@ -548,11 +519,11 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                       </p>
                     )}
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[9px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded">
+                      <span className="text-[9px]  bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded">
                         ID: {camp.campaignId}
                       </span>
                       {camp.type && (
-                        <span className="text-[9px] uppercase font-mono bg-slate-100 text-slate-500 px-1.5 py-0.2 rounded">
+                        <span className="text-[9px] uppercase  bg-slate-100 text-slate-500 px-1.5 py-0.2 rounded">
                           {camp.type}
                         </span>
                       )}
@@ -560,7 +531,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                   </td>
 
                   {/* Entregados */}
-                  <td className="py-3 px-4 text-right whitespace-nowrap font-mono">
+                  <td className="py-3 px-4 text-right whitespace-nowrap ">
                     <span className="font-bold text-slate-900">
                       {camp.emailsDelivered.toLocaleString("es-AR")}
                     </span>
@@ -570,7 +541,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                   </td>
 
                   {/* Aperturas */}
-                  <td className="py-3 px-4 text-right whitespace-nowrap font-mono">
+                  <td className="py-3 px-4 text-right whitespace-nowrap ">
                     <span className="font-bold text-emerald-700">
                       {camp.uniqueOpens.toLocaleString("es-AR")}
                     </span>
@@ -588,15 +559,15 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                           style={{ width: `${Math.min(camp.openRate * 2.5, 100)}%` }}
                         />
                       </div>
-                      <span className="font-bold font-mono text-slate-900 text-xs">
+                      <span className="font-bold  text-slate-900 text-xs">
                         {camp.openRate}%
                       </span>
                     </div>
                   </td>
 
                   {/* Clics (CTR / CTOR) */}
-                  <td className="py-3 px-4 text-right whitespace-nowrap font-mono">
-                    <div className="font-bold text-indigo-900">
+                  <td className="py-3 px-4 text-right whitespace-nowrap ">
+                    <div className="font-bold text-violet-900">
                       {camp.uniqueClicks} clics
                     </div>
                     <span className="text-[10px] text-slate-500 block">
@@ -605,7 +576,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                   </td>
 
                   {/* Bajas & Rebotes */}
-                  <td className="py-3 px-4 text-right whitespace-nowrap font-mono">
+                  <td className="py-3 px-4 text-right whitespace-nowrap ">
                     <span className="text-slate-700 font-medium">
                       {camp.unsubscribes} bajas ({camp.unsubscribeRate}%)
                     </span>
@@ -652,13 +623,13 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-mono font-bold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded">
+                  <span className="text-[10px] uppercase  font-bold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded">
                     Informe de Campaña Mailchimp
                   </span>
                   <h3 className="text-base font-bold text-slate-900 mt-1">
                     {selectedCampaignModal.subject}
                   </h3>
-                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                  <p className="text-xs text-slate-500  mt-0.5">
                     Enviado el {selectedCampaignModal.rawSendDate || selectedCampaignModal.sendDate} • ID: {selectedCampaignModal.campaignId}
                   </p>
                 </div>
@@ -676,7 +647,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
               {/* Preview Text Box */}
               {selectedCampaignModal.previewText && (
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                  <span className="text-[10px] uppercase font-mono font-semibold text-slate-400 block mb-1">
+                  <span className="text-[10px] uppercase  font-semibold text-slate-400 block mb-1">
                     Texto Preliminar (Preheader)
                   </span>
                   <p className="text-xs text-slate-700 italic">
@@ -687,15 +658,15 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
 
               {/* Grid Metrics */}
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase font-mono tracking-wider mb-3">
+                <h4 className="text-xs font-bold text-slate-900 uppercase  tracking-wider mb-3">
                   Rendimiento & Interacción
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="p-3 bg-emerald-50/50 border border-emerald-200/60 rounded-xl">
-                    <span className="text-[10px] text-emerald-800 font-mono uppercase block font-medium">
+                    <span className="text-[10px] text-emerald-800  uppercase block font-medium">
                       Open Rate
                     </span>
-                    <span className="text-xl font-bold text-emerald-700 font-mono">
+                    <span className="text-xl font-bold text-emerald-700 ">
                       {selectedCampaignModal.openRate}%
                     </span>
                     <span className="text-[10px] text-slate-500 block mt-0.5">
@@ -703,11 +674,11 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                     </span>
                   </div>
 
-                  <div className="p-3 bg-indigo-50/50 border border-indigo-200/60 rounded-xl">
-                    <span className="text-[10px] text-indigo-800 font-mono uppercase block font-medium">
+                  <div className="p-3 bg-violet-50/50 border border-violet-200/60 rounded-xl">
+                    <span className="text-[10px] text-violet-800  uppercase block font-medium">
                       CTOR (Interacción)
                     </span>
-                    <span className="text-xl font-bold text-indigo-700 font-mono">
+                    <span className="text-xl font-bold text-violet-700 ">
                       {selectedCampaignModal.ctor}%
                     </span>
                     <span className="text-[10px] text-slate-500 block mt-0.5">
@@ -716,10 +687,10 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                   </div>
 
                   <div className="p-3 bg-blue-50/50 border border-blue-200/60 rounded-xl">
-                    <span className="text-[10px] text-blue-800 font-mono uppercase block font-medium">
+                    <span className="text-[10px] text-blue-800  uppercase block font-medium">
                       CTR (Total Clics)
                     </span>
-                    <span className="text-xl font-bold text-blue-700 font-mono">
+                    <span className="text-xl font-bold text-blue-700 ">
                       {selectedCampaignModal.ctr}%
                     </span>
                     <span className="text-[10px] text-slate-500 block mt-0.5">
@@ -728,10 +699,10 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
                   </div>
 
                   <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
-                    <span className="text-[10px] text-slate-600 font-mono uppercase block font-medium">
+                    <span className="text-[10px] text-slate-600  uppercase block font-medium">
                       Entregados
                     </span>
-                    <span className="text-xl font-bold text-slate-900 font-mono">
+                    <span className="text-xl font-bold text-slate-900 ">
                       {selectedCampaignModal.emailsDelivered.toLocaleString("es-AR")}
                     </span>
                     <span className="text-[10px] text-slate-500 block mt-0.5">
@@ -743,29 +714,29 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
 
               {/* Delivery Breakdown & Health */}
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase font-mono tracking-wider mb-3">
+                <h4 className="text-xs font-bold text-slate-900 uppercase  tracking-wider mb-3">
                   Desglose de Entregabilidad & Salud
                 </h4>
                 <div className="bg-slate-50 border border-slate-200 rounded-xl divide-y divide-slate-200 text-xs">
                   <div className="p-3 flex justify-between items-center">
                     <span className="text-slate-600">Rebotes Blandos (Soft Bounces - buzón lleno/temporal):</span>
-                    <span className="font-mono font-bold text-slate-800">{selectedCampaignModal.softBounces}</span>
+                    <span className=" font-bold text-slate-800">{selectedCampaignModal.softBounces}</span>
                   </div>
                   <div className="p-3 flex justify-between items-center">
                     <span className="text-slate-600">Rebotes Duros (Hard Bounces - correo inexistente):</span>
-                    <span className="font-mono font-bold text-amber-700">{selectedCampaignModal.hardBounces}</span>
+                    <span className=" font-bold text-amber-700">{selectedCampaignModal.hardBounces}</span>
                   </div>
                   <div className="p-3 flex justify-between items-center">
                     <span className="text-slate-600">Errores de Sintaxis:</span>
-                    <span className="font-mono font-bold text-slate-800">{selectedCampaignModal.syntaxErrors}</span>
+                    <span className=" font-bold text-slate-800">{selectedCampaignModal.syntaxErrors}</span>
                   </div>
                   <div className="p-3 flex justify-between items-center">
                     <span className="text-slate-600">Desuscripciones (Bajas):</span>
-                    <span className="font-mono font-bold text-slate-900">{selectedCampaignModal.unsubscribes} ({selectedCampaignModal.unsubscribeRate}%)</span>
+                    <span className=" font-bold text-slate-900">{selectedCampaignModal.unsubscribes} ({selectedCampaignModal.unsubscribeRate}%)</span>
                   </div>
                   <div className="p-3 flex justify-between items-center">
                     <span className="text-slate-600">Reportes de Abuso / Spam:</span>
-                    <span className="font-mono font-bold text-red-600">{selectedCampaignModal.abuseReports}</span>
+                    <span className=" font-bold text-red-600">{selectedCampaignModal.abuseReports}</span>
                   </div>
                 </div>
               </div>
@@ -773,10 +744,10 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
               {/* Activity Timestamps */}
               {(selectedCampaignModal.lastOpen || selectedCampaignModal.lastClick || selectedCampaignModal.lastUpdated) && (
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900 uppercase font-mono tracking-wider mb-2">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase  tracking-wider mb-2">
                     Trazabilidad Temporal
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs ">
                     {selectedCampaignModal.lastOpen && (
                       <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
                         <span className="text-[10px] text-slate-400 block">Última Apertura</span>
