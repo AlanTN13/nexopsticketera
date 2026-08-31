@@ -119,7 +119,13 @@ export function parseSheetCSV(csvString: string): SheetRow[] {
     if (!accountName) continue; // Row without account name is not valid data row
 
     const campaignName = String(
-      getColumnValue(rawRow, ["campaign name", "campaign_name", "campaña", "nombre de la campaña"]) || "Campaña Principal"
+      getColumnValue(rawRow, [
+        "campaign name",
+        "campaign_name",
+        "campaña",
+        "nombre de la campaña",
+        "si es qu",
+      ]) || "Campaña Principal"
     ).trim();
 
     const adName = String(
