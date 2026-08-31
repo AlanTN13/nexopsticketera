@@ -9,15 +9,21 @@ import {
   SidebarUserCard,
   StatCard,
 } from "@/components/ui";
-import { getAuthenticatedClientActor } from "@/lib/auth";
+import { getAuthenticatedActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
-import { buildPortalNavigation, getRadarWorkspaceId } from "@/lib/portal-modules";
+import {
+  buildPortalNavigation,
+  getRadarWorkspaceId,
+  resolveRadarCompanyForActor,
+} from "@/lib/portal-modules";
 import {
   RadarDecision,
   RadarPublication,
   RadarSourceState,
   loadRadarWorkspace,
 } from "@/lib/radar-workspace";
+import { withActor } from "@/lib/routing";
+import { isInternalRole } from "@/lib/ticketing";
 
 export const dynamic = "force-dynamic";
 
@@ -103,22 +109,33 @@ function DecisionCard({ decision }: { decision: RadarDecision }) {
 
 export default async function PortalRadarPage() {
   const db = await getAppSnapshot();
-  const actor = await getAuthenticatedClientActor(db);
+  const actor = await getAuthenticatedActor(db);
   if (!actor) redirect("/portal/login?reason=session");
 
-  const company = db.companies.find((item) => item.id === actor.companyId);
-  if (!company) redirect("/portal/login?reason=company");
+  const internalActor = isInternalRole(actor.role);
+  const company = resolveRadarCompanyForActor(db.companies, actor);
+  if (!company) {
+    redirect(internalActor ? "/backoffice/queue" : "/portal/login?reason=company");
+  }
   if (!company.modules.radar.enabled) redirect("/portal");
 
   const ticketCount = db.tickets.filter((ticket) => ticket.companyId === company.id).length;
   const workspaceId = getRadarWorkspaceId(company);
-  const navigation = buildPortalNavigation({
-    active: "radar",
-    modules: company.modules,
-    ticketCount,
-  });
+  const navigation = internalActor
+    ? [
+        { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
+        { href: withActor("/backoffice/companies", actor.id), label: "Empresas" },
+        { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
+        { href: "/portal/radar", label: "Radar", active: true },
+      ]
+    : buildPortalNavigation({
+        active: "radar",
+        modules: company.modules,
+        ticketCount,
+      });
+  const workspaceLabel = internalActor ? "NexOps" : company.name;
   const sidebarFooter = (
-    <SidebarUserCard name={actor.name} detail={company.name}>
+    <SidebarUserCard name={actor.name} detail={internalActor ? "NexOps Tech" : company.name}>
       <LogoutClientForm tone="light" />
     </SidebarUserCard>
   );
@@ -126,9 +143,9 @@ export default async function PortalRadarPage() {
   if (!workspaceId) {
     return (
       <AppShell
-        eyebrow="Portal NexOps · Radar"
+        eyebrow={internalActor ? "Backoffice · Radar" : "Portal NexOps · Radar"}
         title="Radar"
-        description={`La vigilancia de oportunidades de ${company.name}, dentro del mismo Portal.`}
+        description={`La vigilancia de oportunidades de ${workspaceLabel}, dentro del mismo Portal.`}
         tone="light"
         navigation={navigation}
         sidebarFooter={sidebarFooter}
@@ -154,9 +171,9 @@ export default async function PortalRadarPage() {
 
   return (
     <AppShell
-      eyebrow="Portal NexOps · Radar"
+      eyebrow={internalActor ? "Backoffice · Radar" : "Portal NexOps · Radar"}
       title="Radar"
-      description={`Oportunidades, decisiones y publicaciones de ${company.name}, sin salir del Portal.`}
+      description={`Oportunidades, decisiones y publicaciones de ${workspaceLabel}, sin salir del Portal.`}
       tone="light"
       navigation={navigation}
       sidebarFooter={sidebarFooter}

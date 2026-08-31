@@ -37,7 +37,7 @@ export default async function BackofficeQueuePage({ searchParams }: Props) {
   const returnPath = queueParams.size ? `/backoffice/queue?${queueParams.toString()}` : "/backoffice/queue";
 
   return <AppShell eyebrow="Backoffice · Tickets" title="Cola operativa" description="Priorizá y gestioná la atención de todas las empresas desde una vista compacta." tone="light"
-    navigation={[{ href: withActor("/backoffice/queue", actor.id), label: "Tickets", active: true, badge: stats.activeTickets }, { href: withActor("/backoffice/companies", actor.id), label: "Empresas", badge: db.companies.length }, { href: withActor("/backoffice/users", actor.id), label: "Usuarios" }]}
+    navigation={[{ href: withActor("/backoffice/queue", actor.id), label: "Tickets", active: true, badge: stats.activeTickets }, { href: withActor("/backoffice/companies", actor.id), label: "Empresas", badge: db.companies.length }, { href: withActor("/backoffice/users", actor.id), label: "Usuarios" }, ...(actor.role === "platform_admin" ? [{ href: "/portal/radar", label: "Radar" }] : [])]}
     actions={<><NavButton href={withActor("/backoffice/companies", actor.id)} label="Ver empresas" muted tone="light" /><LogoutClientForm tone="light" /></>}
   >
     <IndicatorBar items={[{ label: "Activos", value: stats.activeTickets }, { label: "Alta o crítica", value: stats.highPriority }, { label: "Esperando cliente", value: stats.waitingCustomer }, { label: "Empresas", value: stats.companies }]} />

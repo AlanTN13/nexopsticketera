@@ -30,6 +30,7 @@ export default async function BackofficeUsersPage() {
         { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
         { href: withActor("/backoffice/companies", actor.id), label: "Empresas" },
         { href: withActor("/backoffice/users", actor.id), label: "Usuarios", active: true, badge: internalUsers.length },
+        ...(actor.role === "platform_admin" ? [{ href: "/portal/radar", label: "Radar" }] : []),
       ]}
       actions={
         <>

@@ -66,6 +66,7 @@ export default async function SetupPage() {
         { href: withActor("/backoffice/queue", actor.id), label: "Tickets", badge: stats.activeTickets },
         { href: withActor("/backoffice/companies", actor.id), label: "Empresas", badge: db.companies.length },
         { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
+        ...(actor.role === "platform_admin" ? [{ href: "/portal/radar", label: "Radar" }] : []),
       ]}
       sidebarFooter={
         <SidebarUserCard name={actor.name} detail={roleLabels[actor.role]}>

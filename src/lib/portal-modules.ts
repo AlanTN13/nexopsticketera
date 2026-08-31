@@ -1,4 +1,4 @@
-import { Company, CompanyModules } from "@/lib/ticketing";
+import { Company, CompanyModules, UserProfile, isClientRole } from "@/lib/ticketing";
 
 export type PortalModule = "home" | "support" | "metrics" | "radar";
 
@@ -125,6 +125,21 @@ export function getMetricsProfile(
 export function getRadarWorkspaceId(company: Company) {
   if (!company.modules.radar.enabled) return null;
   return company.modules.radar.settings.workspaceId ?? null;
+}
+
+export function resolveRadarCompanyForActor(
+  companies: Company[],
+  actor: UserProfile,
+  internalWorkspaceId = "nexops",
+) {
+  if (actor.role === "platform_admin") {
+    return (
+      companies.find((company) => getRadarWorkspaceId(company) === internalWorkspaceId) ?? null
+    );
+  }
+
+  if (!actor.companyId || !isClientRole(actor.role)) return null;
+  return companies.find((company) => company.id === actor.companyId) ?? null;
 }
 
 export function buildPortalNavigation({

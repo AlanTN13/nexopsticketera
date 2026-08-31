@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { buildPortalNavigation, getMetricsProfile, getRadarWorkspaceId } from "@/lib/portal-modules";
-import { Company } from "@/lib/ticketing";
+import {
+  buildPortalNavigation,
+  getMetricsProfile,
+  getRadarWorkspaceId,
+  resolveRadarCompanyForActor,
+} from "@/lib/portal-modules";
+import { Company, UserProfile } from "@/lib/ticketing";
 
 function company(overrides: Partial<Company> = {}): Company {
   return {
@@ -107,5 +112,50 @@ describe("portal module configuration", () => {
         }),
       ),
     ).toBe("radar-global-trip");
+  });
+
+  it("lets the platform admin open the NexOps Radar without becoming a client user", () => {
+    const nexops = company({
+      id: "nexops",
+      name: "Sysnexops",
+      modules: {
+        metrics: { enabled: false, settings: {} },
+        radar: { enabled: true, settings: { workspaceId: "nexops" } },
+      },
+    });
+    const admin: UserProfile = {
+      id: "info",
+      companyId: null,
+      name: "NexOps Tech",
+      email: "info@nexopstech.com",
+      role: "platform_admin",
+      status: "active",
+      title: "",
+      avatar: "",
+    };
+
+    expect(resolveRadarCompanyForActor([company(), nexops], admin)).toBe(nexops);
+    expect(admin.companyId).toBeNull();
+  });
+
+  it("does not expose the NexOps Radar to other internal roles", () => {
+    const nexops = company({
+      modules: {
+        metrics: { enabled: false, settings: {} },
+        radar: { enabled: true, settings: { workspaceId: "nexops" } },
+      },
+    });
+    const agent: UserProfile = {
+      id: "agent",
+      companyId: null,
+      name: "Agente",
+      email: "agent@nexopstech.com",
+      role: "agent",
+      status: "active",
+      title: "",
+      avatar: "",
+    };
+
+    expect(resolveRadarCompanyForActor([nexops], agent)).toBeNull();
   });
 });
