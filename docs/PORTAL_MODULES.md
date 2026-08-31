@@ -31,18 +31,26 @@ type CompanyModules = {
 - Los clientes sólo pueden leer las filas de su empresa.
 - Los usuarios internos pueden leer todas las habilitaciones.
 - Sólo `team_lead` y `platform_admin` pueden modificarlas.
-- `update_company_module_availability` cambia únicamente `enabled`; nunca sobrescribe `settings`.
+- `update_company_module_configuration` cambia disponibilidad y workspace en una sola operación autorizada.
 - Global Trip conserva Métricas habilitado durante la migración. Métricas queda apagado para las demás empresas y Radar queda apagado para todas.
 
 ## Integración de Radar
 
-Radar vive en `/portal/radar`, dentro del mismo AppShell y la misma sesión de Supabase. La integración del workspace real debe exigir simultáneamente:
+Radar vive en `/portal/radar`, dentro del mismo AppShell y la misma sesión de Supabase. La integración exige simultáneamente:
 
 1. `company.modules.radar.enabled === true`;
 2. un `company.modules.radar.settings.workspaceId` válido;
-3. autorización server-side que compruebe que ese workspace pertenece a la empresa de la sesión.
+3. que el servidor soporte explícitamente ese workspace.
 
-Si falta `workspaceId`, el Portal puede mostrar la experiencia de próxima activación, pero no debe consultar ni serializar datos de ningún workspace. No se admiten iframe, autenticación paralela ni enlaces a una aplicación pública como sustituto de esta verificación.
+El Backoffice obliga a asignar un workspace antes de habilitar Radar. La consulta se
+realiza desde una capa server-only que devuelve únicamente campos de negocio
+validados. Las publicaciones provienen de un manifiesto público reducido; las
+decisiones descartadas se leen desde un repositorio privado con una credencial de
+solo lectura.
+
+Si falta `workspaceId` o no está soportado, el Portal muestra un estado de
+configuración y no consulta ni serializa datos. No se admiten iframe, autenticación
+paralela ni enlaces a una aplicación pública como sustituto de esta verificación.
 
 ## Dominio
 
