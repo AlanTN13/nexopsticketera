@@ -88,6 +88,23 @@ select {
   text-transform: none;
 }
 
+.radar-product {
+  color-scheme: dark;
+}
+
+.radar-product :is(a, button, summary):focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 3px;
+}
+
+.radar-product details > summary {
+  list-style: none;
+}
+
+.radar-product details > summary::-webkit-details-marker {
+  display: none;
+}
+
 .portal-metrics-skin .rounded-2xl {
   border-radius: 0.75rem;
 }

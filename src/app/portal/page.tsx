@@ -110,13 +110,13 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
           <PortalHomeCard
             href="/portal/radar"
             eyebrow="Radar"
-            title="Planificación de contenidos"
-            description="Organizá la estrategia, el calendario y la producción de contenidos junto al equipo de NexOps."
-            meta="Estrategia y ejecución en un solo espacio"
+            title="Inteligencia editorial autónoma"
+            description="Detectá oportunidades, entendé las decisiones y seguí el contenido que Radar publica y verifica automáticamente."
+            meta="Un producto de Radar by NexOps"
           >
             <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
-              <span className="rounded-full bg-fuchsia-50 px-3 py-1.5 text-fuchsia-800">Planificación</span>
-              <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-indigo-800">Contenido</span>
+              <span className="rounded-full bg-fuchsia-50 px-3 py-1.5 text-fuchsia-800">Oportunidades</span>
+              <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-indigo-800">Autonomía</span>
             </div>
           </PortalHomeCard>
         ) : null}
