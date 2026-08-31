@@ -322,6 +322,10 @@ function mapCompanyModules(rows: CompanyModuleRow[]) {
         settings: {
           accountName: optionalSetting(settings.accountName),
           mailchimpName: optionalSetting(settings.mailchimpName),
+          clientsSheetUrl: optionalSetting(settings.clientsSheetUrl),
+          strategySheetUrl: optionalSetting(settings.strategySheetUrl),
+          metaSheetUrl: optionalSetting(settings.metaSheetUrl),
+          mailchimpSheetUrl: optionalSetting(settings.mailchimpSheetUrl),
           objective:
             objective === "CONVERSACIONES" || objective === "LEADS" || objective === "COMPRAS"
               ? objective

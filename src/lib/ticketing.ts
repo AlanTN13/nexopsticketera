@@ -47,6 +47,10 @@ export type PortalModuleSettings = {
     accountName?: string;
     mailchimpName?: string;
     objective?: "CONVERSACIONES" | "LEADS" | "COMPRAS";
+    clientsSheetUrl?: string;
+    strategySheetUrl?: string;
+    metaSheetUrl?: string;
+    mailchimpSheetUrl?: string;
   };
   radar: {
     workspaceId?: string;

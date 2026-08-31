@@ -66,6 +66,26 @@ describe("portal module configuration", () => {
     expect(profile?.objective).toBe("LEADS");
   });
 
+  it("keeps each company's Sheet sources in its server-side module settings", () => {
+    const profile = getMetricsProfile(
+      company({
+        modules: {
+          metrics: {
+            enabled: true,
+            settings: {
+              clientsSheetUrl: "https://docs.google.com/clients.csv",
+              strategySheetUrl: "https://docs.google.com/strategy.csv",
+            },
+          },
+          radar: { enabled: false, settings: {} },
+        },
+      }),
+    );
+
+    expect(profile?.clientsSheetUrl).toBe("https://docs.google.com/clients.csv");
+    expect(profile?.strategySheetUrl).toBe("https://docs.google.com/strategy.csv");
+  });
+
   it("renders navigation from the company entitlements", () => {
     const navigation = buildPortalNavigation({
       active: "home",
