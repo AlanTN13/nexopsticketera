@@ -11,6 +11,10 @@ export type MetricsCompanyProfile = {
   primaryColor?: string;
   secondaryColor?: string;
   textColor?: string;
+  clientsSheetUrl?: string;
+  strategySheetUrl?: string;
+  metaSheetUrl?: string;
+  mailchimpSheetUrl?: string;
 };
 
 type PortalNavigationItem = {
@@ -119,6 +123,10 @@ export function getMetricsProfile(
     accountName: settings.accountName ?? profile.accountName,
     mailchimpName: settings.mailchimpName ?? profile.mailchimpName,
     objective: settings.objective ?? profile.objective,
+    clientsSheetUrl: settings.clientsSheetUrl ?? profile.clientsSheetUrl,
+    strategySheetUrl: settings.strategySheetUrl ?? profile.strategySheetUrl,
+    metaSheetUrl: settings.metaSheetUrl ?? profile.metaSheetUrl,
+    mailchimpSheetUrl: settings.mailchimpSheetUrl ?? profile.mailchimpSheetUrl,
   };
 }
 

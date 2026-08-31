@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { LogoutClientForm } from "@/components/forms";
 import { MetricsWorkspace } from "@/components/metrics/metrics-workspace";
+import { MetricsStrategyTimeline } from "@/components/metrics/metrics-strategy-timeline";
 import { AppShell, EmptyState, InlineNotice, SidebarUserCard } from "@/components/ui";
 import { Client } from "@/features/metrics/types";
 import { getAuthenticatedClientActor } from "@/lib/auth";
@@ -23,22 +24,26 @@ export default async function PortalMetricsPage() {
   if (!profile) redirect("/portal");
 
   const data = await loadMetricsData(profile);
+  const source = data.clientSource;
   const companyTickets = db.tickets.filter((ticket) => ticket.companyId === company.id);
   const client: Client = {
     id: company.id,
-    name: company.name,
-    accountName: profile.accountName,
-    logoUrl: profile.logoUrl ?? "",
-    primaryColor: profile.primaryColor ?? "#4330A6",
-    secondaryColor: profile.secondaryColor ?? "#7C5BFF",
-    textColor: profile.textColor ?? "#FFFFFF",
-    mailchimpName: profile.mailchimpName,
-    objective: profile.objective ?? "CONVERSACIONES",
-    description: company.industry,
+    name: source?.name ?? company.name,
+    accountName: source?.accountName ?? profile.accountName,
+    logoUrl: source?.logoUrl || profile.logoUrl || "",
+    primaryColor: source?.primaryColor ?? profile.primaryColor ?? "#4330A6",
+    secondaryColor: source?.secondaryColor ?? profile.secondaryColor ?? "#7C5BFF",
+    textColor: source?.textColor ?? profile.textColor ?? "#FFFFFF",
+    mailchimpName: source?.mailchimpName ?? profile.mailchimpName,
+    objective: source?.objective ?? profile.objective ?? "CONVERSACIONES",
+    description: source?.description ?? company.industry,
+    targetCpa: source?.targetCpa,
+    monthlyBudget: source?.monthlyBudget,
     createdAt: company.createdAt,
     updatedAt: data.loadedAt,
   };
-  const hasData = data.metaRows.length > 0 || data.mailchimpRows.length > 0;
+  const hasPerformanceData = data.metaRows.length > 0 || data.mailchimpRows.length > 0;
+  const hasStrategyData = Boolean(source?.initialStrategy || data.strategyEntries.length);
 
   return (
     <AppShell
@@ -57,14 +62,18 @@ export default async function PortalMetricsPage() {
         </SidebarUserCard>
       }
     >
-      {hasData && data.warnings.length > 0 ? (
+      {hasPerformanceData && data.warnings.length > 0 ? (
         <InlineNotice tone="info">
           Algunos indicadores se están actualizando. Volvé a consultar en unos minutos.
         </InlineNotice>
       ) : null}
 
-      {hasData ? (
+      {hasPerformanceData ? (
         <MetricsWorkspace client={client} metaRows={data.metaRows} mailchimpRows={data.mailchimpRows} />
+      ) : hasStrategyData ? (
+        <InlineNotice tone="info">
+          Clientes y bitácora ya están conectados. Para habilitar los indicadores de rendimiento falta vincular la exportación de Meta Ads.
+        </InlineNotice>
       ) : (
         <EmptyState
           title="Muy pronto, todas tus métricas en un solo lugar"
@@ -72,6 +81,12 @@ export default async function PortalMetricsPage() {
           tone="light"
         />
       )}
+
+      <MetricsStrategyTimeline
+        companyName={client.name}
+        initialStrategy={source?.initialStrategy}
+        entries={data.strategyEntries}
+      />
 
       {data.latestDataDate ? (
         <p className="text-right text-xs font-medium text-slate-500">Último dato disponible: {data.latestDataDate}</p>
