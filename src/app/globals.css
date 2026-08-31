@@ -97,6 +97,10 @@ select {
   outline-offset: 3px;
 }
 
+.radar-product a.radar-primary-action {
+  color: #ffffff;
+}
+
 .radar-product details > summary {
   list-style: none;
 }
