@@ -26,6 +26,7 @@ export const USER_ROLES = [
   "platform_admin",
 ] as const;
 export const USER_STATUSES = ["active", "invited", "disabled"] as const;
+export const OPTIONAL_PORTAL_MODULES = ["metrics", "radar"] as const;
 export const MAX_TICKET_IMAGES = 3;
 export const MAX_COMMENT_IMAGES = 3;
 export const MAX_COMMENT_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -39,6 +40,29 @@ export type TicketPriority = (typeof TICKET_PRIORITIES)[number];
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 export type UserRole = (typeof USER_ROLES)[number];
 export type UserStatus = (typeof USER_STATUSES)[number];
+export type OptionalPortalModule = (typeof OPTIONAL_PORTAL_MODULES)[number];
+
+export type PortalModuleSettings = {
+  metrics: {
+    accountName?: string;
+    mailchimpName?: string;
+    objective?: "CONVERSACIONES" | "LEADS" | "COMPRAS";
+  };
+  radar: {
+    workspaceId?: string;
+  };
+};
+
+export type CompanyModuleEntitlement<Module extends OptionalPortalModule> = {
+  enabled: boolean;
+  settings: PortalModuleSettings[Module];
+};
+
+export type CompanyModules = {
+  [Module in OptionalPortalModule]: CompanyModuleEntitlement<Module>;
+};
+
+export type CompanyModuleAvailability = Record<OptionalPortalModule, boolean>;
 
 export type Company = {
   id: string;
@@ -48,6 +72,7 @@ export type Company = {
   industry: string;
   status: "active" | "onboarding";
   primaryContact: string;
+  modules: CompanyModules;
   createdAt: string;
 };
 

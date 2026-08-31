@@ -1,8 +1,19 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { updateSupabaseSession } from "@/lib/supabase-proxy";
 
 export async function proxy(request: NextRequest) {
+  if (
+    process.env.PORTAL_CANONICAL_REDIRECT_ENABLED === "true" &&
+    request.nextUrl.hostname === "soporte.nexopstech.com"
+  ) {
+    const canonicalUrl = request.nextUrl.clone();
+    canonicalUrl.protocol = "https";
+    canonicalUrl.hostname = "portal.nexopstech.com";
+    canonicalUrl.port = "";
+    return NextResponse.redirect(canonicalUrl, 308);
+  }
+
   return updateSupabaseSession(request);
 }
 

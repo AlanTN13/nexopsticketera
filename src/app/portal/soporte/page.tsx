@@ -7,7 +7,7 @@ import { TicketTable } from "@/components/tables";
 import { AppShell, EmptyState, IndicatorBar, InlineNotice, NavButton, SectionCard, SidebarUserCard } from "@/components/ui";
 import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
-import { buildPortalNavigation, getMetricsProfile } from "@/lib/portal-modules";
+import { buildPortalNavigation } from "@/lib/portal-modules";
 import { buildPortalStats, filterTickets, sortTickets } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
 
   return (
     <AppShell eyebrow="Portal NexOps · Soporte" title="Soporte" description="Seguí las solicitudes de tu empresa y encontrá rápido qué requiere atención." tone="light"
-      navigation={buildPortalNavigation({ active: "support", metricsEnabled: Boolean(getMetricsProfile(company)), ticketCount: stats.total })}
+      navigation={buildPortalNavigation({ active: "support", modules: company.modules, ticketCount: stats.total })}
       sidebarFooter={<SidebarUserCard name={actor.name} detail={company.name}><LogoutClientForm tone="light" /></SidebarUserCard>}
       actions={<><div className="hidden md:block"><PortalTicketModal title="Nuevo ticket" description="Contanos qué pasa y cómo afecta tu trabajo."><CreateTicketForm actor={actor} tone="light" compact /></PortalTicketModal></div><div className="md:hidden"><NavButton href="/portal/tickets/new" label="Nuevo ticket" tone="light" /></div></>}
     >

@@ -13,6 +13,8 @@ import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-
 import { parseTicketReference, ticketDetailPath } from "@/lib/routing";
 import {
   Company,
+  CompanyModuleAvailability,
+  CompanyModules,
   CompanyPlan,
   TicketArea,
   TicketAttachment,
@@ -104,6 +106,12 @@ export type UpdateCompanyInput = {
   primaryContact: string;
 };
 
+export type UpdateCompanyModulesInput = {
+  actorId: string;
+  companyId: string;
+  modules: CompanyModuleAvailability;
+};
+
 type CompanyRow = {
   id: string;
   name: string;
@@ -113,6 +121,13 @@ type CompanyRow = {
   status: string;
   primary_contact: string | null;
   created_at: string;
+};
+
+type CompanyModuleRow = {
+  company_id: string;
+  module: "metrics" | "radar";
+  enabled: boolean;
+  settings: unknown;
 };
 
 type UserRow = {
@@ -233,7 +248,10 @@ function formatBytes(size: number) {
   return `${rounded} ${units[unitIndex]}`;
 }
 
-function mapCompany(row: CompanyRow): Company {
+function mapCompany(
+  row: CompanyRow,
+  modules: CompanyModules = emptyCompanyModules(),
+): Company {
   const plan = (["starter", "growth", "enterprise"].includes(row.plan)
     ? row.plan
     : "starter") as CompanyPlan;
@@ -246,8 +264,61 @@ function mapCompany(row: CompanyRow): Company {
     industry: row.industry ?? "",
     status: row.status === "onboarding" ? "onboarding" : "active",
     primaryContact: row.primary_contact ?? "",
+    modules,
     createdAt: row.created_at,
   };
+}
+
+function emptyCompanyModules(): CompanyModules {
+  return {
+    metrics: { enabled: false, settings: {} },
+    radar: { enabled: false, settings: {} },
+  };
+}
+
+function objectSettings(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function optionalSetting(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function mapCompanyModules(rows: CompanyModuleRow[]) {
+  const byCompanyId = new Map<string, CompanyModules>();
+
+  for (const row of rows) {
+    const modules = byCompanyId.get(row.company_id) ?? emptyCompanyModules();
+    const settings = objectSettings(row.settings);
+
+    if (row.module === "metrics") {
+      const objective = settings.objective;
+      modules.metrics = {
+        enabled: row.enabled,
+        settings: {
+          accountName: optionalSetting(settings.accountName),
+          mailchimpName: optionalSetting(settings.mailchimpName),
+          objective:
+            objective === "CONVERSACIONES" || objective === "LEADS" || objective === "COMPRAS"
+              ? objective
+              : undefined,
+        },
+      };
+    } else {
+      modules.radar = {
+        enabled: row.enabled,
+        settings: {
+          workspaceId: optionalSetting(settings.workspaceId),
+        },
+      };
+    }
+
+    byCompanyId.set(row.company_id, modules);
+  }
+
+  return byCompanyId;
 }
 
 function mapUser(row: UserRow): UserProfile {
@@ -453,9 +524,10 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
     };
   }
 
-  const [companiesResult, usersResult, ticketsResult, commentsResult, attachmentsResult, historyResult] =
+  const [companiesResult, companyModulesResult, usersResult, ticketsResult, commentsResult, attachmentsResult, historyResult] =
     await Promise.all([
       client.from("companies").select("*").order("created_at", { ascending: false }),
+      client.from("company_modules").select("company_id, module, enabled, settings"),
       client.from("users").select("*").order("created_at", { ascending: false }),
       client.from("tickets").select("*").order("updated_at", { ascending: false }),
       client.from("ticket_comments").select("*").order("created_at", { ascending: true }),
@@ -464,6 +536,7 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
     ]);
 
   assertNoError(companiesResult.error);
+  assertNoError(companyModulesResult.error);
   assertNoError(usersResult.error);
   assertNoError(ticketsResult.error);
   assertNoError(commentsResult.error);
@@ -476,6 +549,9 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
   );
 
   const tickets = (ticketsResult.data ?? []).map((row) => mapTicket(row as TicketRow));
+  const modulesByCompanyId = mapCompanyModules(
+    (companyModulesResult.data ?? []) as CompanyModuleRow[],
+  );
   const assignedTicketIds = tickets
     .filter((ticket) => ticket.assignedToId)
     .map((ticket) => ticket.id);
@@ -494,7 +570,10 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
   }
 
   return {
-    companies: (companiesResult.data ?? []).map((row) => mapCompany(row as CompanyRow)),
+    companies: (companiesResult.data ?? []).map((row) => {
+      const company = row as CompanyRow;
+      return mapCompany(company, modulesByCompanyId.get(company.id));
+    }),
     users: (usersResult.data ?? []).map((row) => mapUser(row as UserRow)),
     tickets: tickets.map((ticket) => ({
       ...ticket,
@@ -1027,7 +1106,44 @@ async function updateCompanyInSupabase(input: {
     .single();
 
   assertNoError(error);
-  return mapCompany(data as CompanyRow);
+  return mapCompany(data as CompanyRow, company.modules);
+}
+
+async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) {
+  const db = await getSupabaseSnapshot();
+  const actor = ensureActor(db, input.actorId);
+
+  if (!canManageGlobalCatalog(actor.role)) {
+    throw new Error("No tenés permisos para habilitar productos.");
+  }
+
+  const company = db.companies.find((item) => item.id === input.companyId);
+  if (!company) {
+    throw new Error("No pudimos encontrar la empresa.");
+  }
+
+  const client = await getSupabaseServerClient();
+  const { error } = await client.rpc("update_company_module_availability", {
+    target_company_id: company.id,
+    metrics_enabled: input.modules.metrics,
+    radar_enabled: input.modules.radar,
+  });
+
+  assertNoError(error);
+
+  return {
+    ...company,
+    modules: {
+      metrics: {
+        ...company.modules.metrics,
+        enabled: input.modules.metrics,
+      },
+      radar: {
+        ...company.modules.radar,
+        enabled: input.modules.radar,
+      },
+    },
+  };
 }
 
 export async function getAppSnapshot() {
@@ -1064,4 +1180,8 @@ export async function createCompany(input: CreateCompanyInput) {
 
 export async function updateCompany(input: UpdateCompanyInput) {
   return updateCompanyInSupabase(input);
+}
+
+export async function updateCompanyModules(input: UpdateCompanyModulesInput) {
+  return updateCompanyModulesInSupabase(input);
 }

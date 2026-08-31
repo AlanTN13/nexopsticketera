@@ -5,6 +5,7 @@ import {
   createTicketAction,
   logoutClientAction,
   updateCompanyAction,
+  updateCompanyModulesAction,
   updateTicketWorkflowAction,
   updateUserAction,
 } from "@/app/actions";
@@ -518,6 +519,80 @@ export function UpdateCompanyForm({
             ? "bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] text-white hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
             : "bg-[linear-gradient(135deg,#efeefe,#c4c6ff)] text-[#120d31] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
         }`}
+      />
+    </PendingForm>
+  );
+}
+
+export function UpdateCompanyModulesForm({
+  actor,
+  company,
+  returnPath,
+}: {
+  actor: UserProfile;
+  company: Company;
+  returnPath: string;
+}) {
+  if (!canManageGlobalCatalog(actor.role)) {
+    return (
+      <div className="rounded-[20px] border border-dashed border-violet-200 bg-violet-50 p-5 text-sm leading-6 text-[#5a5d7f]">
+        Este rol puede revisar los productos de la cuenta, pero no cambiar su disponibilidad.
+      </div>
+    );
+  }
+
+  const modules = [
+    {
+      name: "metricsEnabled",
+      title: "Métricas",
+      description: "Reportería de campañas, KPIs y evolución de resultados.",
+      enabled: company.modules.metrics.enabled,
+    },
+    {
+      name: "radarEnabled",
+      title: "Radar",
+      description: "Planificación y gestión integral del contenido de la empresa.",
+      enabled: company.modules.radar.enabled,
+    },
+  ] as const;
+
+  return (
+    <PendingForm action={updateCompanyModulesAction} className="grid gap-4">
+      <input type="hidden" name="actorId" value={actor.id} />
+      <input type="hidden" name="companyId" value={company.id} />
+      <input type="hidden" name="returnPath" value={returnPath} />
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {modules.map((module) => (
+          <label
+            key={module.name}
+            className="flex cursor-pointer items-start gap-3 rounded-[18px] border border-slate-200 bg-white p-4 transition hover:border-violet-300 hover:bg-violet-50/40"
+          >
+            <input
+              type="checkbox"
+              name={module.name}
+              defaultChecked={module.enabled}
+              className="mt-1 size-4 accent-violet-700"
+            />
+            <span className="grid gap-1">
+              <span className="text-sm font-semibold text-slate-950">{module.title}</span>
+              <span className="text-xs leading-5 text-slate-600">{module.description}</span>
+              <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-700">
+                {module.enabled ? "Habilitado" : "No disponible"}
+              </span>
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <p className="text-xs leading-5 text-slate-600">
+        El cambio define qué productos aparecen en el Portal de esta empresa y también protege el acceso directo a cada ruta.
+      </p>
+
+      <PendingSubmitButton
+        idleLabel="Guardar productos"
+        pendingLabel="Guardando…"
+        className="rounded-[22px] bg-[linear-gradient(135deg,#7c5bff,#5d46d6)] px-5 py-3 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:shadow-[0_18px_40px_rgba(124,91,255,0.24)]"
       />
     </PendingForm>
   );

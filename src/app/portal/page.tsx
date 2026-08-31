@@ -37,6 +37,8 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
   const stats = buildPortalStats(tickets);
   const metricsProfile = getMetricsProfile(company);
   const resolved = tickets.filter((ticket) => ["resolved", "closed"].includes(ticket.status)).length;
+  const optionalModuleCount =
+    Number(company.modules.metrics.enabled) + Number(company.modules.radar.enabled);
 
   return (
     <AppShell
@@ -46,7 +48,7 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
       tone="light"
       navigation={buildPortalNavigation({
         active: "home",
-        metricsEnabled: Boolean(metricsProfile),
+        modules: company.modules,
         ticketCount: tickets.length,
       })}
       sidebarFooter={
@@ -65,7 +67,15 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
         ]}
       />
 
-      <div className={`grid gap-4 ${metricsProfile ? "lg:grid-cols-2" : "max-w-3xl"}`}>
+      <div
+        className={`grid gap-4 ${
+          optionalModuleCount > 1
+            ? "xl:grid-cols-3"
+            : optionalModuleCount === 1
+              ? "lg:grid-cols-2"
+              : "max-w-3xl"
+        }`}
+      >
         <PortalHomeCard
           href="/portal/soporte"
           eyebrow="Soporte"
@@ -92,6 +102,21 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
               {metricsProfile.mailchimpName ? (
                 <span className="rounded-full bg-sky-50 px-3 py-1.5 text-sky-800">Emailing</span>
               ) : null}
+            </div>
+          </PortalHomeCard>
+        ) : null}
+
+        {company.modules.radar.enabled ? (
+          <PortalHomeCard
+            href="/portal/radar"
+            eyebrow="Radar"
+            title="Planificación de contenidos"
+            description="Organizá la estrategia, el calendario y la producción de contenidos junto al equipo de NexOps."
+            meta="Estrategia y ejecución en un solo espacio"
+          >
+            <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
+              <span className="rounded-full bg-fuchsia-50 px-3 py-1.5 text-fuchsia-800">Planificación</span>
+              <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-indigo-800">Contenido</span>
             </div>
           </PortalHomeCard>
         ) : null}

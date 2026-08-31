@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { CreateUserForm, LogoutClientForm, UpdateCompanyForm, UpdateUserForm } from "@/components/forms";
+import { CreateUserForm, LogoutClientForm, UpdateCompanyForm, UpdateCompanyModulesForm, UpdateUserForm } from "@/components/forms";
 import { TicketTable, UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
@@ -124,6 +124,18 @@ export default async function BackofficeCompanyDetail({
           />
         </SectionCard>
       </div>
+
+      <SectionCard
+        title="Productos del Portal"
+        description="Habilitá únicamente las herramientas contratadas o acordadas con esta empresa. Soporte permanece disponible como módulo base."
+        tone="light"
+      >
+        <UpdateCompanyModulesForm
+          actor={actor}
+          company={company}
+          returnPath={`/backoffice/companies/${company.slug}`}
+        />
+      </SectionCard>
 
       <SectionCard title="Tickets de la empresa" description="Cola específica de esta cuenta, sin perder consistencia con la tabla global." tone="light">
         {companyTickets.length > 0 ? (
