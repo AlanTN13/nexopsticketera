@@ -4,7 +4,7 @@ import { LogoutClientForm } from "@/components/forms";
 import { MetricsWorkspace } from "@/components/metrics/metrics-workspace";
 import { MetricsStrategyTimeline } from "@/components/metrics/metrics-strategy-timeline";
 import { MetricsSyncControl } from "@/components/metrics/metrics-sync-control";
-import { AppShell, EmptyState, InlineNotice, SidebarUserCard } from "@/components/ui";
+import { AppShell, InlineNotice, SidebarUserCard } from "@/components/ui";
 import { Client } from "@/features/metrics/types";
 import { refreshMetricsAction } from "@/app/portal/metricas/actions";
 import { getAuthenticatedClientActor } from "@/lib/auth";
@@ -50,7 +50,6 @@ export default async function PortalMetricsPage({
     updatedAt: data.loadedAt ?? company.createdAt,
   };
   const hasPerformanceData = data.metaRows.length > 0 || data.mailchimpRows.length > 0;
-  const hasStrategyData = Boolean(source?.initialStrategy || data.strategyEntries.length);
 
   return (
     <AppShell
@@ -91,19 +90,13 @@ export default async function PortalMetricsPage({
         </InlineNotice>
       ) : null}
 
-      {hasPerformanceData ? (
-        <MetricsWorkspace client={client} metaRows={data.metaRows} mailchimpRows={data.mailchimpRows} />
-      ) : hasStrategyData ? (
+      {!hasPerformanceData ? (
         <InlineNotice tone="info">
-          Clientes y bitácora ya están conectados. Para habilitar los indicadores de rendimiento falta vincular la exportación de Meta Ads.
+          El dashboard ya está habilitado. Los indicadores se completan cuando quede vinculada la exportación de Meta Ads.
         </InlineNotice>
-      ) : (
-        <EmptyState
-          title="Muy pronto, todas tus métricas en un solo lugar"
-          detail="Estamos terminando de preparar tu reportería personalizada. En breve vas a poder seguir el rendimiento de tus campañas y consultar tus principales resultados desde Portal NexOps."
-          tone="light"
-        />
-      )}
+      ) : null}
+
+      <MetricsWorkspace client={client} metaRows={data.metaRows} mailchimpRows={data.mailchimpRows} />
 
       <MetricsStrategyTimeline
         companyName={client.name}

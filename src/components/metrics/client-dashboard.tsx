@@ -50,6 +50,7 @@ import {
 interface ClientDashboardProps {
   client: Client;
   rows: SheetRow[];
+  hasSourceData?: boolean;
   dateRangeLabel: string;
 }
 
@@ -130,6 +131,7 @@ type SortDirection = "asc" | "desc";
 export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   client,
   rows,
+  hasSourceData = rows.length > 0,
   dateRangeLabel,
 }) => {
   const objective = client.objective || "CONVERSACIONES";
@@ -864,18 +866,114 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   ];
 
   if (rows.length === 0) {
+    const pendingKpis = [
+      { label: "Inversión", icon: DollarSign, accent: "bg-violet-50 text-violet-700" },
+      { label: primaryMetricLabel, icon: MessageSquare, accent: "bg-sky-50 text-sky-700" },
+      { label: costPerResultLabel, icon: TrendingUp, accent: "bg-amber-50 text-amber-700" },
+      { label: "Alcance", icon: Users, accent: "bg-emerald-50 text-emerald-700" },
+    ];
+    const emptyTitle = hasSourceData
+      ? `Sin actividad para ${client.name} en este período`
+      : `Dashboard preparado para ${client.name}`;
+    const emptyDetail = hasSourceData
+      ? "La fuente está conectada, pero no devolvió registros para el período elegido. Probá seleccionar Todo para ampliar la consulta."
+      : "La estructura ya está activa. Los valores se completan automáticamente cuando quede conectada la fuente de Meta Ads.";
+    const sourceStatus = hasSourceData ? "Conectada" : "Meta Ads";
+    const updateStatus = hasSourceData ? "Sin registros en el período" : "Pendiente";
+
     return (
-      <div className="p-4 sm:p-5 animate-fadeIn">
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-4 shadow-xs">
-          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-            <FileSpreadsheet className="w-6 h-6" />
+      <div id="client-dashboard" className="animate-fadeIn space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 rounded-xl border border-violet-200 bg-violet-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-violet-700 shadow-xs">
+              <FileSpreadsheet className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-950">{emptyTitle}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                {emptyDetail}
+              </p>
+            </div>
           </div>
-          <h3 className="text-base font-bold text-slate-900">
-            Todavía no hay datos disponibles para {client.name}
-          </h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Probá ampliar el período seleccionado. Si el estado continúa, escribinos desde Soporte para revisar la actualización de la reportería.
-          </p>
+          <span className="w-fit shrink-0 rounded-full border border-violet-200 bg-white px-3 py-1.5 text-[11px] font-bold text-violet-700">
+            {hasSourceData ? "Sin datos en el período" : "Fuente pendiente"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {pendingKpis.map(({ label, icon: Icon, accent }) => (
+            <article key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-slate-500">{label}</p>
+                <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${accent}`}>
+                  <Icon className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="mt-5 text-2xl font-bold tracking-tight text-slate-400">—</p>
+              <p className="mt-1 text-[11px] font-medium text-slate-400">Esperando datos de la cuenta</p>
+            </article>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)]">
+          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-950">Evolución de rendimiento</h3>
+                <p className="mt-1 text-xs text-slate-500">Inversión y resultados por día</p>
+              </div>
+              <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">{dateRangeLabel}</span>
+            </div>
+            <div className="relative mt-5 h-56 overflow-hidden rounded-lg border border-dashed border-slate-200 bg-slate-50/70">
+              <div className="absolute inset-x-4 bottom-8 top-5 flex flex-col justify-between">
+                {[0, 1, 2, 3].map((line) => <span key={line} className="h-px bg-slate-200" />)}
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-center shadow-xs">
+                  <TrendingUp className="mx-auto h-5 w-5 text-violet-500" />
+                  <p className="mt-2 text-xs font-bold text-slate-700">El gráfico aparecerá con la primera actualización</p>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+            <h3 className="text-sm font-bold text-slate-950">Estado de la cuenta</h3>
+            <div className="mt-4 space-y-3">
+              {[
+                ["Cuenta publicitaria", client.accountName || "Sin vincular"],
+                ["Fuente de datos", sourceStatus],
+                ["Actualización", updateStatus],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3 text-xs last:border-0 last:pb-0">
+                  <span className="text-slate-500">{label}</span>
+                  <span className="max-w-[58%] truncate text-right font-semibold text-slate-700">{value}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {[
+            { title: "Campañas", detail: "Rendimiento, inversión y resultados por campaña", icon: Layers },
+            { title: "Creatividades", detail: "Piezas con mejor desempeño y oportunidades", icon: Film },
+          ].map(({ title, detail, icon: Icon }) => (
+            <article key={title} className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-950">{title}</h3>
+                  <p className="mt-0.5 text-xs text-slate-500">{detail}</p>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs font-medium text-slate-500">
+                Disponible al conectar la fuente
+              </div>
+            </article>
+          ))}
         </div>
       </div>
     );
