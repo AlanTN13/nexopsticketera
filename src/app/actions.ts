@@ -156,6 +156,7 @@ export async function createTicketAction(formData: FormData): Promise<MutationSt
   }
 
   revalidatePath("/portal");
+  revalidatePath("/portal/soporte");
   redirect(buildSuccessRedirect(ticketDetailPath("/portal", ticket), "Ticket creado correctamente."));
 }
 

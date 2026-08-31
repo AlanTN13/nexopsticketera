@@ -5,6 +5,7 @@ import { UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, SidebarUserCard } from "@/components/ui";
 import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
+import { buildPortalNavigation, getMetricsProfile } from "@/lib/portal-modules";
 import { canAccessCompanyUsers, getUsersForCompany } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +22,11 @@ export default async function PortalUsersPage({ searchParams }: PortalUsersProps
   if (!actor) {
     redirect("/portal/login");
   }
+  const company = db.companies.find((item) => item.id === actor.companyId);
+  if (!company) redirect("/portal/login?reason=company");
 
   const users = getUsersForCompany(db, actor.companyId);
+  const ticketCount = db.tickets.filter((ticket) => ticket.companyId === company.id).length;
   const canManage = canAccessCompanyUsers(actor, actor.companyId);
 
   return (
@@ -31,17 +35,14 @@ export default async function PortalUsersPage({ searchParams }: PortalUsersProps
       title="Usuarios de tu empresa"
       description="El acceso se sigue gestionando por empresa, pero ahora en una pantalla más clara y separada del seguimiento de tickets."
       tone="light"
-      navigation={[
-        { href: "/portal", label: "Tickets" },
-        { href: "/portal/users", label: "Usuarios", active: true, badge: users.length },
-      ]}
+      navigation={buildPortalNavigation({ active: null, metricsEnabled: Boolean(getMetricsProfile(company)), ticketCount })}
       sidebarFooter={
-        <SidebarUserCard name={actor.name} detail="Cliente">
+        <SidebarUserCard name={actor.name} detail={company.name}>
           <LogoutClientForm tone="light" />
         </SidebarUserCard>
       }
       actions={
-        <NavButton href="/portal" label="Ver tickets" muted tone="light" />
+        <NavButton href="/portal" label="Volver al inicio" muted tone="light" />
       }
     >
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">

@@ -5,6 +5,7 @@ import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot, getVisibleTicketReference } from "@/lib/app-store";
 import { getTicketById, getTicketHistory, getUser, getVisibleComments } from "@/lib/queries";
 import { ticketDetailPath } from "@/lib/routing";
+import { buildPortalNavigation, getMetricsProfile } from "@/lib/portal-modules";
 import { canCommentOnTickets, formatRelativeDate, getTicketNextStep, translateHistoryMessage } from "@/lib/ticketing";
 import { CommentAttachments } from "@/components/comment-attachments";
 import { TicketContextLinks } from "@/components/ticket-context-links";
@@ -17,10 +18,17 @@ export default async function PortalTicketDetail({ params, searchParams }: Props
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedClientActor(db);
   if (!actor) redirect("/portal/login?reason=session");
+  const company = db.companies.find((item) => item.id === actor.companyId);
+  if (!company) redirect("/portal/login?reason=company");
+  const navigation = buildPortalNavigation({
+    active: "support",
+    metricsEnabled: Boolean(getMetricsProfile(company)),
+    ticketCount: db.tickets.filter((item) => item.companyId === company.id).length,
+  });
 
   const visibleReference = await getVisibleTicketReference(ticketCode);
   const ticket = visibleReference ? getTicketById(db, actor, visibleReference.id) : null;
-  if (!ticket) return <AppShell eyebrow="Portal cliente" title="Ticket no encontrado" description="No pudimos mostrar este ticket." tone="light" navigation={[{ href: "/portal", label: "Tickets", active: true }]} actions={<NavButton href="/portal" label="Volver" muted tone="light" />}><EmptyState title="Sin acceso al ticket" detail="No existe o no pertenece a tu empresa." tone="light" /></AppShell>;
+  if (!ticket) return <AppShell eyebrow="Portal NexOps · Soporte" title="Ticket no encontrado" description="No pudimos mostrar este ticket." tone="light" navigation={navigation} actions={<NavButton href="/portal/soporte" label="Volver" muted tone="light" />}><EmptyState title="Sin acceso al ticket" detail="No existe o no pertenece a tu empresa." tone="light" /></AppShell>;
 
   const canonicalPath = ticketDetailPath("/portal", ticket);
   if (ticketCode !== ticket.code.toLocaleLowerCase("en-US")) permanentRedirect(canonicalPath);
@@ -29,9 +37,9 @@ export default async function PortalTicketDetail({ params, searchParams }: Props
   const history = getTicketHistory(db, ticket.id);
   const attachments = db.attachments.filter((item) => item.ticketId === ticket.id && item.commentId === null);
 
-  return <AppShell eyebrow="Portal cliente · Ticket" title={`${ticket.code} · ${ticket.title}`} description="Conversación y seguimiento del caso." tone="light"
-    navigation={[{ href: "/portal", label: "Tickets", active: true }, { href: "/portal/users", label: "Usuarios" }]}
-    actions={<><NavButton href="/portal" label="Volver a tickets" muted tone="light" /><LogoutClientForm tone="light" /></>}
+  return <AppShell eyebrow="Portal NexOps · Soporte" title={`${ticket.code} · ${ticket.title}`} description="Conversación y seguimiento del caso." tone="light"
+    navigation={navigation}
+    actions={<><NavButton href="/portal/soporte" label="Volver a tickets" muted tone="light" /><LogoutClientForm tone="light" /></>}
   >
     {success ? <InlineNotice tone="success">{success}</InlineNotice> : null}
     <section className="rounded-xl border border-slate-200 bg-white px-4 py-3">
