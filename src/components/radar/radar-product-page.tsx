@@ -213,7 +213,7 @@ function OverviewView({ model, companyName }: { model: RadarProductModel; compan
           <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-montserrat)] text-3xl font-bold leading-tight tracking-[-0.03em] text-slate-950 sm:text-4xl">Oportunidades y contenido, en un solo lugar.</h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">Revisá qué encontró Radar, qué decidió publicar y qué descartó para cuidar el foco de la marca.</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/portal/radar/oportunidades" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#4f35b5] px-4 text-sm font-bold text-white transition hover:bg-[#43299c]">Ver oportunidades <ChevronRight size={16} /></Link>
+            <Link href="/portal/radar/oportunidades" className="radar-primary-action inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#4f35b5] px-4 text-sm font-bold text-white transition hover:bg-[#43299c]">Ver oportunidades <ChevronRight size={16} /></Link>
             <Link href="/portal/radar/estrategia" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-950">Configurar estrategia</Link>
           </div>
         </div>
