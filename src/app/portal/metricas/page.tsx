@@ -44,7 +44,7 @@ export default async function PortalMetricsPage() {
     <AppShell
       eyebrow="Portal NexOps · Métricas"
       title="Métricas"
-      description={`Resultados de marketing visibles únicamente para ${company.name}.`}
+      description={`Toda la reportería de ${company.name}, clara y accesible en un solo lugar.`}
       tone="light"
       navigation={buildPortalNavigation({
         active: "metrics",
@@ -57,16 +57,18 @@ export default async function PortalMetricsPage() {
         </SidebarUserCard>
       }
     >
-      {data.warnings.map((warning) => (
-        <InlineNotice key={warning} tone="info">{warning}</InlineNotice>
-      ))}
+      {hasData && data.warnings.length > 0 ? (
+        <InlineNotice tone="info">
+          Algunos indicadores se están actualizando. Volvé a consultar en unos minutos.
+        </InlineNotice>
+      ) : null}
 
       {hasData ? (
         <MetricsWorkspace client={client} metaRows={data.metaRows} mailchimpRows={data.mailchimpRows} />
       ) : (
         <EmptyState
-          title="Módulo integrado; fuente pendiente en este entorno"
-          detail="La navegación, sesión y aislamiento por empresa ya están activos. Falta conectar la URL server-side de la hoja de reportería para mostrar datos reales."
+          title="Muy pronto, todas tus métricas en un solo lugar"
+          detail="Estamos terminando de preparar tu reportería personalizada. En breve vas a poder seguir el rendimiento de tus campañas y consultar tus principales resultados desde Portal NexOps."
           tone="light"
         />
       )}
