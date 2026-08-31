@@ -19,6 +19,18 @@ describe("metrics tenant isolation", () => {
     expect(visible[0].campaignName).toBe("Campaña A");
   });
 
+  it("recognizes the campaign column published by the current Meta Ads sheet", () => {
+    const rows = parseSheetCSV(
+      [
+        "si es qu,Ad Name,Amount spent,Day,Account name",
+        "Global Trip | Leads,Video Aeropuerto,1500,31/08/2026,GLOBAL TRIP",
+      ].join("\n"),
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].campaignName).toBe("Global Trip | Leads");
+  });
+
   it("keeps Sheet configuration server-only", () => {
     const loader = fs.readFileSync(path.join(process.cwd(), "src/lib/metrics-data.ts"), "utf8");
     const sync = fs.readFileSync(path.join(process.cwd(), "src/lib/metrics-sync.ts"), "utf8");
