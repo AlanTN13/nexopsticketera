@@ -22,7 +22,7 @@ export default async function PasswordResetPage() {
           Elegí una nueva contraseña
         </h1>
         <p className="mt-3 text-sm leading-6 text-[#4f5375]">
-          El enlace fue validado. Guardá una contraseña nueva para volver a entrar a la Ticketera NexOps.
+          El enlace fue validado. Guardá una contraseña nueva para volver a entrar al Portal NexOps.
         </p>
         <div className="mt-6">
           <PasswordResetForm />

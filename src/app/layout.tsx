@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "NexOps Help Center",
-  description: "Portal cliente de NexOps para reportar incidencias, gestionar tickets y seguir su estado.",
+  title: "Portal NexOps",
+  description: "Portal de clientes NexOps para gestionar Soporte y consultar Métricas desde una única sesión.",
 };
 
 export default function RootLayout({
