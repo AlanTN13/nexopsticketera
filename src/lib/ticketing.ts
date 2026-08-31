@@ -50,6 +50,11 @@ export type PortalModuleSettings = {
   };
   radar: {
     workspaceId?: string;
+    topics?: string[];
+    publicationsPerWeek?: number;
+    opportunityBehavior?: "discard" | "suggest";
+    publishingMode?: "review" | "automatic";
+    siteIntegrated?: boolean;
   };
 };
 

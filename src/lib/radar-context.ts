@@ -9,6 +9,7 @@ import { getRadarWorkspaceId, resolveRadarCompanyForActor } from "@/lib/portal-m
 import { buildRadarProductModel } from "@/lib/radar-product";
 import { loadRadarWorkspace } from "@/lib/radar-workspace";
 import { isInternalRole } from "@/lib/ticketing";
+import { canManageRadarPreferences, parseRadarPreferences } from "@/lib/radar-preferences";
 
 export const getRadarProductContext = cache(async () => {
   const db = await getAppSnapshot();
@@ -37,6 +38,8 @@ export const getRadarProductContext = cache(async () => {
     internalActor,
     workspace,
     model: buildRadarProductModel(workspace),
+    preferences: parseRadarPreferences(company.modules.radar.settings),
+    canManagePreferences: canManageRadarPreferences(actor.role),
     exitHref: internalActor ? "/backoffice/queue" : "/portal",
     exitLabel: internalActor ? "Volver al backoffice" : "Volver al Portal",
   };

@@ -8,15 +8,16 @@ import {
   Check,
   ChevronRight,
   CircleAlert,
-  Clock3,
   Compass,
   ExternalLink,
   FileSearch,
   Fingerprint,
   Gauge,
+  Globe2,
   RadioTower,
   ScanSearch,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Target,
   TrendingUp,
@@ -24,6 +25,8 @@ import {
 } from "lucide-react";
 
 import { RadarShell, type RadarView } from "@/components/radar/radar-shell";
+import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
+import { updateRadarPreferencesAction } from "@/app/portal/radar/estrategia/actions";
 import { getRadarProductContext } from "@/lib/radar-context";
 import {
   RADAR_STRATEGY,
@@ -31,6 +34,11 @@ import {
   type RadarProductOpportunity,
 } from "@/lib/radar-product";
 import type { RadarPublication, RadarSourceState } from "@/lib/radar-workspace";
+import {
+  RADAR_PUBLICATIONS_PER_WEEK,
+  RADAR_TOPIC_OPTIONS,
+  type RadarPreferences,
+} from "@/lib/radar-preferences";
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", {
   day: "numeric",
@@ -312,20 +320,156 @@ function HistoryView({ model }: { model: RadarProductModel }) {
   );
 }
 
-function StrategyView() {
+function ChoiceCard({
+  name,
+  value,
+  title,
+  detail,
+  defaultChecked,
+  disabled = false,
+}: {
+  name: string;
+  value: string;
+  title: string;
+  detail: string;
+  defaultChecked: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <label className={`flex items-start gap-3 rounded-2xl border p-4 transition ${disabled ? "cursor-not-allowed border-white/5 bg-white/[0.015] opacity-50" : "cursor-pointer border-white/8 bg-white/[0.025] hover:border-violet-300/25 hover:bg-violet-400/[0.055]"}`}>
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        defaultChecked={defaultChecked}
+        disabled={disabled}
+        className="mt-1 size-4 accent-violet-500"
+      />
+      <span>
+        <span className="block text-sm font-bold text-white">{title}</span>
+        <span className="mt-1 block text-xs leading-5 text-slate-500">{detail}</span>
+      </span>
+    </label>
+  );
+}
+
+function StrategyView({
+  preferences,
+  actorId,
+  companyId,
+  canManage,
+  saved,
+}: {
+  preferences: RadarPreferences;
+  actorId: string;
+  companyId: string;
+  canManage: boolean;
+  saved: boolean;
+}) {
+  const customTopics = preferences.topics.filter(
+    (topic) => !RADAR_TOPIC_OPTIONS.includes(topic as (typeof RADAR_TOPIC_OPTIONS)[number]),
+  );
+
   return (
     <div className="grid gap-7">
-      <ViewHeader eyebrow="Estrategia" title="Las reglas comerciales que orientan a Radar" description="El producto muestra objetivos y límites en lenguaje de negocio. Los criterios propietarios permanecen protegidos." meta="Configuración activa" />
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="grid gap-5">
-          <article className="rounded-3xl border border-white/8 bg-[#0b1726]/85 p-5 sm:p-7"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-violet-400/10 text-violet-200"><Target size={18} /></span><div><h2 className="font-[family-name:var(--font-montserrat)] text-lg font-bold text-white">Objetivos de negocio</h2><p className="mt-1 text-sm text-slate-500">Qué resultados debe favorecer el Radar.</p></div></div><div className="mt-5 grid gap-3 sm:grid-cols-3">{RADAR_STRATEGY.goals.map((goal, index) => <div key={goal} className="rounded-2xl border border-white/8 bg-white/[0.025] p-4"><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-300">{index === 0 ? "Principal" : "Secundario"}</span><p className="mt-2 text-sm font-semibold leading-5 text-white">{goal}</p></div>)}</div></article>
-          <article className="rounded-3xl border border-white/8 bg-[#0b1726]/85 p-5 sm:p-7"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-sky-400/10 text-sky-200"><Fingerprint size={18} /></span><div><h2 className="font-[family-name:var(--font-montserrat)] text-lg font-bold text-white">Territorios de marca</h2><p className="mt-1 text-sm text-slate-500">Temas donde Radar concentra la búsqueda.</p></div></div><div className="mt-5 flex flex-wrap gap-2">{RADAR_STRATEGY.topics.map((topic) => <span key={topic} className="rounded-full border border-sky-300/15 bg-sky-300/[0.07] px-3 py-2 text-xs font-semibold text-sky-100">{topic}</span>)}</div></article>
-          <article className="rounded-3xl border border-white/8 bg-[#0b1726]/85 p-5 sm:p-7"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-emerald-400/10 text-emerald-200"><ShieldCheck size={18} /></span><div><h2 className="font-[family-name:var(--font-montserrat)] text-lg font-bold text-white">Guardrails de marca</h2><p className="mt-1 text-sm text-slate-500">Condiciones que el sistema debe respetar siempre.</p></div></div><ul className="mt-5 grid gap-3 sm:grid-cols-2">{RADAR_STRATEGY.safeguards.map((guardrail) => <li key={guardrail} className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.025] p-4 text-sm leading-6 text-slate-300"><Check className="mt-1 shrink-0 text-emerald-300" size={14} />{guardrail}</li>)}</ul></article>
+      <ViewHeader eyebrow="Estrategia" title="Configurá cómo trabaja tu Radar" description="Elegí los temas, la frecuencia y el nivel de autonomía. El motor, los criterios de calidad y la seguridad siguen protegidos por NexOps." meta={canManage ? "Autogestión activa" : "Sólo lectura"} />
+
+      {saved ? (
+        <div role="status" className="flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-100">
+          <Check size={17} /> Estrategia guardada. Radar usará esta configuración en sus próximos ciclos.
         </div>
+      ) : null}
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <PendingForm action={updateRadarPreferencesAction} className="grid gap-5">
+          <input type="hidden" name="actorId" value={actorId} />
+          <input type="hidden" name="companyId" value={companyId} />
+
+          <fieldset disabled={!canManage} className="grid gap-5 disabled:opacity-75">
+            <article className="rounded-3xl border border-white/8 bg-[#0b1726]/85 p-5 sm:p-7">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-sky-400/10 text-sky-200"><Fingerprint size={18} /></span>
+                <div><h2 className="font-[family-name:var(--font-montserrat)] text-lg font-bold text-white">Temáticas</h2><p className="mt-1 text-sm text-slate-500">Elegí entre 1 y 8 territorios donde Radar debe buscar oportunidades.</p></div>
+              </div>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                {RADAR_TOPIC_OPTIONS.map((topic) => (
+                  <label key={topic} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.025] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:border-sky-300/20 hover:text-white">
+                    <input type="checkbox" name="topics" value={topic} defaultChecked={preferences.topics.includes(topic)} className="size-4 accent-sky-400" />
+                    {topic}
+                  </label>
+                ))}
+              </div>
+              <label className="mt-4 grid gap-2 text-xs font-semibold text-slate-400" htmlFor="customTopics">
+                Otros temas, separados por coma
+                <input id="customTopics" name="customTopics" defaultValue={customTopics.join(", ")} placeholder="Ej.: Logística, Turismo, Retail" maxLength={180} className="min-h-11 rounded-xl border border-white/10 bg-black/15 px-3 text-sm font-normal text-white outline-none placeholder:text-slate-600 focus:border-violet-300/40" />
+              </label>
+            </article>
+
+            <article className="rounded-3xl border border-white/8 bg-[#0b1726]/85 p-5 sm:p-7">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-violet-400/10 text-violet-200"><Gauge size={18} /></span>
+                <div><h2 className="font-[family-name:var(--font-montserrat)] text-lg font-bold text-white">Frecuencia semanal</h2><p className="mt-1 text-sm text-slate-500">Definí el máximo de piezas que Radar puede producir por semana.</p></div>
+              </div>
+              <div className="mt-5 grid grid-cols-5 gap-2">
+                {RADAR_PUBLICATIONS_PER_WEEK.map((frequency) => (
+                  <label key={frequency} className="cursor-pointer">
+                    <input type="radio" name="publicationsPerWeek" value={frequency} defaultChecked={preferences.publicationsPerWeek === frequency} className="peer sr-only" />
+                    <span className="grid min-h-14 place-items-center rounded-2xl border border-white/8 bg-white/[0.025] text-sm font-bold text-slate-400 transition peer-checked:border-violet-300/30 peer-checked:bg-violet-400/15 peer-checked:text-white">{frequency}</span>
+                  </label>
+                ))}
+              </div>
+            </article>
+
+            <article className="rounded-3xl border border-white/8 bg-[#0b1726]/85 p-5 sm:p-7">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-amber-300/10 text-amber-100"><Target size={18} /></span>
+                <div><h2 className="font-[family-name:var(--font-montserrat)] text-lg font-bold text-white">Oportunidades débiles</h2><p className="mt-1 text-sm text-slate-500">Decidí qué debe pasar cuando una idea no llega al nivel recomendado.</p></div>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <ChoiceCard name="opportunityBehavior" value="discard" title="Descartar automáticamente" detail="Radar protege el foco y guarda la decisión en el historial." defaultChecked={preferences.opportunityBehavior === "discard"} />
+                <ChoiceCard name="opportunityBehavior" value="suggest" title="Dejar como sugerencia" detail="La idea queda visible para que el equipo decida qué hacer." defaultChecked={preferences.opportunityBehavior === "suggest"} />
+              </div>
+            </article>
+
+            <article className="rounded-3xl border border-white/8 bg-[#0b1726]/85 p-5 sm:p-7">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-emerald-400/10 text-emerald-200"><Globe2 size={18} /></span>
+                <div><h2 className="font-[family-name:var(--font-montserrat)] text-lg font-bold text-white">Publicación</h2><p className="mt-1 text-sm text-slate-500">Elegí si el contenido sale solo o queda listo para aprobar.</p></div>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <ChoiceCard name="publishingMode" value="review" title="Revisar antes de publicar" detail="Radar prepara la pieza y espera una aprobación del equipo." defaultChecked={preferences.publishingMode === "review"} />
+                <ChoiceCard name="publishingMode" value="automatic" title="Publicar automáticamente" detail={preferences.siteIntegrated ? "El sitio está conectado: Radar publica apenas valida la pieza." : "Disponible cuando NexOps termine de conectar el sitio."} defaultChecked={preferences.publishingMode === "automatic"} disabled={!preferences.siteIntegrated} />
+              </div>
+            </article>
+          </fieldset>
+
+          {canManage ? (
+            <PendingSubmitButton idleLabel="Guardar estrategia" pendingLabel="Guardando estrategia…" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-violet-500 px-5 text-sm font-bold text-white shadow-[0_16px_40px_rgba(124,58,237,.28)] transition hover:bg-violet-400" />
+          ) : (
+            <p className="rounded-2xl border border-white/8 bg-white/[0.025] px-4 py-3 text-sm text-slate-400">Tu rol puede revisar esta configuración. Un administrador de la cuenta puede modificarla.</p>
+          )}
+        </PendingForm>
+
         <aside className="grid content-start gap-4">
-          <div className="rounded-3xl border border-violet-300/14 bg-gradient-to-br from-violet-500/14 to-sky-500/[0.04] p-6"><span className="grid size-11 place-items-center rounded-2xl bg-violet-400/12 text-violet-200"><Gauge size={20} /></span><p className="mt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-violet-300">Modo de operación</p><h2 className="mt-2 text-xl font-bold text-white">Autónomo con límites visibles</h2><dl className="mt-5 grid gap-4 text-sm"><div><dt className="text-slate-500">Autonomía</dt><dd className="mt-1 font-semibold text-white">{RADAR_STRATEGY.autonomy}</dd></div><div><dt className="text-slate-500">Selectividad</dt><dd className="mt-1 font-semibold text-white">{RADAR_STRATEGY.selectivity}</dd></div><div><dt className="text-slate-500">Fuentes</dt><dd className="mt-1 font-semibold text-white">{RADAR_STRATEGY.sourcePreference}</dd></div><div><dt className="text-slate-500">Máximo semanal</dt><dd className="mt-1 font-semibold text-white">{RADAR_STRATEGY.maximumPerWeek} publicaciones</dd></div></dl></div>
-          <div className="rounded-3xl border border-white/8 bg-white/[0.035] p-5"><div className="flex items-center gap-2 text-sm font-bold text-white"><Clock3 size={16} className="text-sky-300" /> Cadencia activa</div><div className="mt-4 flex flex-wrap gap-2">{RADAR_STRATEGY.enabledDays.map((day) => <span key={day} className="grid size-9 place-items-center rounded-xl bg-white/[0.05] text-[11px] font-bold text-slate-300">{day}</span>)}</div><p className="mt-4 text-xs leading-5 text-slate-500">Ciclo diario a las 09:00. Sólo las excepciones requieren intervención.</p></div>
-          <div className="rounded-3xl border border-white/8 bg-white/[0.025] p-5"><div className="flex items-start gap-3"><Activity size={17} className="mt-0.5 shrink-0 text-violet-300" /><p className="text-xs leading-5 text-slate-400">Esta versión muestra la estrategia activa y protege los criterios propietarios. La edición autoservicio se incorporará en la próxima evolución del producto.</p></div></div>
+          <div className="rounded-3xl border border-violet-300/14 bg-gradient-to-br from-violet-500/14 to-sky-500/[0.04] p-6">
+            <span className="grid size-11 place-items-center rounded-2xl bg-violet-400/12 text-violet-200"><SlidersHorizontal size={20} /></span>
+            <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-violet-300">Configuración actual</p>
+            <h2 className="mt-2 text-xl font-bold text-white">{preferences.publicationsPerWeek} veces por semana</h2>
+            <dl className="mt-5 grid gap-4 text-sm">
+              <div><dt className="text-slate-500">Temáticas</dt><dd className="mt-1 font-semibold leading-6 text-white">{preferences.topics.join(" · ")}</dd></div>
+              <div><dt className="text-slate-500">Ideas débiles</dt><dd className="mt-1 font-semibold text-white">{preferences.opportunityBehavior === "discard" ? "Se descartan" : "Quedan como sugerencia"}</dd></div>
+              <div><dt className="text-slate-500">Publicación</dt><dd className="mt-1 font-semibold text-white">{preferences.publishingMode === "automatic" ? "Automática" : "Con aprobación"}</dd></div>
+            </dl>
+          </div>
+          <div className={`rounded-3xl border p-5 ${preferences.siteIntegrated ? "border-emerald-400/18 bg-emerald-400/[0.06]" : "border-amber-300/18 bg-amber-300/[0.05]"}`}>
+            <div className="flex items-center gap-2 text-sm font-bold text-white"><Globe2 size={16} className={preferences.siteIntegrated ? "text-emerald-300" : "text-amber-200"} /> {preferences.siteIntegrated ? "Sitio conectado" : "Sitio pendiente de conexión"}</div>
+            <p className="mt-3 text-xs leading-5 text-slate-400">{preferences.siteIntegrated ? "Radar puede publicar directamente cuando el modo automático está activo." : "NexOps debe validar la integración antes de habilitar publicaciones automáticas."}</p>
+          </div>
+          <div className="rounded-3xl border border-white/8 bg-white/[0.035] p-5">
+            <div className="flex items-center gap-2 text-sm font-bold text-white"><ShieldCheck size={16} className="text-emerald-300" /> Core protegido</div>
+            <ul className="mt-4 grid gap-3">{RADAR_STRATEGY.safeguards.slice(0, 3).map((guardrail) => <li key={guardrail} className="flex items-start gap-2 text-xs leading-5 text-slate-400"><Check className="mt-0.5 shrink-0 text-emerald-300" size={13} />{guardrail}</li>)}</ul>
+          </div>
+          <div className="rounded-3xl border border-white/8 bg-white/[0.025] p-5"><div className="flex items-start gap-3"><Activity size={17} className="mt-0.5 shrink-0 text-violet-300" /><p className="text-xs leading-5 text-slate-400">Estas preferencias cambian la operación comercial. Los umbrales, fuentes, seguridad y credenciales del motor no quedan expuestos.</p></div></div>
         </aside>
       </section>
     </div>
@@ -334,9 +478,13 @@ function StrategyView() {
 
 export type RadarProductScreenContext = {
   actorName: string;
+  actorId: string;
   companyName: string;
+  companyId: string;
   workspaceId: string;
   model: RadarProductModel;
+  preferences: RadarPreferences;
+  canManagePreferences: boolean;
   exitHref: string;
   exitLabel: string;
 };
@@ -344,10 +492,12 @@ export type RadarProductScreenContext = {
 export function RadarProductScreen({
   view,
   opportunityFilter = "all",
+  saved = false,
   context,
 }: {
   view: RadarView;
   opportunityFilter?: "all" | "published" | "discarded";
+  saved?: boolean;
   context: RadarProductScreenContext;
 }) {
   return (
@@ -364,7 +514,7 @@ export function RadarProductScreen({
       {view === "opportunities" ? <OpportunitiesView model={context.model} filter={opportunityFilter} /> : null}
       {view === "published" ? <PublishedView model={context.model} /> : null}
       {view === "history" ? <HistoryView model={context.model} /> : null}
-      {view === "strategy" ? <StrategyView /> : null}
+      {view === "strategy" ? <StrategyView preferences={context.preferences} actorId={context.actorId} companyId={context.companyId} canManage={context.canManagePreferences} saved={saved} /> : null}
     </RadarShell>
   );
 }
@@ -372,9 +522,11 @@ export function RadarProductScreen({
 export async function RadarProductPage({
   view,
   opportunityFilter = "all",
+  saved = false,
 }: {
   view: RadarView;
   opportunityFilter?: "all" | "published" | "discarded";
+  saved?: boolean;
 }) {
   const context = await getRadarProductContext();
   const workspaceName = context.internalActor ? "NexOps" : context.company.name;
@@ -383,11 +535,16 @@ export async function RadarProductPage({
     <RadarProductScreen
       view={view}
       opportunityFilter={opportunityFilter}
+      saved={saved}
       context={{
         actorName: context.actor.name,
+        actorId: context.actor.id,
         companyName: workspaceName,
+        companyId: context.company.id,
         workspaceId: context.workspace.workspaceId,
         model: context.model,
+        preferences: context.preferences,
+        canManagePreferences: context.canManagePreferences,
         exitHref: context.exitHref,
         exitLabel: context.exitLabel,
       }}

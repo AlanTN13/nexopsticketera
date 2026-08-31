@@ -600,6 +600,21 @@ export function UpdateCompanyModulesForm({
         </span>
       </label>
 
+      <label className="flex cursor-pointer items-start gap-3 rounded-[18px] border border-slate-200 bg-white p-4 transition hover:border-violet-300 hover:bg-violet-50/40">
+        <input
+          type="checkbox"
+          name="radarSiteIntegrated"
+          defaultChecked={company.modules.radar.settings.siteIntegrated === true}
+          className="mt-1 size-4 accent-violet-700"
+        />
+        <span className="grid gap-1">
+          <span className="text-sm font-semibold text-slate-950">Sitio conectado para publicación</span>
+          <span className="text-xs leading-5 text-slate-600">
+            Habilita al cliente a elegir publicación automática. Esta confirmación queda bajo control de NexOps.
+          </span>
+        </span>
+      </label>
+
       <p className="text-xs leading-5 text-slate-600">
         El cambio define qué productos aparecen en el Portal de esta empresa y también protege el acceso directo a cada ruta.
       </p>
