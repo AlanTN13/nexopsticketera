@@ -7,6 +7,7 @@ La aplicación deja de presentarse como Ticketera independiente. El cliente usa 
 - Inicio: `/portal`;
 - Soporte: `/portal/soporte`;
 - Métricas: `/portal/metricas`;
+- Radar: `/portal/radar` cuando la empresa lo tiene habilitado;
 - detalle histórico de tickets: `/portal/tickets/[ticketCode]`.
 
 El backoffice mantiene sus rutas y comportamiento actuales.
@@ -35,15 +36,15 @@ No se portaron el login simulado, usuarios/contraseñas en Sheets, selector glob
 
 ## Configuración de módulos
 
-`src/lib/portal-modules.ts` contiene una configuración mínima para los clientes que aparecen en el prototipo entregado. Una empresa sin perfil no ve el módulo Métricas.
+La disponibilidad se guarda en `public.company_modules` y se modifica desde el Backoffice de cada empresa. Soporte es base; Métricas y Radar son opt-in.
 
-Se puede sobreescribir por entorno:
+La configuración de reportería todavía puede sobreescribir identificadores por entorno:
 
 ```env
-PORTAL_METRICS_COMPANY_CONFIG={"globaltrip":{"enabled":true,"accountName":"GLOBAL TRIP","objective":"CONVERSACIONES"}}
+PORTAL_METRICS_COMPANY_CONFIG={"global-trip":{"accountName":"GLOBAL TRIP","objective":"CONVERSACIONES"}}
 ```
 
-Un perfil con `enabled: false` oculta el módulo. Esta V1 no implementa planes, facturación ni un panel comercial.
+El JSON no habilita productos. La fuente de verdad de disponibilidad es la empresa en Supabase. Esta V1 no implementa facturación automática.
 
 ## Fuentes de reportería
 
@@ -79,6 +80,6 @@ Antes del cambio de origen canónico:
 2. definir `NEXT_PUBLIC_APP_URL=https://portal.nexopstech.com` en Vercel;
 3. verificar invitación y recuperación PKCE sobre el nuevo host;
 4. conservar `soporte.nexopstech.com` durante la transición;
-5. redirigir el origen anterior a `/portal/soporte` sólo después del smoke.
+5. redirigir el origen anterior al mismo path del Portal sólo después del smoke.
 
 Las URLs `/portal/tickets/[ticketCode]` permanecen válidas para enlaces de emails anteriores.

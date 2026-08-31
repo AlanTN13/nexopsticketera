@@ -1,9 +1,9 @@
-import { Company } from "@/lib/ticketing";
+import { Company, CompanyModules } from "@/lib/ticketing";
 
-export type PortalModule = "home" | "support" | "metrics";
+export type PortalModule = "home" | "support" | "metrics" | "radar";
 
 export type MetricsCompanyProfile = {
-  enabled: boolean;
+  enabled?: boolean;
   accountName: string;
   mailchimpName?: string;
   objective?: "CONVERSACIONES" | "LEADS" | "COMPRAS";
@@ -93,6 +93,8 @@ export function getMetricsProfile(
   company: Company,
   rawConfig = process.env.PORTAL_METRICS_COMPANY_CONFIG,
 ) {
+  if (!company.modules.metrics.enabled) return null;
+
   const configured = getConfiguredProfiles(rawConfig);
   const slugKey = normalizeKey(company.slug);
   const nameKey = normalizeKey(company.name);
@@ -100,19 +102,38 @@ export function getMetricsProfile(
     configured[slugKey] ??
     configured[nameKey] ??
     DEFAULT_METRICS_PROFILES[slugKey] ??
-    DEFAULT_METRICS_PROFILES[nameKey] ??
-    null;
+    DEFAULT_METRICS_PROFILES[nameKey] ?? {
+      enabled: true,
+      accountName: company.name,
+      objective: "CONVERSACIONES" as const,
+      primaryColor: "#4330A6",
+      secondaryColor: "#7C5BFF",
+      textColor: "#FFFFFF",
+    };
 
-  return profile?.enabled ? profile : null;
+  const settings = company.modules.metrics.settings;
+
+  return {
+    ...profile,
+    enabled: true,
+    accountName: settings.accountName ?? profile.accountName,
+    mailchimpName: settings.mailchimpName ?? profile.mailchimpName,
+    objective: settings.objective ?? profile.objective,
+  };
+}
+
+export function getRadarWorkspaceId(company: Company) {
+  if (!company.modules.radar.enabled) return null;
+  return company.modules.radar.settings.workspaceId ?? null;
 }
 
 export function buildPortalNavigation({
   active,
-  metricsEnabled,
+  modules,
   ticketCount,
 }: {
   active: PortalModule | null;
-  metricsEnabled: boolean;
+  modules: CompanyModules;
   ticketCount?: number;
 }): PortalNavigationItem[] {
   return [
@@ -123,8 +144,11 @@ export function buildPortalNavigation({
       active: active === "support",
       badge: ticketCount,
     },
-    ...(metricsEnabled
+    ...(modules.metrics.enabled
       ? [{ href: "/portal/metricas", label: "Métricas", active: active === "metrics" }]
+      : []),
+    ...(modules.radar.enabled
+      ? [{ href: "/portal/radar", label: "Radar", active: active === "radar" }]
       : []),
   ];
 }

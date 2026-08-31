@@ -5,7 +5,7 @@ import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot, getVisibleTicketReference } from "@/lib/app-store";
 import { getTicketById, getTicketHistory, getUser, getVisibleComments } from "@/lib/queries";
 import { ticketDetailPath } from "@/lib/routing";
-import { buildPortalNavigation, getMetricsProfile } from "@/lib/portal-modules";
+import { buildPortalNavigation } from "@/lib/portal-modules";
 import { canCommentOnTickets, formatRelativeDate, getTicketNextStep, translateHistoryMessage } from "@/lib/ticketing";
 import { CommentAttachments } from "@/components/comment-attachments";
 import { TicketContextLinks } from "@/components/ticket-context-links";
@@ -22,7 +22,7 @@ export default async function PortalTicketDetail({ params, searchParams }: Props
   if (!company) redirect("/portal/login?reason=company");
   const navigation = buildPortalNavigation({
     active: "support",
-    metricsEnabled: Boolean(getMetricsProfile(company)),
+    modules: company.modules,
     ticketCount: db.tickets.filter((item) => item.companyId === company.id).length,
   });
 

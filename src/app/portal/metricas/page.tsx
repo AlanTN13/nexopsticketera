@@ -48,7 +48,7 @@ export default async function PortalMetricsPage() {
       tone="light"
       navigation={buildPortalNavigation({
         active: "metrics",
-        metricsEnabled: true,
+        modules: company.modules,
         ticketCount: companyTickets.length,
       })}
       sidebarFooter={

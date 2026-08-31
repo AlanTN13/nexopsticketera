@@ -7,6 +7,7 @@ Rutas de cliente:
 - `/portal`: Inicio.
 - `/portal/soporte`: tickets y seguimiento.
 - `/portal/metricas`: reportería habilitada por empresa.
+- `/portal/radar`: planificación de contenidos habilitada por empresa.
 - `/portal/tickets/[ticketCode]`: enlaces históricos y detalle de ticket compatibles.
 
 ## Arquitectura V1
@@ -16,6 +17,7 @@ Rutas de cliente:
 - RLS como barrera principal de aislamiento entre empresas.
 - Storage privado para adjuntos, también protegido por RLS.
 - `service_role` limitado a creación y actualización explícita de cuentas en `auth.admin`.
+- Productos opcionales habilitados por empresa desde Backoffice y protegidos por RLS.
 - Sin JSON local, contraseña demo, seed automático ni fallback silencioso.
 
 Más detalle: `docs/AUTHORIZATION.md`.
@@ -48,7 +50,7 @@ La variable legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` sigue aceptada durante la mig
 
 `RESEND_API_KEY` es server-only y no debe llevar el prefijo `NEXT_PUBLIC_`. `NEXT_PUBLIC_APP_URL` define el origen de los enlaces “Ver ticket”; el objetivo del Portal es `https://portal.nexopstech.com`. El servicio también acepta `VERCEL_PROJECT_PRODUCTION_URL` o `VERCEL_URL` como fallback para entornos temporales y nunca construye enlaces a partir de headers del navegador.
 
-Las variables `PORTAL_METRICS_*_SHEET_URL` son server-only. El navegador no recibe las URLs de Google Sheets: el servidor descarga el CSV desde una lista de hosts permitidos y filtra la cuenta usando la empresa de la sesión. `PORTAL_METRICS_COMPANY_CONFIG` permite habilitar/deshabilitar Métricas o sobreescribir el identificador de reportería por slug, sin crear planes comerciales ni otra autenticación. Ver `docs/PORTAL_NEXOPS_V1.md`.
+Las variables `PORTAL_METRICS_*_SHEET_URL` son server-only. El navegador no recibe las URLs de Google Sheets: el servidor descarga el CSV desde una lista de hosts permitidos y filtra la cuenta usando la empresa de la sesión. La disponibilidad de Métricas y Radar se administra por empresa desde Backoffice; `PORTAL_METRICS_COMPANY_CONFIG` queda limitado a sobreescribir identificadores o presentación de reportería durante la transición. Ver `docs/PORTAL_MODULES.md`.
 
 ## Notificaciones por email
 
@@ -86,6 +88,7 @@ npm run dev
 - Portal: `http://localhost:3000/portal`
 - Soporte: `http://localhost:3000/portal/soporte`
 - Métricas: `http://localhost:3000/portal/metricas`
+- Radar: `http://localhost:3000/portal/radar`
 - Backoffice: `http://localhost:3000/backoffice`
 - Diagnóstico: `http://localhost:3000/setup`
 

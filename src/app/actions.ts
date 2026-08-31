@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { assertAuthenticatedActorId, clearClientSession, isInternalActor } from "@/lib/auth";
-import { addComment, createCompany, createTicket, createUser, getAppSnapshot, updateCompany, updateTicketWorkflow, updateUser } from "@/lib/app-store";
+import { addComment, createCompany, createTicket, createUser, getAppSnapshot, updateCompany, updateCompanyModules, updateTicketWorkflow, updateUser } from "@/lib/app-store";
 import { COMPANY_PLANS, MAX_COMMENT_IMAGES, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES, USER_STATUSES } from "@/lib/ticketing";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { ticketDetailPath } from "@/lib/routing";
@@ -321,6 +321,42 @@ export async function updateCompanyAction(formData: FormData): Promise<MutationS
   revalidatePath(returnPath);
   revalidatePath(nextPath);
   redirect(buildSuccessRedirect(buildPostActionRedirect(nextPath, actor.id), "Empresa actualizada correctamente."));
+}
+
+export async function updateCompanyModulesAction(formData: FormData): Promise<MutationState> {
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
+  const companyId = getString(formData, "companyId");
+  const returnPath = getString(formData, "returnPath") || `/backoffice/companies/${companyId}`;
+
+  try {
+    await updateCompanyModules({
+      actorId: actor.id,
+      companyId,
+      modules: {
+        metrics: formData.has("metricsEnabled"),
+        radar: formData.has("radarEnabled"),
+      },
+    });
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error && error.message
+          ? error.message
+          : "No pudimos actualizar los productos de la empresa.",
+    };
+  }
+
+  revalidatePath("/portal");
+  revalidatePath("/portal/metricas");
+  revalidatePath("/portal/radar");
+  revalidatePath(returnPath);
+  redirect(
+    buildSuccessRedirect(
+      buildPostActionRedirect(returnPath, actor.id),
+      "Productos habilitados actualizados.",
+    ),
+  );
 }
 
 export async function updateUserAction(formData: FormData): Promise<MutationState> {
