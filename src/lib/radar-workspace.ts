@@ -26,6 +26,7 @@ export type RadarPublication = {
   score: number;
   publishedAt: string;
   url: string;
+  imageUrl: string | null;
   reason: string;
 };
 
@@ -212,6 +213,7 @@ function projectPublication(value: unknown): RadarPublication | null {
   const score = safeScore(record.score);
   const publishedAt = safeDate(record.publishedAt);
   const url = safeUrl(record.url);
+  const imageUrl = safeUrl(record.imageUrl);
   const reason = cleanText(record.reason, 1_000);
 
   if (
@@ -246,6 +248,7 @@ function projectPublication(value: unknown): RadarPublication | null {
     score,
     publishedAt,
     url,
+    imageUrl,
     reason,
   };
 
