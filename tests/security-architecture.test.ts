@@ -19,6 +19,10 @@ describe("security architecture", () => {
     expect(serverClient).toContain('import "server-only"');
     expect(serverClient).toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(read("src/lib/app-store.ts").match(/getSupabaseAdminClient\(\)/g)).toHaveLength(2);
+    const radarPreferencesStore = read("src/lib/radar-preferences-store.ts");
+    expect(radarPreferencesStore).toContain('import "server-only"');
+    expect(radarPreferencesStore.match(/getSupabaseAdminClient\(\)/g)).toHaveLength(1);
+    expect(radarPreferencesStore).toContain("canManageRadarPreferences(input.actor.role)");
   });
 
   it("hardens RLS, grants, private functions and Storage", () => {

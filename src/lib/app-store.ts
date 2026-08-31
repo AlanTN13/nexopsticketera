@@ -37,6 +37,17 @@ import {
 import { requireUserTitle } from "@/lib/validation";
 import { validateCommentImages, validateTicketImages } from "@/lib/comment-image-validation";
 import { getSafeTicketContextUrls, normalizeTicketContextUrls } from "@/lib/ticket-context-urls";
+import {
+  RADAR_OPPORTUNITY_BEHAVIORS,
+  RADAR_PUBLICATIONS_PER_WEEK,
+  RADAR_PUBLISHING_MODES,
+  canManageRadarPreferences,
+  normalizeRadarTopics,
+  parseRadarPreferences,
+  type RadarOpportunityBehavior,
+  type RadarPublishingMode,
+} from "@/lib/radar-preferences";
+import { persistRadarPreferences } from "@/lib/radar-preferences-store";
 
 export type CreateTicketInput = {
   actorId: string;
@@ -111,6 +122,16 @@ export type UpdateCompanyModulesInput = {
   companyId: string;
   modules: CompanyModuleAvailability;
   radarWorkspaceId: string | null;
+  radarSiteIntegrated: boolean;
+};
+
+export type UpdateRadarPreferencesInput = {
+  actorId: string;
+  companyId: string;
+  topics: string[];
+  publicationsPerWeek: number;
+  opportunityBehavior: RadarOpportunityBehavior;
+  publishingMode: RadarPublishingMode;
 };
 
 type CompanyRow = {
@@ -308,10 +329,12 @@ function mapCompanyModules(rows: CompanyModuleRow[]) {
         },
       };
     } else {
+      const preferences = parseRadarPreferences(settings);
       modules.radar = {
         enabled: row.enabled,
         settings: {
           workspaceId: optionalSetting(settings.workspaceId),
+          ...preferences,
         },
       };
     }
@@ -1137,6 +1160,7 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
     metrics_enabled: input.modules.metrics,
     radar_enabled: input.modules.radar,
     radar_workspace_id: radarWorkspaceId,
+    radar_site_integrated: input.radarSiteIntegrated,
   });
 
   assertNoError(error);
@@ -1152,11 +1176,61 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
         ...company.modules.radar,
         enabled: input.modules.radar,
         settings: radarWorkspaceId
-          ? { ...company.modules.radar.settings, workspaceId: radarWorkspaceId }
-          : company.modules.radar.settings,
+          ? {
+              ...company.modules.radar.settings,
+              workspaceId: radarWorkspaceId,
+              siteIntegrated: input.radarSiteIntegrated,
+            }
+          : {
+              ...company.modules.radar.settings,
+              siteIntegrated: input.radarSiteIntegrated,
+            },
       },
     },
   };
+}
+
+async function updateRadarPreferencesInSupabase(input: UpdateRadarPreferencesInput) {
+  const db = await getSupabaseSnapshot();
+  const actor = ensureActor(db, input.actorId);
+  const company = db.companies.find((item) => item.id === input.companyId);
+
+  if (!company || !company.modules.radar.enabled) {
+    throw new Error("Radar no está habilitado para esta empresa.");
+  }
+  if (
+    !canManageRadarPreferences(actor.role) ||
+    (actor.role !== "platform_admin" && actor.companyId !== company.id)
+  ) {
+    throw new Error("Tu rol puede revisar la estrategia, pero no modificarla.");
+  }
+
+  const topics = normalizeRadarTopics(input.topics);
+  if (!topics.length) {
+    throw new Error("Elegí al menos una temática para Radar.");
+  }
+  if (
+    !RADAR_PUBLICATIONS_PER_WEEK.includes(
+      input.publicationsPerWeek as (typeof RADAR_PUBLICATIONS_PER_WEEK)[number],
+    )
+  ) {
+    throw new Error("La frecuencia semanal no es válida.");
+  }
+  if (!RADAR_OPPORTUNITY_BEHAVIORS.includes(input.opportunityBehavior)) {
+    throw new Error("La decisión sobre oportunidades no es válida.");
+  }
+  if (!RADAR_PUBLISHING_MODES.includes(input.publishingMode)) {
+    throw new Error("El modo de publicación no es válido.");
+  }
+
+  return persistRadarPreferences({
+    actor,
+    companyId: company.id,
+    topics,
+    publicationsPerWeek: input.publicationsPerWeek,
+    opportunityBehavior: input.opportunityBehavior,
+    publishingMode: input.publishingMode,
+  });
 }
 
 export async function getAppSnapshot() {
@@ -1197,4 +1271,8 @@ export async function updateCompany(input: UpdateCompanyInput) {
 
 export async function updateCompanyModules(input: UpdateCompanyModulesInput) {
   return updateCompanyModulesInSupabase(input);
+}
+
+export async function updateRadarPreferences(input: UpdateRadarPreferencesInput) {
+  return updateRadarPreferencesInSupabase(input);
 }
