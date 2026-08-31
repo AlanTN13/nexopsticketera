@@ -20,9 +20,12 @@ describe("metrics tenant isolation", () => {
   });
 
   it("keeps Sheet configuration server-only", () => {
-    const source = fs.readFileSync(path.join(process.cwd(), "src/lib/metrics-data.ts"), "utf8");
-    expect(source).not.toContain("NEXT_PUBLIC_PORTAL_METRICS");
-    expect(source).not.toContain("searchParams");
-    expect(source).toContain("ALLOWED_SHEET_HOSTS");
+    const loader = fs.readFileSync(path.join(process.cwd(), "src/lib/metrics-data.ts"), "utf8");
+    const sync = fs.readFileSync(path.join(process.cwd(), "src/lib/metrics-sync.ts"), "utf8");
+    expect(loader).not.toContain("fetch(");
+    expect(sync).not.toContain("NEXT_PUBLIC_PORTAL_METRICS");
+    expect(sync).not.toContain("searchParams");
+    expect(sync).toContain("ALLOWED_SHEET_HOSTS");
+    expect(sync).toContain('from("metrics_source_snapshots")');
   });
 });
