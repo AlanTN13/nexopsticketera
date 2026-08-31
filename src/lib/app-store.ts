@@ -110,6 +110,7 @@ export type UpdateCompanyModulesInput = {
   actorId: string;
   companyId: string;
   modules: CompanyModuleAvailability;
+  radarWorkspaceId: string | null;
 };
 
 type CompanyRow = {
@@ -1122,11 +1123,20 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
     throw new Error("No pudimos encontrar la empresa.");
   }
 
+  const radarWorkspaceId = input.radarWorkspaceId?.trim() || null;
+  if (input.modules.radar && !radarWorkspaceId) {
+    throw new Error("Asigná un workspace antes de habilitar Radar.");
+  }
+  if (radarWorkspaceId && !/^[a-z0-9][a-z0-9._-]{2,80}$/.test(radarWorkspaceId)) {
+    throw new Error("El workspace de Radar no tiene un formato válido.");
+  }
+
   const client = await getSupabaseServerClient();
-  const { error } = await client.rpc("update_company_module_availability", {
+  const { error } = await client.rpc("update_company_module_configuration", {
     target_company_id: company.id,
     metrics_enabled: input.modules.metrics,
     radar_enabled: input.modules.radar,
+    radar_workspace_id: radarWorkspaceId,
   });
 
   assertNoError(error);
@@ -1141,6 +1151,9 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
       radar: {
         ...company.modules.radar,
         enabled: input.modules.radar,
+        settings: radarWorkspaceId
+          ? { ...company.modules.radar.settings, workspaceId: radarWorkspaceId }
+          : company.modules.radar.settings,
       },
     },
   };

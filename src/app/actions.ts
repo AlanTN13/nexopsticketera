@@ -337,6 +337,7 @@ export async function updateCompanyModulesAction(formData: FormData): Promise<Mu
         metrics: formData.has("metricsEnabled"),
         radar: formData.has("radarEnabled"),
       },
+      radarWorkspaceId: getString(formData, "radarWorkspaceId") || null,
     });
   } catch (error) {
     return {

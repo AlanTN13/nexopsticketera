@@ -585,6 +585,21 @@ export function UpdateCompanyModulesForm({
         ))}
       </div>
 
+      <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="radarWorkspaceId">
+        <span className="text-xs font-semibold text-slate-700">Workspace de Radar</span>
+        <input
+          id="radarWorkspaceId"
+          name="radarWorkspaceId"
+          defaultValue={company.modules.radar.settings.workspaceId ?? ""}
+          placeholder="Ej.: nexops"
+          pattern="[a-z0-9][a-z0-9._-]{2,80}"
+          className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+        />
+        <span className="text-xs leading-5 text-slate-600">
+          Es obligatorio para habilitar Radar y vincula esta empresa con un único espacio de datos.
+        </span>
+      </label>
+
       <p className="text-xs leading-5 text-slate-600">
         El cambio define qué productos aparecen en el Portal de esta empresa y también protege el acceso directo a cada ruta.
       </p>
