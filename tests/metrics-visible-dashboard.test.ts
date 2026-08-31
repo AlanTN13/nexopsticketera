@@ -21,8 +21,8 @@ describe("metrics visible dashboard", () => {
     const dashboard = read("src/components/metrics/client-dashboard.tsx");
 
     expect(workspace).toContain('useState<Channel>("meta")');
-    expect(dashboard).toContain("Dashboard preparado para");
-    expect(dashboard).toContain("Fuente pendiente");
+    expect(dashboard).not.toContain("Dashboard preparado para");
+    expect(dashboard).not.toContain("Fuente pendiente");
     expect(dashboard).toContain("Evolución de rendimiento");
     expect(dashboard).toContain('{ title: "Campañas"');
     expect(dashboard).toContain('{ title: "Creatividades"');
