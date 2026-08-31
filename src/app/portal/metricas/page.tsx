@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { LogoutClientForm } from "@/components/forms";
 import { MetricsWorkspace } from "@/components/metrics/metrics-workspace";
 import { MetricsStrategyTimeline } from "@/components/metrics/metrics-strategy-timeline";
+import { MetricsSyncControl } from "@/components/metrics/metrics-sync-control";
 import { AppShell, EmptyState, InlineNotice, SidebarUserCard } from "@/components/ui";
 import { Client } from "@/features/metrics/types";
+import { refreshMetricsAction } from "@/app/portal/metricas/actions";
 import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
 import { loadMetricsData } from "@/lib/metrics-data";
@@ -12,7 +14,12 @@ import { buildPortalNavigation, getMetricsProfile } from "@/lib/portal-modules";
 
 export const dynamic = "force-dynamic";
 
-export default async function PortalMetricsPage() {
+export default async function PortalMetricsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ updated?: string; partial?: string; wait?: string }>;
+}) {
+  const { updated, partial, wait } = await searchParams;
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedClientActor(db);
   if (!actor) redirect("/portal/login?reason=session");
@@ -23,7 +30,7 @@ export default async function PortalMetricsPage() {
   const profile = getMetricsProfile(company);
   if (!profile) redirect("/portal");
 
-  const data = await loadMetricsData(profile);
+  const data = await loadMetricsData(company.id, profile);
   const source = data.clientSource;
   const companyTickets = db.tickets.filter((ticket) => ticket.companyId === company.id);
   const client: Client = {
@@ -40,7 +47,7 @@ export default async function PortalMetricsPage() {
     targetCpa: source?.targetCpa,
     monthlyBudget: source?.monthlyBudget,
     createdAt: company.createdAt,
-    updatedAt: data.loadedAt,
+    updatedAt: data.loadedAt ?? company.createdAt,
   };
   const hasPerformanceData = data.metaRows.length > 0 || data.mailchimpRows.length > 0;
   const hasStrategyData = Boolean(source?.initialStrategy || data.strategyEntries.length);
@@ -62,6 +69,22 @@ export default async function PortalMetricsPage() {
         </SidebarUserCard>
       }
     >
+      <MetricsSyncControl sync={data.sync} action={refreshMetricsAction} />
+
+      {updated === "1" ? (
+        <InlineNotice tone={partial === "1" ? "info" : "success"}>
+          {partial === "1"
+            ? "Actualizamos las fuentes disponibles y conservamos el último dato válido de las que no respondieron."
+            : "Los datos se actualizaron correctamente."}
+        </InlineNotice>
+      ) : null}
+
+      {wait ? (
+        <InlineNotice tone="info">
+          La última consulta fue hace menos de un minuto. Podés volver a actualizar en {Math.max(1, Number.parseInt(wait, 10) || 1)} segundos.
+        </InlineNotice>
+      ) : null}
+
       {hasPerformanceData && data.warnings.length > 0 ? (
         <InlineNotice tone="info">
           Algunos indicadores se están actualizando. Volvé a consultar en unos minutos.
