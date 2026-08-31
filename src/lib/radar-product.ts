@@ -19,7 +19,7 @@ export type RadarProductOpportunity = {
   sourceUrl: string;
   score: number;
   occurredAt: string;
-  explanation: string;
+  explanation: string | null;
   imageUrl: string | null;
   finalUrl: string | null;
   reasons: RadarScoreDimension[];
@@ -79,6 +79,11 @@ function publicationReasons(publication: RadarPublication): RadarScoreDimension[
   ];
 }
 
+function distinctExplanation(summary: string, explanation: string) {
+  const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase("es");
+  return normalize(summary) === normalize(explanation) ? null : explanation;
+}
+
 function publicationOpportunity(publication: RadarPublication): RadarProductOpportunity {
   return {
     id: publication.id,
@@ -91,7 +96,7 @@ function publicationOpportunity(publication: RadarPublication): RadarProductOppo
     sourceUrl: publication.sourceUrl,
     score: publication.score,
     occurredAt: publication.publishedAt,
-    explanation: publication.reason,
+    explanation: distinctExplanation(publication.summary, publication.reason),
     imageUrl: publication.imageUrl,
     finalUrl: publication.url,
     reasons: publicationReasons(publication),
@@ -110,7 +115,7 @@ function rejectedOpportunity(decision: RadarDecision): RadarProductOpportunity {
     sourceUrl: decision.sourceUrl,
     score: decision.score,
     occurredAt: decision.detectedAt,
-    explanation: decision.reason,
+    explanation: null,
     imageUrl: null,
     finalUrl: null,
     reasons: decision.scoreBreakdown,

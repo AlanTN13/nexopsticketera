@@ -172,10 +172,12 @@ function OpportunityCard({ opportunity, compact = false }: { opportunity: RadarP
         </div>
         <h2 className="mt-5 font-[family-name:var(--font-montserrat)] text-xl font-bold leading-7 tracking-[-0.02em] text-slate-950">{opportunity.title}</h2>
         <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{opportunity.summary}</p>
-        <div className={`mt-5 rounded-xl border p-4 ${opportunity.status === "published" ? "border-emerald-200 bg-emerald-50/70" : "border-slate-200 bg-slate-50"}`}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Decisión</p>
-          <p className="mt-2 text-sm leading-6 text-slate-700">{opportunity.explanation}</p>
-        </div>
+        {opportunity.explanation ? (
+          <div className={`mt-5 rounded-xl border p-4 ${opportunity.status === "published" ? "border-emerald-200 bg-emerald-50/70" : "border-slate-200 bg-slate-50"}`}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Por qué avanzó</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">{opportunity.explanation}</p>
+          </div>
+        ) : null}
         <details className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
           <summary className="cursor-pointer text-xs font-semibold text-[#5b3db8]">Ver evidencia y criterios</summary>
           <div className="mt-4 grid gap-3">

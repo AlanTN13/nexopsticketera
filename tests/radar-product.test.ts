@@ -41,6 +41,7 @@ describe("Radar product projection", () => {
       status: "published",
       score: 92,
       finalUrl: "https://www.nexopstech.com/noticias/publicacion-one",
+      explanation: "Superó los controles editoriales.",
     });
     expect(model.events[0].title).toBe("Publicación verificada correctamente");
     expect(model.health.state).toBe("limited");
@@ -89,7 +90,24 @@ describe("Radar product projection", () => {
 
     expect(model.rejected).toHaveLength(1);
     expect(model.opportunities.map((item) => item.title)).not.toContain("Validación técnica");
+    expect(model.opportunities.find((item) => item.status === "discarded")?.explanation).toBeNull();
     expect(model.health.state).toBe("healthy");
+  });
+
+  it("omits an explanation when it only repeats the summary", () => {
+    const model = buildRadarProductModel(
+      workspace({
+        publications: [
+          {
+            ...workspace().publications[0],
+            summary: "Contenido verificado.",
+            reason: "  contenido   VERIFICADO. ",
+          },
+        ],
+      }),
+    );
+
+    expect(model.opportunities[0].explanation).toBeNull();
   });
 
   it("surfaces source failures as an intervention state", () => {
