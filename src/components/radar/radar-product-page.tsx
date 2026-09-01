@@ -215,7 +215,7 @@ function OpportunityCard({ opportunity, compact = false }: { opportunity: RadarP
 
 function OverviewView({ model, companyName, companyLookup, basePath, strategyAvailable }: { model: RadarProductModel; companyName: string; companyLookup?: string; basePath: string; strategyAvailable: boolean }) {
   const featured = model.opportunities.slice(0, 2);
-  const needsAttention = model.health.state !== "healthy";
+  const needsAttention = model.health.state === "attention";
 
   return (
     <div className="grid gap-9">
@@ -234,7 +234,7 @@ function OverviewView({ model, companyName, companyLookup, basePath, strategyAva
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <div className="flex items-center justify-between gap-3">
             <span className="grid size-9 place-items-center rounded-lg bg-white text-[#5b3db8] shadow-sm ring-1 ring-slate-200"><RadioTower size={17} /></span>
-            <span className={`size-2 rounded-full ${model.health.state === "healthy" ? "bg-emerald-500" : model.health.state === "limited" ? "bg-amber-500" : "bg-rose-500"}`} />
+            <span className={`size-2 rounded-full ${model.health.state === "healthy" ? "bg-emerald-500" : model.health.state === "limited" ? "bg-sky-500" : "bg-rose-500"}`} />
           </div>
           <p className="mt-4 text-sm font-bold text-slate-900">Control desde el Portal</p>
           <p className="mt-1 text-sm leading-6 text-slate-600">Estado, próxima corrida y programación viven en Operación.</p>

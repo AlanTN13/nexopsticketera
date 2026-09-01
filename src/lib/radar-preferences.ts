@@ -9,7 +9,7 @@ export const RADAR_TOPIC_OPTIONS = [
   "Productividad",
 ] as const;
 
-export const RADAR_PUBLICATIONS_PER_WEEK = [1, 2, 3, 4, 5] as const;
+export const RADAR_PUBLICATIONS_PER_WEEK = [1, 2, 3, 4, 5, 6] as const;
 export const RADAR_OPPORTUNITY_BEHAVIORS = ["discard", "suggest"] as const;
 export const RADAR_PUBLISHING_MODES = ["review", "automatic"] as const;
 

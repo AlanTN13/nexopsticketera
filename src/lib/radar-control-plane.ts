@@ -1,3 +1,5 @@
+import type { RadarPreferences } from "@/lib/radar-preferences";
+
 export const RADAR_AUTONOMY_MODES = ["suggest", "review", "automatic"] as const;
 export const RADAR_RUN_STATUSES = [
   "queued",
@@ -19,6 +21,13 @@ export const RADAR_RUN_STATUSES = [
 export type RadarAutonomyMode = (typeof RADAR_AUTONOMY_MODES)[number];
 export type RadarRunStatus = (typeof RADAR_RUN_STATUSES)[number];
 export type RadarDecisionAction = "approve" | "discard" | "postpone";
+export type RadarRequestKind = "opportunity_search" | "manual_note";
+
+export type RadarManualNoteRequest = {
+  title: string | null;
+  sourceUrl: string;
+  instructions: string | null;
+};
 
 export type RadarControlSettings = {
   workspaceId: string;
@@ -29,6 +38,7 @@ export type RadarControlSettings = {
   scheduleHour: number;
   scheduleTimezone: string;
   autonomyMode: RadarAutonomyMode;
+  preferences: RadarPreferences;
   nextRunAt: string | null;
 };
 
@@ -61,6 +71,8 @@ export type RadarRun = {
   companyId: string | null;
   requestedBy: string;
   triggerKind: "manual" | "scheduled";
+  requestKind: RadarRequestKind;
+  manualNote: RadarManualNoteRequest | null;
   autonomyMode: RadarAutonomyMode;
   status: RadarRunStatus;
   externalRunId: string | null;
@@ -109,6 +121,10 @@ export function isRadarRunStatus(value: string): value is RadarRunStatus {
   return RADAR_RUN_STATUSES.includes(value as RadarRunStatus);
 }
 
+export function isRadarRequestKind(value: string): value is RadarRequestKind {
+  return value === "opportunity_search" || value === "manual_note";
+}
+
 export function isSafeHttpsUrl(value: string) {
   try {
     const url = new URL(value);
@@ -142,6 +158,20 @@ export function parseRadarCandidate(value: unknown): RadarRunCandidate | null {
     return null;
   }
   return { title, topic, sourceName, sourceUrl, score, businessReasons: reasons };
+}
+
+export function parseRadarManualNoteRequest(value: unknown): RadarManualNoteRequest | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const request = value as Record<string, unknown>;
+  const sourceUrl = typeof request.sourceUrl === "string" ? request.sourceUrl.trim() : "";
+  const optionalText = (entry: unknown, maximum: number) => {
+    if (entry === null || entry === undefined || entry === "") return null;
+    return typeof entry === "string" && entry.trim().length <= maximum ? entry.trim() : null;
+  };
+  const title = optionalText(request.title, 300);
+  const instructions = optionalText(request.instructions, 1_000);
+  if (!sourceUrl || sourceUrl.length > 2_000 || !isSafeHttpsUrl(sourceUrl)) return null;
+  return { title, sourceUrl, instructions };
 }
 
 export function scheduleLabel(settings: RadarControlSettings) {

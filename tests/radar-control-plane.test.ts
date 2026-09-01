@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { radarCallbackSignature, verifyRadarCallbackSignature } from "@/lib/radar-engine-callback";
 import {
   parseRadarCandidate,
+  parseRadarManualNoteRequest,
   scheduleLabel,
   type RadarControlSettings,
 } from "@/lib/radar-control-plane";
@@ -35,6 +36,8 @@ describe("Radar Control Plane V1", () => {
     expect(migration).toContain("create table public.radar_run_decisions");
     expect(migration).toContain("constraint radar_runs_idempotency unique (workspace_id, idempotency_key)");
     expect(migration).toContain("create unique index radar_runs_workspace_active_uq");
+    expect(migration).toContain("request_kind text not null default 'opportunity_search'");
+    expect(migration).toContain("request_payload jsonb not null default '{}'::jsonb");
     expect(migration).toContain("where run_id = run.id and idempotency_key = decision_idempotency_key");
     expect(migration).toContain("create trigger sync_radar_control_setting_after_company_module");
   });
@@ -43,6 +46,7 @@ describe("Radar Control Plane V1", () => {
     expect(migration).toContain("private.radar_workspace_has_access(workspace_id, 'view')");
     expect(migration).toContain("private.radar_workspace_has_access(target_workspace_id, 'operate')");
     expect(migration).toContain("private.radar_workspace_has_access(target_workspace_id, 'admin')");
+    expect(migration).toContain("update_radar_control_preferences");
     expect(migration).toContain("not private.radar_workspace_has_access(run.workspace_id, 'operate')");
     expect(migration).toContain("alter table public.radar_runs enable row level security");
     expect(migration).toContain("revoke all on public.radar_runs from public, anon, authenticated");
@@ -61,8 +65,8 @@ describe("Radar Control Plane V1", () => {
   });
 
   it("authorizes every server action before mutation and does not trust a client company id", () => {
-    expect(actions.match(/requireRadarWorkspaceAccess\(workspaceId, "operate"\)/g)).toHaveLength(2);
-    expect(actions).toContain('requireRadarWorkspaceAccess(workspaceId, "admin")');
+    expect(actions.match(/requireRadarWorkspaceAccess\(workspaceId, "operate"\)/g)).toHaveLength(3);
+    expect(actions.match(/requireRadarWorkspaceAccess\(workspaceId, "admin"\)/g)).toHaveLength(2);
     expect(actions).not.toContain('formData, "companyId"');
     expect(actions).not.toContain("getSupabaseAdminClient");
   });
@@ -96,6 +100,17 @@ describe("Radar Control Plane V1", () => {
     })).toBeNull();
   });
 
+  it("accepts only public HTTPS sources for manual notes", () => {
+    expect(parseRadarManualNoteRequest({
+      title: "Nota urgente",
+      sourceUrl: "https://example.org/news",
+      instructions: "Enfocar en operaciones.",
+    })).toMatchObject({ title: "Nota urgente" });
+    expect(parseRadarManualNoteRequest({ sourceUrl: "http://localhost/private" })).toBeNull();
+    expect(engineClient).toContain('intent: input.requestKind ?? "opportunity_search"');
+    expect(engineClient).toContain("manualNote: input.manualNote ?? null");
+  });
+
   it("keeps the scheduler visibly paused", () => {
     const settings: RadarControlSettings = {
       workspaceId: "nexops",
@@ -106,6 +121,13 @@ describe("Radar Control Plane V1", () => {
       scheduleHour: 7,
       scheduleTimezone: "America/Argentina/Buenos_Aires",
       autonomyMode: "review",
+      preferences: {
+        topics: ["IA aplicada"],
+        publicationsPerWeek: 4,
+        opportunityBehavior: "suggest",
+        publishingMode: "review",
+        siteIntegrated: false,
+      },
       nextRunAt: null,
     };
     expect(scheduleLabel(settings)).toBe("Pausada · preparada lun a sáb · 07:00–07:59");

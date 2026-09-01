@@ -12,6 +12,7 @@ create table public.radar_control_settings (
   schedule_hour smallint not null default 7,
   schedule_timezone text not null default 'America/Argentina/Buenos_Aires',
   autonomy_mode text not null default 'suggest',
+  preferences jsonb not null default '{"topics":["IA aplicada","Automatización","CRM & Ventas","Data & Analytics"],"publicationsPerWeek":4,"opportunityBehavior":"discard","publishingMode":"review","siteIntegrated":false}'::jsonb,
   next_run_at timestamptz,
   updated_by uuid references public.users(id) on delete set null,
   created_at timestamptz not null default now(),
@@ -29,7 +30,9 @@ create table public.radar_control_settings (
       and schedule_days <@ array[0, 1, 2, 3, 4, 5, 6]::smallint[]
     ),
   constraint radar_control_timezone_length
-    check (char_length(schedule_timezone) between 3 and 80)
+    check (char_length(schedule_timezone) between 3 and 80),
+  constraint radar_control_preferences_object
+    check (jsonb_typeof(preferences) = 'object')
 );
 
 create table public.radar_runs (
@@ -39,6 +42,8 @@ create table public.radar_runs (
   requested_by uuid not null references public.users(id) on delete restrict,
   idempotency_key uuid not null,
   trigger_kind text not null default 'manual',
+  request_kind text not null default 'opportunity_search',
+  request_payload jsonb not null default '{}'::jsonb,
   autonomy_mode text not null,
   status text not null default 'queued',
   external_run_id text,
@@ -57,6 +62,20 @@ create table public.radar_runs (
     references public.radar_control_settings(workspace_id, company_id),
   constraint radar_runs_idempotency unique (workspace_id, idempotency_key),
   constraint radar_runs_trigger_allowed check (trigger_kind in ('manual', 'scheduled')),
+  constraint radar_runs_request_kind_allowed check (request_kind in ('opportunity_search', 'manual_note')),
+  constraint radar_runs_request_payload_object check (jsonb_typeof(request_payload) = 'object'),
+  constraint radar_runs_manual_note_shape check (
+    request_kind <> 'manual_note' or (
+      request_payload ? 'sourceUrl'
+      and jsonb_typeof(request_payload -> 'sourceUrl') = 'string'
+      and char_length(request_payload ->> 'sourceUrl') between 9 and 2000
+      and request_payload ->> 'sourceUrl' like 'https://%'
+      and (not (request_payload ? 'title') or jsonb_typeof(request_payload -> 'title') in ('string', 'null'))
+      and (not (request_payload ? 'instructions') or jsonb_typeof(request_payload -> 'instructions') in ('string', 'null'))
+      and char_length(coalesce(request_payload ->> 'title', '')) <= 300
+      and char_length(coalesce(request_payload ->> 'instructions', '')) <= 1000
+    )
+  ),
   constraint radar_runs_autonomy_allowed check (autonomy_mode in ('suggest', 'review', 'automatic')),
   constraint radar_runs_status_allowed check (status in (
     'queued', 'dispatching', 'running', 'no_publication', 'suggested', 'review_pending',
@@ -133,7 +152,8 @@ insert into public.radar_control_settings (
   company_id,
   enabled,
   scheduler_enabled,
-  autonomy_mode
+  autonomy_mode,
+  preferences
 )
 select
   module.settings ->> 'workspaceId',
@@ -144,7 +164,14 @@ select
     when 'automatic' then 'automatic'
     when 'review' then 'review'
     else 'suggest'
-  end
+  end,
+  jsonb_build_object(
+    'topics', coalesce(module.settings -> 'topics', '["IA aplicada","Automatización","CRM & Ventas","Data & Analytics"]'::jsonb),
+    'publicationsPerWeek', coalesce(module.settings -> 'publicationsPerWeek', '4'::jsonb),
+    'opportunityBehavior', coalesce(module.settings -> 'opportunityBehavior', '"discard"'::jsonb),
+    'publishingMode', coalesce(module.settings -> 'publishingMode', '"review"'::jsonb),
+    'siteIntegrated', coalesce(module.settings -> 'siteIntegrated', 'false'::jsonb)
+  )
 from public.company_modules module
 where module.module = 'radar'
   and coalesce(module.settings ->> 'workspaceId', '') ~ '^[a-z0-9][a-z0-9._-]{2,80}$'
@@ -187,6 +214,13 @@ begin
         enabled = new.enabled,
         scheduler_enabled = case when new.enabled then scheduler_enabled else false end,
         next_run_at = case when new.enabled then next_run_at else null end,
+        preferences = jsonb_build_object(
+          'topics', coalesce(new.settings -> 'topics', preferences -> 'topics'),
+          'publicationsPerWeek', coalesce(new.settings -> 'publicationsPerWeek', preferences -> 'publicationsPerWeek'),
+          'opportunityBehavior', coalesce(new.settings -> 'opportunityBehavior', preferences -> 'opportunityBehavior'),
+          'publishingMode', coalesce(new.settings -> 'publishingMode', preferences -> 'publishingMode'),
+          'siteIntegrated', coalesce(new.settings -> 'siteIntegrated', preferences -> 'siteIntegrated')
+        ),
         updated_at = now()
     where company_id = new.company_id;
   elsif current_workspace_id is not null then
@@ -194,13 +228,27 @@ begin
     set enabled = new.enabled,
         scheduler_enabled = case when new.enabled then scheduler_enabled else false end,
         next_run_at = case when new.enabled then next_run_at else null end,
+        preferences = jsonb_build_object(
+          'topics', coalesce(new.settings -> 'topics', preferences -> 'topics'),
+          'publicationsPerWeek', coalesce(new.settings -> 'publicationsPerWeek', preferences -> 'publicationsPerWeek'),
+          'opportunityBehavior', coalesce(new.settings -> 'opportunityBehavior', preferences -> 'opportunityBehavior'),
+          'publishingMode', coalesce(new.settings -> 'publishingMode', preferences -> 'publishingMode'),
+          'siteIntegrated', coalesce(new.settings -> 'siteIntegrated', preferences -> 'siteIntegrated')
+        ),
         updated_at = now()
     where company_id = new.company_id;
   else
     insert into public.radar_control_settings (
-      workspace_id, company_id, enabled, scheduler_enabled
+      workspace_id, company_id, enabled, scheduler_enabled, preferences
     ) values (
-      target_workspace_id, new.company_id, new.enabled, false
+      target_workspace_id, new.company_id, new.enabled, false,
+      jsonb_build_object(
+        'topics', coalesce(new.settings -> 'topics', '["IA aplicada","Automatización","CRM & Ventas","Data & Analytics"]'::jsonb),
+        'publicationsPerWeek', coalesce(new.settings -> 'publicationsPerWeek', '4'::jsonb),
+        'opportunityBehavior', coalesce(new.settings -> 'opportunityBehavior', '"discard"'::jsonb),
+        'publishingMode', coalesce(new.settings -> 'publishingMode', '"review"'::jsonb),
+        'siteIntegrated', coalesce(new.settings -> 'siteIntegrated', 'false'::jsonb)
+      )
     );
   end if;
   return new;
@@ -274,7 +322,9 @@ grant select on public.radar_run_decisions to authenticated;
 create or replace function public.request_radar_run(
   target_workspace_id text,
   request_idempotency_key uuid,
-  request_mode text
+  request_mode text,
+  request_kind text default 'opportunity_search',
+  request_payload jsonb default '{}'::jsonb
 )
 returns public.radar_runs
 language plpgsql
@@ -307,17 +357,38 @@ begin
   if request_mode not in ('suggest', 'review') then
     raise exception 'La primera versión sólo permite sugerencia o revisión.' using errcode = '22023';
   end if;
+  if request_kind not in ('opportunity_search', 'manual_note') or jsonb_typeof(request_payload) <> 'object' then
+    raise exception 'El tipo de solicitud de Radar no es válido.' using errcode = '22023';
+  end if;
+  if request_kind = 'manual_note' and (
+    request_mode <> 'review'
+    or not (request_payload ? 'sourceUrl')
+    or jsonb_typeof(request_payload -> 'sourceUrl') <> 'string'
+    or char_length(request_payload ->> 'sourceUrl') not between 9 and 2000
+    or request_payload ->> 'sourceUrl' not like 'https://%'
+    or char_length(coalesce(request_payload ->> 'title', '')) > 300
+    or char_length(coalesce(request_payload ->> 'instructions', '')) > 1000
+  ) then
+    raise exception 'La nota manual de Radar no es válida.' using errcode = '22023';
+  end if;
 
   insert into public.radar_runs (
     workspace_id, company_id, requested_by, idempotency_key,
-    trigger_kind, autonomy_mode, status
+    trigger_kind, request_kind, request_payload, autonomy_mode, status
   ) values (
     settings.workspace_id, settings.company_id, actor_id, request_idempotency_key,
-    'manual', request_mode, 'queued'
+    'manual', request_kind, request_payload, request_mode, 'queued'
   ) returning * into created_run;
 
   insert into public.radar_run_events (run_id, event_type, public_message)
-  values (created_run.id, 'request_created', 'Solicitud recibida por Radar.');
+  values (
+    created_run.id,
+    'request_created',
+    case request_kind
+      when 'manual_note' then 'Nota recibida y enviada a revisión por Radar.'
+      else 'Solicitud recibida por Radar.'
+    end
+  );
 
   return created_run;
 exception
@@ -374,6 +445,75 @@ begin
   returning * into updated_settings;
 
   if not found then raise exception 'Workspace de Radar inexistente.' using errcode = 'P0002'; end if;
+  return updated_settings;
+end
+$$;
+
+create or replace function public.update_radar_control_preferences(
+  target_workspace_id text,
+  requested_topics text[],
+  requested_publications_per_week smallint,
+  requested_opportunity_behavior text,
+  requested_publishing_mode text
+)
+returns public.radar_control_settings
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  cleaned_topics text[];
+  current_preferences jsonb;
+  updated_settings public.radar_control_settings;
+begin
+  if (select auth.uid()) is null
+    or not private.radar_workspace_has_access(target_workspace_id, 'admin') then
+    raise exception 'No autorizado para configurar Radar.' using errcode = '42501';
+  end if;
+
+  select array_agg(topic order by first_seen)
+  into cleaned_topics
+  from (
+    select btrim(raw_topic) as topic, min(position) as first_seen
+    from unnest(requested_topics) with ordinality as input(raw_topic, position)
+    where char_length(btrim(raw_topic)) between 2 and 50
+      and btrim(raw_topic) !~ '[[:cntrl:]]'
+    group by btrim(raw_topic)
+    order by first_seen
+    limit 8
+  ) valid_topics;
+
+  if cardinality(coalesce(cleaned_topics, '{}'::text[])) not between 1 and 8
+    or requested_publications_per_week not between 1 and 6
+    or requested_opportunity_behavior not in ('discard', 'suggest')
+    or requested_publishing_mode not in ('review', 'automatic') then
+    raise exception 'Las preferencias editoriales de Radar no son válidas.' using errcode = '22023';
+  end if;
+
+  select preferences into current_preferences
+  from public.radar_control_settings
+  where workspace_id = target_workspace_id
+  for update;
+  if not found then raise exception 'Workspace de Radar inexistente.' using errcode = 'P0002'; end if;
+
+  update public.radar_control_settings
+  set preferences = jsonb_build_object(
+        'topics', to_jsonb(cleaned_topics),
+        'publicationsPerWeek', requested_publications_per_week,
+        'opportunityBehavior', requested_opportunity_behavior,
+        'publishingMode', case
+          when requested_publishing_mode = 'automatic'
+            and coalesce(current_preferences ->> 'siteIntegrated', 'false') = 'true'
+          then 'automatic'
+          else 'review'
+        end,
+        'siteIntegrated', coalesce(current_preferences ->> 'siteIntegrated', 'false') = 'true'
+      ),
+      updated_by = (select auth.uid()),
+      updated_at = now()
+  where workspace_id = target_workspace_id
+  returning * into updated_settings;
+
   return updated_settings;
 end
 $$;
@@ -446,11 +586,13 @@ begin
 end
 $$;
 
-revoke all on function public.request_radar_run(text, uuid, text) from public, anon;
+revoke all on function public.request_radar_run(text, uuid, text, text, jsonb) from public, anon;
 revoke all on function public.update_radar_control_schedule(text, boolean, smallint[], smallint, text, text) from public, anon;
+revoke all on function public.update_radar_control_preferences(text, text[], smallint, text, text) from public, anon;
 revoke all on function public.decide_radar_run(uuid, uuid, text, text) from public, anon;
-grant execute on function public.request_radar_run(text, uuid, text) to authenticated;
+grant execute on function public.request_radar_run(text, uuid, text, text, jsonb) to authenticated;
 grant execute on function public.update_radar_control_schedule(text, boolean, smallint[], smallint, text, text) to authenticated;
+grant execute on function public.update_radar_control_preferences(text, text[], smallint, text, text) to authenticated;
 grant execute on function public.decide_radar_run(uuid, uuid, text, text) to authenticated;
 
 -- Platform workspaces are registered explicitly by the NexOps control plane.

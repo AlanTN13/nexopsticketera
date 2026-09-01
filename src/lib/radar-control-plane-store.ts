@@ -2,8 +2,10 @@ import "server-only";
 
 import {
   isRadarAutonomyMode,
+  isRadarRequestKind,
   isRadarRunStatus,
   parseRadarCandidate,
+  parseRadarManualNoteRequest,
   type RadarAutonomyMode,
   type RadarControlPlaneSnapshot,
   type RadarControlSettings,
@@ -13,6 +15,7 @@ import {
   type RadarRunStatus,
 } from "@/lib/radar-control-plane";
 import { radarEngineConnected } from "@/lib/radar-engine-client";
+import { parseRadarPreferences } from "@/lib/radar-preferences";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
 
 type UnknownRow = Record<string, unknown>;
@@ -36,6 +39,7 @@ function mapSettings(row: UnknownRow): RadarControlSettings | null {
     scheduleHour: typeof row.schedule_hour === "number" ? row.schedule_hour : 7,
     scheduleTimezone: text(row.schedule_timezone) ?? "America/Argentina/Buenos_Aires",
     autonomyMode,
+    preferences: parseRadarPreferences(row.preferences),
     nextRunAt: text(row.next_run_at),
   };
 }
@@ -46,16 +50,19 @@ function mapRun(row: UnknownRow, events: RadarRunEvent[] = [], decisions: RadarR
   const requestedBy = text(row.requested_by);
   const autonomyMode = text(row.autonomy_mode);
   const status = text(row.status);
+  const requestKind = text(row.request_kind);
   const createdAt = text(row.created_at);
   const updatedAt = text(row.updated_at);
-  if (!id || !workspaceId || !requestedBy || !autonomyMode || !status || !createdAt || !updatedAt ||
-      !isRadarAutonomyMode(autonomyMode) || !isRadarRunStatus(status)) return null;
+  if (!id || !workspaceId || !requestedBy || !autonomyMode || !status || !requestKind || !createdAt || !updatedAt ||
+      !isRadarAutonomyMode(autonomyMode) || !isRadarRunStatus(status) || !isRadarRequestKind(requestKind)) return null;
   return {
     id,
     workspaceId,
     companyId: text(row.company_id),
     requestedBy,
     triggerKind: row.trigger_kind === "scheduled" ? "scheduled" : "manual",
+    requestKind,
+    manualNote: requestKind === "manual_note" ? parseRadarManualNoteRequest(row.request_payload) : null,
     autonomyMode,
     status,
     externalRunId: text(row.external_run_id),
@@ -141,17 +148,42 @@ export async function createRadarRun(input: {
   workspaceId: string;
   idempotencyKey: string;
   mode: Exclude<RadarAutonomyMode, "automatic">;
+  requestKind?: "opportunity_search" | "manual_note";
+  requestPayload?: Record<string, unknown>;
 }) {
   const client = await getSupabaseServerClient();
   const { data, error } = await client.rpc("request_radar_run", {
     target_workspace_id: input.workspaceId,
     request_idempotency_key: input.idempotencyKey,
     request_mode: input.mode,
+    request_kind: input.requestKind ?? "opportunity_search",
+    request_payload: input.requestPayload ?? {},
   });
   if (error) throw new Error(error.message);
   const run = data ? mapRun(data as UnknownRow) : null;
   if (!run) throw new Error("Radar no devolvió una solicitud válida.");
   return run;
+}
+
+export async function updateRadarPreferences(input: {
+  workspaceId: string;
+  topics: string[];
+  publicationsPerWeek: number;
+  opportunityBehavior: "discard" | "suggest";
+  publishingMode: "review" | "automatic";
+}) {
+  const client = await getSupabaseServerClient();
+  const { data, error } = await client.rpc("update_radar_control_preferences", {
+    target_workspace_id: input.workspaceId,
+    requested_topics: input.topics,
+    requested_publications_per_week: input.publicationsPerWeek,
+    requested_opportunity_behavior: input.opportunityBehavior,
+    requested_publishing_mode: input.publishingMode,
+  });
+  if (error) throw new Error(error.message);
+  const settings = data ? mapSettings(data as UnknownRow) : null;
+  if (!settings) throw new Error("Radar no devolvió una configuración válida.");
+  return settings;
 }
 
 export async function updateRadarSchedule(input: {

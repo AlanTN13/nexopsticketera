@@ -3,7 +3,7 @@
 import { ComponentProps, FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-type FormActionResult = void | { error?: string | null };
+type FormActionResult = void | { error?: string | null; success?: string };
 type ServerFormAction = (formData: FormData) => FormActionResult | Promise<FormActionResult>;
 
 export function createSubmissionGuard() {
@@ -40,13 +40,16 @@ export function PendingForm({
 }) {
   const guard = useRef(createSubmissionGuard());
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function guardedAction(formData: FormData) {
     try {
       setError(null);
+      setSuccess(null);
       const result = await guard.current(() => Promise.resolve(action(formData)));
-      if (result && typeof result === "object" && "error" in result) {
-        setError(result.error ?? null);
+      if (result && typeof result === "object") {
+        setError("error" in result ? result.error ?? null : null);
+        setSuccess("success" in result ? result.success ?? null : null);
       }
     } catch (caughtError) {
       if (isNextNavigationSignal(caughtError)) {
@@ -62,6 +65,11 @@ export function PendingForm({
       {error ? (
         <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
           {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          {success}
         </p>
       ) : null}
     </form>

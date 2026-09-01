@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { RadarAutonomyMode } from "@/lib/radar-control-plane";
+import type { RadarAutonomyMode, RadarManualNoteRequest, RadarRequestKind } from "@/lib/radar-control-plane";
 
 const DEFAULT_REPOSITORY = "AlanTN13/webneoxps";
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
@@ -16,6 +16,8 @@ export async function dispatchRadarRun(input: {
   runId: string;
   workspaceId: string;
   autonomyMode: Exclude<RadarAutonomyMode, "automatic">;
+  requestKind?: RadarRequestKind;
+  manualNote?: RadarManualNoteRequest | null;
   callbackUrl: string;
 }) {
   const token = process.env.RADAR_ENGINE_GITHUB_TOKEN?.trim();
@@ -41,6 +43,8 @@ export async function dispatchRadarRun(input: {
         requestId: input.runId,
         workspaceId: input.workspaceId,
         mode: input.autonomyMode,
+        intent: input.requestKind ?? "opportunity_search",
+        manualNote: input.manualNote ?? null,
         callbackUrl: input.callbackUrl,
         publicationGate: false,
       },

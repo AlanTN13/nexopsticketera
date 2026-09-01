@@ -127,6 +127,17 @@ $$;
 -- Admin can prepare frequency/mode, but cannot activate the scheduler gate.
 select set_config('request.jwt.claims', '{"sub":"51000000-0000-0000-0000-000000000004","role":"authenticated"}', true);
 select public.update_radar_control_schedule('radar-control-a', false, array[1,3,5]::smallint[], 10::smallint, 'America/Argentina/Buenos_Aires', 'review');
+select public.update_radar_control_preferences(
+  'radar-control-a', array['IA aplicada','Operaciones']::text[], 6::smallint, 'suggest', 'automatic'
+);
+select pg_temp.assert_true(
+  (select preferences -> 'topics' = '["IA aplicada","Operaciones"]'::jsonb
+    and preferences ->> 'publicationsPerWeek' = '6'
+    and preferences ->> 'opportunityBehavior' = 'suggest'
+    and preferences ->> 'publishingMode' = 'review'
+    from public.radar_control_settings where workspace_id = 'radar-control-a'),
+  'admin preferences must persist while direct publication remains gated without an integrated site'
+);
 do $$
 begin
   perform public.update_radar_control_schedule('radar-control-a', true, array[1,3,5]::smallint[], 10::smallint, 'America/Argentina/Buenos_Aires', 'automatic');
@@ -157,8 +168,20 @@ select pg_temp.assert_true(
   'a retried decision must remain single and durable'
 );
 
--- A second safe run can finish as durable NO_PUBLICATION.
-select public.request_radar_run('radar-control-a', '53000000-0000-0000-0000-000000000004', 'suggest');
+-- A manual note keeps its source and can finish as durable NO_PUBLICATION.
+select public.request_radar_run(
+  'radar-control-a',
+  '53000000-0000-0000-0000-000000000004',
+  'review',
+  'manual_note',
+  '{"sourceUrl":"https://example.org/manual","title":"Nota manual","instructions":"Prioridad alta"}'::jsonb
+);
+select pg_temp.assert_true(
+  (select request_kind = 'manual_note'
+    and request_payload ->> 'sourceUrl' = 'https://example.org/manual'
+    from public.radar_runs where idempotency_key = '53000000-0000-0000-0000-000000000004'),
+  'manual note intake must be durable and workspace-scoped'
+);
 reset role;
 update public.radar_runs
 set status = 'no_publication', result_reason = 'No alcanzó el umbral comercial.', completed_at = now(), updated_at = now()
@@ -170,7 +193,7 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"51000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
 select pg_temp.assert_true(
   (select count(*) = 1 from public.radar_runs where idempotency_key = '53000000-0000-0000-0000-000000000004' and status = 'no_publication'),
-  'NO_PUBLICATION must remain visible and durable in the workspace history'
+  'manual note outcome must remain visible and durable in the workspace history'
 );
 select pg_temp.assert_true(
   (select not scheduler_enabled from public.radar_control_settings where workspace_id = 'radar-control-a'),

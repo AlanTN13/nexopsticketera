@@ -41,7 +41,7 @@ function RadarMark() {
 function HealthIndicator({ health }: { health: RadarProductHealth }) {
   const presentation = {
     healthy: { dot: "bg-emerald-500", text: "text-emerald-700", border: "border-emerald-200 bg-emerald-50" },
-    limited: { dot: "bg-amber-500", text: "text-amber-800", border: "border-amber-200 bg-amber-50" },
+    limited: { dot: "bg-sky-500", text: "text-slate-600", border: "border-slate-200 bg-white" },
     attention: { dot: "bg-rose-500", text: "text-rose-700", border: "border-rose-200 bg-rose-50" },
   }[health.state];
 
