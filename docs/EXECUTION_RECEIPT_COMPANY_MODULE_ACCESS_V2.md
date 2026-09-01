@@ -1,6 +1,6 @@
 # EXECUTION RECEIPT — Portal NexOps: módulos y permisos V2
 
-Estado: `IN_PROGRESS`
+Estado: `READY_FOR_DYNAMIC_VALIDATION` — código, revisión y preview verdes; SQL/RLS runtime pendiente en una base Supabase aislada
 
 Fecha de inicio: 2026-09-01
 
@@ -11,6 +11,10 @@ Repo técnico: `AlanTN13/nexopsticketera`
 Branch: `codex/company-module-access-v2`
 
 Issue técnico: `AlanTN13/nexopsticketera#51`
+
+PR draft: `AlanTN13/nexopsticketera#52`
+
+Commit revisado: `bea3a76150d073564cc66abc46d29c2f8ec7ca17`
 
 ## WIP y alcance
 
@@ -69,7 +73,7 @@ Reglas configurables vs. invariantes:
 
 Datos y migración:
 
-- Migración aditiva y reintentable: crear catálogo/tablas/índices/policies/helpers; quitar el check enumerado de `company_modules`; sembrar filas para todos los módulos/empresas.
+- Migración expand-only, aditiva y compatible: crear catálogo/tablas/índices/policies/helpers; quitar el check enumerado de `company_modules`; sembrar filas para todos los módulos/empresas. El backfill usa conflictos controlados, pero la migración completa se ejecuta una sola vez por entorno.
 - Backfill compatible: Soporte habilitado para todas las empresas; se preservan settings y flags de Métricas/Radar; clientes reciben `view/operate/admin` según su rol base en módulos hoy habilitados; internos activos existentes reciben asignaciones a empresas actuales y sólo permisos de Soporte (`agent=operate`, `team_lead=admin`) para no expandir privilegios; futuros internos nacen sin empresas; `platform_admin` no necesita filas.
 - Las RLS de tickets, comentarios, adjuntos, historial y Storage pasan a exigir `support` y el nivel correspondiente. Las RPC existentes se revalidan dentro de la transacción; los checks de UI/Server Action son defensa adicional.
 - No hay eliminación de datos ni de columnas en esta entrega.
@@ -110,18 +114,41 @@ Triggers de evolución futura:
 ```text
 EXECUTION CHECKPOINT
 Proyecto / resultado: Portal NexOps — módulos y permisos V2
-Estado: DELIVERY_DESIGN
-Repo / branch / PR: AlanTN13/nexopsticketera / codex/company-module-access-v2 / issue #51 / PR pendiente
-Última evidencia: baseline remoto y modelo vigente verificados
-Validaciones: diseño contra issue #46 y documentación oficial vigente de Supabase/Next.js
-Bloqueos: ninguno
-Siguiente movimiento: challenge independiente, issue técnico y PR draft
+Estado: READY_FOR_DYNAMIC_VALIDATION
+Repo / branch / PR: AlanTN13/nexopsticketera / codex/company-module-access-v2 / #52 draft
+Última evidencia: commit bea3a76; CI verify y dos deployments Vercel PASS
+Validaciones: diff-check, lint, typecheck, 35 archivos/146 tests, build webpack, QA y security review
+Bloqueos: falta base Supabase local/branch aislada para ejecutar migración + harness + smoke A/B autenticado
+Siguiente movimiento: crear base efímera, ejecutar runbook y cerrar gate dinámico; producción continúa bloqueada
 ```
 
 ## Validaciones ejecutadas
 
-Pendientes.
+- `git diff --check`: `PASS`.
+- ESLint: `PASS`.
+- TypeScript `tsc --noEmit --incremental false`: `PASS`.
+- Vitest: `PASS` — 35 archivos, 146 tests.
+- Next.js production build con webpack: `PASS`.
+- GitHub Actions `verify`: `PASS` sobre `bea3a76`.
+- Vercel `nexopsticketera`: `PASS` — preview `https://nexopsticketera-git-co-e32fb5-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
+- Vercel `sdnexops`: `PASS` — preview `https://sdnexops-git-codex-com-3f3d82-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
+- Revisión QA independiente: `READY_CODE`, sin bloqueos de implementación.
+- Revisión independiente auth/RLS: `READY`, sin P0/P1 abiertos.
+- Ejecución real de `supabase db reset` y `supabase/tests/module_access_v2_rls.sql`: `NOT_RUN / BLOCKED_EXTERNAL`. El host no dispone de Docker, servidor Postgres local ni Supabase CLI utilizable; no se reutilizó ninguna base conectada para evitar tocar producción.
+- Smoke autenticado A/B por URL, acción, ID, Data API y Storage: `NOT_RUN / BLOCKED_EXTERNAL` hasta disponer de la base efímera anterior. El harness está preparado y se revierte íntegramente con `ROLLBACK`.
 
 ## Resultado final
 
-Pendiente.
+- Entrega implementada en PR draft: catálogo de módulos; módulos por empresa; permisos por usuario/empresa/módulo con jerarquía `view/operate/admin`; asignaciones internas por empresa; auditoría inmutable; UI de administración; autorización centralizada; RLS/Storage/RPC/triggers; migración/backfill y runbook.
+- Las rutas y acciones de Soporte, Métricas y Radar consumen el mismo contrato. Radar y Métricas requieren empresa explícita para actores internos; Soporte deja de otorgar acceso global por el mero rol interno.
+- Los accesos directos quedan cubiertos contractualmente y por harness: tenant A/B, ID ajeno, DML directo, RPC, nivel insuficiente, módulo deshabilitado, usuario inactivo, notas/adjuntos/historial internos, responsable interno y Storage owner/delete.
+- Los adjuntos se sirven mediante un endpoint autenticado que revalida RLS por request y emite una URL firmada de 30 segundos.
+- La entrega no se declara `VALIDATED` ni lista para producción hasta ejecutar el gate dinámico en Supabase aislado. No se aplicó ninguna migración ni cambio productivo.
+- `Alanos#45` sigue pausado. Cuando se retome, Contenido/Instagram deberá usar la clave `content`, la misma jerarquía y las mismas asignaciones, sin excepción ni hardcode para NexOps.
+
+## Knowledge Delta propuesto
+
+- El contrato transversal de autorización es `usuario activo + empresa propia/asignada + módulo habilitado + nivel suficiente`.
+- `platform_admin` sustituye asignación y permiso personal, pero no el entitlement de empresa; un módulo deshabilitado falla cerrado para todos.
+- Los niveles funcionales no conceden control comercial. Sólo `platform_admin` administra módulos, asignaciones y permisos.
+- Cualquier módulo nuevo —incluido Contenido— debe integrarse al catálogo, helpers, UI, RLS/RPC y matriz A/B. No se aceptan rutas, usuarios o workspaces privilegiados por hardcode.
