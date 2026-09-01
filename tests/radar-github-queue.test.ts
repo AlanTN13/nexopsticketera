@@ -35,7 +35,7 @@ describe("Radar private GitHub queue", () => {
     vi.unstubAllGlobals();
   });
 
-  it("normalizes timestamps and public manual URLs before enqueue", () => {
+  it("normalizes timestamps while preserving the exact validated URL text", () => {
     const request = buildRadarQueueRequest({
       ...baseInput,
       requestKind: "manual_note",
@@ -44,7 +44,7 @@ describe("Radar private GitHub queue", () => {
     expect(request.requestedAt).toBe("2026-09-01T18:00:00.123Z");
     expect(request.manualNote).toEqual({
       title: "Nota",
-      sourceUrl: "https://example.com/",
+      sourceUrl: "https://example.com",
       instructions: "Contexto",
     });
     expect(request.publicationGate).toBe(false);

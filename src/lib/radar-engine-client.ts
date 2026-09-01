@@ -84,7 +84,7 @@ export function buildRadarQueueRequest(input: {
   }
   const manualNote = input.manualNote ? {
     title: input.manualNote.title?.trim() || null,
-    sourceUrl: new URL(input.manualNote.sourceUrl).toString(),
+    sourceUrl: input.manualNote.sourceUrl.trim(),
     instructions: input.manualNote.instructions?.trim() || null,
   } : null;
   return {
@@ -96,7 +96,7 @@ export function buildRadarQueueRequest(input: {
     mode: input.autonomyMode,
     intent: input.requestKind ?? "opportunity_search",
     manualNote,
-    callbackUrl: new URL(input.callbackUrl).toString(),
+    callbackUrl: input.callbackUrl.trim(),
     publicationGate: false,
   };
 }
