@@ -1,0 +1,126 @@
+# EXECUTION RECEIPT — Portal NexOps: módulos y permisos V2
+
+Estado: `IN_PROGRESS`
+
+Fecha de inicio: 2026-09-01
+
+Issue de origen: `AlanTN13/Alanos#46`
+
+Repo técnico: `AlanTN13/nexopsticketera`
+
+Branch: `codex/company-module-access-v2`
+
+Issue técnico: `AlanTN13/nexopsticketera#51`
+
+## WIP y alcance
+
+- Se ejecuta únicamente la base transversal de módulos y permisos de `Alanos#46`.
+- `Alanos#45` / Contenido–Instagram queda en espera. Su worktree y PR draft existentes no se modifican.
+- No se aplican migraciones productivas, no se cambian credenciales y no se promueve producción sin gate explícito.
+
+## TECHNICAL SNAPSHOT
+
+- Stack: Next.js 16 App Router, React 19, Supabase Auth/SSR/Postgres/RLS, Vercel.
+- Baseline: `origin/main@7b008f9926b04006bed07cb5382b4f52b56f0264`.
+- Modelo vigente: identidad única en `auth.users` + `public.users`; rol base; empresa única para clientes; usuarios internos sin empresa; `company_modules` sólo para `metrics` y `radar`; Soporte implícito; internos con acceso global por rol.
+- Autorización vigente: helpers TypeScript y funciones `private.*` de Postgres. La navegación oculta módulos, pero no existe permiso por usuario/módulo ni asignación interna por empresa.
+- Tests: Vitest con tests de autorización, migraciones y aislamiento; lint, typecheck y build.
+- Riesgo principal: IDOR/BOLA por mantener el helper histórico que trata a todo usuario interno como global.
+
+## DELIVERY DESIGN
+
+Resultado y usuario:
+
+- Un administrador autorizado de NexOps administra módulos por empresa, niveles por usuario y empresas atendidas por cada integrante interno. La UI explica el acceso efectivo antes de guardar.
+
+Tipo / tamaño / riesgo:
+
+- `T3 / L / R3` por autorización transversal, RLS, migración compatible y radio sobre Soporte, Métricas y Radar.
+
+Restricciones y no-objetivos:
+
+- Sin facturación, planes comerciales, roles personalizados, SSO, usuarios cliente multiempresa ni implementación de Contenido/Instagram.
+- Sin nueva sesión, servicio o sistema paralelo de autorización.
+- Sin decisiones basadas en `user_metadata`; `public.users` y las tablas de acceso son fuente operativa.
+
+Alternativas consideradas:
+
+- `A0`: sólo extender roles existentes. Rechazada: produciría combinaciones de roles y no resuelve empresa + módulo + nivel.
+- `A1`: agregar tablas de asignación y helpers sobre el modelo actual. Elegida para persistencia y migración.
+- `A2`: centralizar cálculo de acceso efectivo en un contrato compartido TypeScript/SQL. Elegida porque ya existen múltiples consumidores reales: navegación, páginas, Server Actions, queries y RLS.
+- `A3`: servicio de autorización separado. Rechazada: complejidad operativa sin necesidad.
+
+Decisión arquitectónica:
+
+- Catálogo `portal_modules` con claves estables (`support`, `metrics`, `radar`, `content`) y metadata de presentación.
+- `company_modules` conserva settings y pasa a representar todos los módulos, incluido Soporte.
+- `user_company_assignments` limita las empresas de usuarios internos. `platform_admin` mantiene override global explícito.
+- `user_module_permissions` asigna `view`, `operate` o `admin` por usuario, empresa y módulo.
+- El acceso efectivo exige: usuario activo + empresa accesible + módulo habilitado + permiso suficiente. `platform_admin` conserva acceso global explícito, siempre sujeto a que el módulo esté habilitado para la empresa.
+- `access_audit_log` registra actor, empresa, usuario/módulo afectados, valor anterior/nuevo, acción, motivo y timestamp. Triggers cubren también escrituras directas autorizadas.
+- Los clientes siguen vinculados a una sola empresa. En esta primera versión, sólo NexOps administra permisos por módulo; `client_admin` no habilita productos ni concede niveles.
+- Server Actions vuelven a autenticar la sesión y delegan la mutación en RPCs transaccionales. La UI nunca es la autoridad.
+
+Reglas configurables vs. invariantes:
+
+- Configurable: módulos habilitados, asignaciones internas, nivel por usuario/módulo, settings propios del módulo.
+- Invariantes: cliente en una sola empresa; jerarquía `view < operate < admin`; módulo deshabilitado anula todo permiso; usuario inactivo no accede; sólo `platform_admin` es global; cambios de acceso se auditan.
+
+Datos y migración:
+
+- Migración aditiva y reintentable: crear catálogo/tablas/índices/policies/helpers; quitar el check enumerado de `company_modules`; sembrar filas para todos los módulos/empresas.
+- Backfill compatible: Soporte habilitado para todas las empresas; se preservan settings y flags de Métricas/Radar; clientes reciben niveles según rol base en módulos hoy habilitados; internos activos existentes reciben asignaciones a empresas actuales y permisos según rol para no cortar acceso; futuros internos nacen sin empresas.
+- El helper histórico `private.can_access_company` se reemplaza para que las RLS existentes de tickets, comentarios, adjuntos e historial hereden la nueva asignación.
+- No hay eliminación de datos ni de columnas en esta entrega.
+
+Plan de validación:
+
+- Tests unitarios de cálculo efectivo y jerarquía.
+- Tests estáticos/contractuales de migración, grants, RLS, triggers y auditoría.
+- Matriz A/B para cliente e interno asignado/no asignado.
+- Acceso directo por URL, Server Action manual, ID de otra empresa y escalamiento de nivel.
+- Regresión Soporte/Métricas/Radar, invitación/login y usuarios inactivos.
+- Lint, typecheck, suite completa, build, preview Vercel y smoke autenticado en entorno seguro si existen identidades/datos no productivos.
+- Revisión independiente de auth/RLS/migración antes del cierre.
+
+Rollout / rollback:
+
+- Rollout: aplicar migración sólo en branch/local o preview seguro; desplegar app; ejecutar smoke por roles; recién después solicitar gate productivo.
+- Rollback lógico: deshabilitar la UI nueva y conservar tablas/backfill sin pérdida; la aplicación anterior ignora las tablas nuevas.
+- Rollback SQL previo a producción: script documentado que restaura el helper histórico y revoca RPCs/policies nuevas. No se ejecuta automáticamente.
+
+Triggers de evolución futura:
+
+- `Contenido` se incorpora al catálogo y usa el mismo permiso; no se permiten excepciones por workspace o persona.
+- Permisos por acción más granulares sólo si aparecen acciones reales que no puedan mapearse a `view/operate/admin`.
+
+## CAPACITY PLAN
+
+- Contexto cargado: issue #46, WIP vigente, auth/RLS/migraciones, rutas Server Component/Actions, tests y despliegue.
+- Planificación suficiente cuando: tablas, invariantes, backfill, fronteras de agentes, pruebas y rollback están fijados.
+- Equipo: Director como integrador/escritor principal; especialista independiente de datos/seguridad para challenge y review; QA independiente para matriz adversarial y smoke.
+- Checks focalizados: tests de autorización/migración/UI por cada vertical.
+- Checks globales centralizados: suite, lint, typecheck y build una vez integrada la superficie.
+- Headroom: reservar correcciones posteriores al review y al preview.
+- `BUDGET_RISK`: aparece sólo si el modelo vigente impide un backfill compatible o el preview carece de entorno seguro verificable.
+
+## CHECKPOINT
+
+```text
+EXECUTION CHECKPOINT
+Proyecto / resultado: Portal NexOps — módulos y permisos V2
+Estado: DELIVERY_DESIGN
+Repo / branch / PR: AlanTN13/nexopsticketera / codex/company-module-access-v2 / issue #51 / PR pendiente
+Última evidencia: baseline remoto y modelo vigente verificados
+Validaciones: diseño contra issue #46 y documentación oficial vigente de Supabase/Next.js
+Bloqueos: ninguno
+Siguiente movimiento: challenge independiente, issue técnico y PR draft
+```
+
+## Validaciones ejecutadas
+
+Pendientes.
+
+## Resultado final
+
+Pendiente.
