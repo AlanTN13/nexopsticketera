@@ -8,6 +8,8 @@ Decisión canónica: `AlanTN13/Alanos#48`
 
 Issue técnico: `AlanTN13/nexopsticketera#56`
 
+Issue de integración del motor: `AlanTN13/webneoxps#70`
+
 Branch: `codex/radar-control-plane-v1`, basada en `main` después del merge de `#55`
 
 PR draft: `AlanTN13/nexopsticketera#57`
