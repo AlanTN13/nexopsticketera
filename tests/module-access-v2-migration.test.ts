@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  join(process.cwd(), "supabase/migrations/20260901002826_company_module_access_v2.sql"),
+  join(process.cwd(), "supabase/migrations/20260901102427_company_module_access_v2.sql"),
   "utf8",
 );
 const commentTouchFix = readFileSync(
-  join(process.cwd(), "supabase/migrations/20260901102622_allow_comment_ticket_touch.sql"),
+  join(process.cwd(), "supabase/migrations/20260901102729_allow_comment_ticket_touch.sql"),
   "utf8",
 );
 

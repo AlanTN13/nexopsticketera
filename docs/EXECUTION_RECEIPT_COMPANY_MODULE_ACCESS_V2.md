@@ -14,7 +14,7 @@ Issue técnico: `AlanTN13/nexopsticketera#51`
 
 PR draft: `AlanTN13/nexopsticketera#52`
 
-Commit revisado: `8638458a6f80b4cf21b157e2cfde8a355e711b25`
+Commit revisado: `af05187d32e6db7f7b531590e37b60ed2c2040ba` más reconciliación final de versiones de migración
 
 ## WIP y alcance
 
@@ -136,6 +136,7 @@ Siguiente movimiento: integrar #52 y retomar #45 sobre este contrato, sin hardco
 - Revisión independiente auth/RLS: `READY`, sin P0/P1 abiertos.
 - Gate productivo explícito: `PASS` — Alan indicó usar la base productiva y no crear una branch con costo.
 - Migración `company_module_access_v2`: `PASS` — aplicada atómicamente en Supabase productivo.
+- Trazabilidad de migraciones: `PASS` — archivos locales reconciliados con las versiones productivas `20260901102427` y `20260901102729`; no se reaplicó SQL.
 - Primer harness dinámico: `FAIL SAFE` — detectó que el trigger de actividad de comentarios podía confundirse con un cambio de workflow; la transacción completa se revirtió.
 - Corrección forward-only `allow_comment_ticket_touch`: `PASS` — compara columnas de negocio explícitamente y mantiene `updated_at` fuera del workflow.
 - Segundo harness `supabase/tests/module_access_v2_rls.sql`: `PASS` — aislamiento A/B, niveles, usuario inactivo, módulo apagado, RPC, DML, Storage y auditoría; terminó con `ROLLBACK`.
