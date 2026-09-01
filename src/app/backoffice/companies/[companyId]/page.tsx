@@ -137,16 +137,17 @@ export default async function BackofficeCompanyDetail({
           company={company}
           returnPath={`/backoffice/companies/${company.slug}`}
         />
-        {hasModuleAccess(actor, company, "metrics", "view") ? (
+        {hasModuleAccess(actor, company, "metrics", "view") || hasModuleAccess(actor, company, "radar", "view") || hasModuleAccess(actor, company, "content", "view") ? (
           <div className="mt-4 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+            {hasModuleAccess(actor, company, "metrics", "view") ? (
             <NavButton href={`/portal/metricas?company=${company.slug}`} label="Abrir Métricas" muted tone="light" />
+            ) : null}
             {hasModuleAccess(actor, company, "radar", "view") && company.modules.radar.settings.workspaceId ? (
               <NavButton href={`/portal/radar?company=${company.slug}`} label="Abrir Radar" muted tone="light" />
             ) : null}
-          </div>
-        ) : hasModuleAccess(actor, company, "radar", "view") && company.modules.radar.settings.workspaceId ? (
-          <div className="mt-4 border-t border-slate-200 pt-4">
-            <NavButton href={`/portal/radar?company=${company.slug}`} label="Abrir Radar" muted tone="light" />
+            {hasModuleAccess(actor, company, "content", "view") ? (
+              <NavButton href={`/portal/contenido?company=${company.id}`} label="Abrir Contenido" muted tone="light" />
+            ) : null}
           </div>
         ) : null}
       </SectionCard>

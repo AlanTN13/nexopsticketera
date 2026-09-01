@@ -1,7 +1,7 @@
 import { Company, CompanyModules, UserProfile, isClientRole } from "@/lib/ticketing";
 import { hasModuleAccess } from "@/lib/authorization";
 
-export type PortalModule = "home" | "support" | "metrics" | "radar";
+export type PortalModule = "home" | "support" | "metrics" | "radar" | "content";
 
 export type MetricsCompanyProfile = {
   enabled?: boolean;
@@ -136,6 +136,20 @@ export function getRadarWorkspaceId(company: Company) {
   return company.modules.radar.settings.workspaceId ?? null;
 }
 
+export function resolveContentCompanyForActor(
+  companies: Company[],
+  actor: UserProfile,
+  companyLookup?: string,
+) {
+  const company = isClientRole(actor.role)
+    ? companies.find((item) => item.id === actor.companyId)
+    : companyLookup
+      ? companies.find((item) => item.id === companyLookup || item.slug === companyLookup)
+      : undefined;
+  if (!company || !hasModuleAccess(actor, company, "content", "view")) return null;
+  return company;
+}
+
 export function resolveMetricsCompanyForActor(
   companies: Company[],
   actor: UserProfile,
@@ -209,6 +223,9 @@ export function buildPortalNavigation({
       : []),
     ...(modules.radar.enabled
       ? [{ href: "/portal/radar", label: "Radar", active: active === "radar" }]
+      : []),
+    ...(modules.content.enabled
+      ? [{ href: "/portal/contenido/fuentes", label: "Contenido", active: active === "content" }]
       : []),
   ];
 }

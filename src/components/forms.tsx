@@ -549,7 +549,7 @@ export function UpdateCompanyModulesForm({
     {
       name: "contentEnabled",
       title: "Contenido",
-      description: "Entitlement preparado para la fase posterior; no implementa Instagram.",
+      description: "Conexión oficial a Instagram, cuentas observadas e historial de datos.",
       enabled: company.modules.content.enabled,
     },
   ] as const;

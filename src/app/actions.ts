@@ -354,6 +354,7 @@ export async function updateCompanyModulesAction(formData: FormData): Promise<Mu
   revalidatePath("/portal");
   revalidatePath("/portal/metricas");
   revalidatePath("/portal/radar");
+  revalidatePath("/portal/contenido");
   revalidatePath(returnPath);
   redirect(
     buildSuccessRedirect(
