@@ -17,6 +17,8 @@ El acceso efectivo se concede únicamente cuando se cumplen las cuatro condicion
 5. Validar en preview con identidades A/B: cliente A, cliente B, interno asignado sólo a A y administrador de plataforma.
 6. Verificar por ruta, ID, Data API y acción que B nunca pueda observar u operar A; que `view` no opere; que un cliente no pueda cambiar workflow; y que el nivel funcional `admin` no modifique el control plane.
 
+Para Storage, cargar `supabase/tests/module_access_v2_storage_fixture.sql` únicamente en la base local y ejecutar `supabase/tests/module_access_v2_storage.mjs` con la URL, anon key y JWT secret locales. La operación `remove` puede devolver una respuesta vacía cuando RLS filtra el objeto; la aserción correcta es que el objeto siga descargable por su owner y sólo desaparezca después del borrado autorizado.
+
 ## Orden de rollout
 
 1. Migración expand-only: catálogo, filas para empresas existentes, tablas de asignación/permisos/auditoría, helpers, RLS, Storage, triggers y RPCs.

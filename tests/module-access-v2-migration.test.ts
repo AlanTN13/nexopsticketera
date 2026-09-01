@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  join(process.cwd(), "supabase/migrations/20260901002826_company_module_access_v2.sql"),
+  join(process.cwd(), "supabase/migrations/20260901102427_company_module_access_v2.sql"),
   "utf8",
 );
 const commentTouchFix = readFileSync(
-  join(process.cwd(), "supabase/migrations/20260901102622_allow_comment_ticket_touch.sql"),
+  join(process.cwd(), "supabase/migrations/20260901102729_allow_comment_ticket_touch.sql"),
   "utf8",
 );
 
@@ -58,6 +58,9 @@ describe("module access V2 migration", () => {
     expect(migration).not.toContain("grant execute on function private.user_has_module_access(uuid, uuid, text, text) to authenticated");
     expect(migration).toMatch(
       /create or replace function public\.support_assignee_ids[\s\S]*?where private\.is_internal_user\(\)/,
+    );
+    expect(migration).toMatch(
+      /if tg_table_name = 'company_modules' and tg_op = 'UPDATE' then[\s\S]*?old\.module = new\.module/,
     );
   });
 
