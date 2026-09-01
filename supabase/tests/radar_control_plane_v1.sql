@@ -124,9 +124,16 @@ exception when insufficient_privilege then null;
 end
 $$;
 
--- Admin can prepare frequency/mode, but cannot activate the scheduler gate.
+-- Admin can only configure the fixed pilot window; arbitrary schedules fail.
 select set_config('request.jwt.claims', '{"sub":"51000000-0000-0000-0000-000000000004","role":"authenticated"}', true);
-select public.update_radar_control_schedule('radar-control-a', false, array[1,3,5]::smallint[], 10::smallint, 'America/Argentina/Buenos_Aires', 'review');
+do $$
+begin
+  perform public.update_radar_control_schedule('radar-control-a', false, array[1,3,5]::smallint[], 10::smallint, 'America/Argentina/Buenos_Aires', 'review');
+  raise exception 'ASSERTION FAILED: arbitrary scheduler was accepted';
+exception when sqlstate '55000' then null;
+end
+$$;
+select public.update_radar_control_schedule('radar-control-a', false, array[1,2,3,4,5,6]::smallint[], 7::smallint, 'America/Argentina/Buenos_Aires', 'review');
 select public.update_radar_control_preferences(
   'radar-control-a', array['IA aplicada','Operaciones']::text[], 6::smallint, 'suggest', 'automatic'
 );
@@ -140,8 +147,8 @@ select pg_temp.assert_true(
 );
 do $$
 begin
-  perform public.update_radar_control_schedule('radar-control-a', true, array[1,3,5]::smallint[], 10::smallint, 'America/Argentina/Buenos_Aires', 'automatic');
-  raise exception 'ASSERTION FAILED: scheduler gate was bypassed';
+  perform public.update_radar_control_schedule('radar-control-a', true, array[1,2,3,4,5,6]::smallint[], 7::smallint, 'America/Argentina/Buenos_Aires', 'automatic');
+  raise exception 'ASSERTION FAILED: scheduler left review mode';
 exception when sqlstate '55000' then null;
 end
 $$;
@@ -184,11 +191,42 @@ select pg_temp.assert_true(
 );
 reset role;
 update public.radar_runs
-set status = 'no_publication', result_reason = 'No alcanzó el umbral comercial.', completed_at = now(), updated_at = now()
+set status = 'dispatching', updated_at = now()
 where idempotency_key = '53000000-0000-0000-0000-000000000004';
-insert into public.radar_run_events (run_id, event_type, public_message)
-select id, 'engine_no_publication', 'No se encontró una oportunidad suficiente.'
+select public.record_radar_worker_result(
+  id, 'dispatching', 'no_publication', 'No se encontró una oportunidad suficiente.',
+  null, 'No alcanzó el umbral comercial.', null, null,
+  'radar-' || id::text, repeat('a', 64), repeat('b', 64)
+)
 from public.radar_runs where idempotency_key = '53000000-0000-0000-0000-000000000004';
+select pg_temp.assert_true(
+  (select public.record_radar_worker_result(
+    id, 'no_publication', 'no_publication', 'No se encontró una oportunidad suficiente.',
+    null, 'No alcanzó el umbral comercial.', null, null,
+    'radar-' || id::text, repeat('a', 64), repeat('b', 64)
+  ) from public.radar_runs where idempotency_key = '53000000-0000-0000-0000-000000000004'),
+  'an exact callback retry must be reported as duplicate'
+);
+do $$
+declare target_id uuid;
+begin
+  select id into target_id from public.radar_runs where idempotency_key = '53000000-0000-0000-0000-000000000004';
+  perform public.record_radar_worker_result(
+    target_id, 'no_publication', 'no_publication', 'No se encontró una oportunidad suficiente.',
+    null, 'No alcanzó el umbral comercial.', null, null,
+    'radar-' || target_id::text, repeat('a', 64), repeat('c', 64)
+  );
+  raise exception 'ASSERTION FAILED: an altered callback retry was accepted';
+exception when sqlstate '22023' then null;
+end
+$$;
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.radar_run_events event
+    join public.radar_runs run on run.id = event.run_id
+    where run.idempotency_key = '53000000-0000-0000-0000-000000000004'
+      and event.event_type = 'engine_no_publication'),
+  'callback state and receipt must commit exactly once'
+);
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"51000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
 select pg_temp.assert_true(
