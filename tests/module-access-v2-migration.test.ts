@@ -52,6 +52,9 @@ describe("module access V2 migration", () => {
     expect(migration).toContain("private.has_module_access(target_company_id, 'radar', 'admin')");
     expect(migration).toContain("not private.has_module_access(actor_profile.company_id, 'support', 'operate')");
     expect(migration).not.toContain("grant execute on function private.user_has_module_access(uuid, uuid, text, text) to authenticated");
+    expect(migration).toMatch(
+      /create or replace function public\.support_assignee_ids[\s\S]*?where private\.is_internal_user\(\)/,
+    );
   });
 
   it("binds profile and company management to the internal assignment", () => {

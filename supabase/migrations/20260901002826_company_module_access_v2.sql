@@ -1163,7 +1163,8 @@ set search_path = ''
 as $$
   select profile.id
   from public.users profile
-  where private.has_module_access(target_company_id, 'support', 'operate')
+  where private.is_internal_user()
+    and private.has_module_access(target_company_id, 'support', 'operate')
     and profile.company_id is null
     and profile.status = 'active'
     and profile.role in ('agent', 'team_lead', 'platform_admin')

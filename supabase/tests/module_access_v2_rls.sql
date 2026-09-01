@@ -21,7 +21,8 @@ values
   ('10000000-0000-0000-0000-000000000003', 'operator-a@test.invalid'),
   ('10000000-0000-0000-0000-000000000004', 'admin-a@test.invalid'),
   ('10000000-0000-0000-0000-000000000005', 'operator-b@test.invalid'),
-  ('10000000-0000-0000-0000-000000000006', 'agent@test.invalid');
+  ('10000000-0000-0000-0000-000000000006', 'agent@test.invalid'),
+  ('10000000-0000-0000-0000-000000000007', 'unassigned-agent@test.invalid');
 
 insert into public.users (id, company_id, name, email, role, status)
 values (
@@ -54,7 +55,8 @@ values
   ('10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', 'Operator A', 'operator-a@test.invalid', 'client_operator', 'active'),
   ('10000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001', 'Admin A', 'admin-a@test.invalid', 'client_admin', 'active'),
   ('10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000002', 'Operator B', 'operator-b@test.invalid', 'client_operator', 'active'),
-  ('10000000-0000-0000-0000-000000000006', null, 'Agent', 'agent@test.invalid', 'agent', 'active');
+  ('10000000-0000-0000-0000-000000000006', null, 'Agent', 'agent@test.invalid', 'agent', 'active'),
+  ('10000000-0000-0000-0000-000000000007', null, 'Unassigned Agent', 'unassigned-agent@test.invalid', 'agent', 'active');
 
 select public.set_company_modules(
   '20000000-0000-0000-0000-000000000001',
@@ -276,6 +278,21 @@ select pg_temp.assert_true(
 );
 
 -- Safe assignee projections repeat module and tenant authorization.
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.support_assignee_ids('20000000-0000-0000-0000-000000000001')),
+  'client operator must not enumerate internal assignee IDs'
+);
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000006","role":"authenticated"}', true);
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.support_assignee_ids('20000000-0000-0000-0000-000000000001') where user_id = '10000000-0000-0000-0000-000000000006'),
+  'assigned internal operator must resolve eligible assignees'
+);
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000007","role":"authenticated"}', true);
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.support_assignee_ids('20000000-0000-0000-0000-000000000001')),
+  'unassigned internal operator must not enumerate assignees'
+);
 select set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 select public.update_ticket_workflow_with_history(
   '30000000-0000-0000-0000-000000000001',
