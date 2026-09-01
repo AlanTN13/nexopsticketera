@@ -26,7 +26,7 @@ export const USER_ROLES = [
   "platform_admin",
 ] as const;
 export const USER_STATUSES = ["active", "invited", "disabled"] as const;
-export const OPTIONAL_PORTAL_MODULES = ["metrics", "radar"] as const;
+export const OPTIONAL_PORTAL_MODULES = ["metrics", "radar", "content"] as const;
 export const MAX_TICKET_IMAGES = 3;
 export const MAX_COMMENT_IMAGES = 3;
 export const MAX_COMMENT_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -59,6 +59,10 @@ export type PortalModuleSettings = {
     opportunityBehavior?: "discard" | "suggest";
     publishingMode?: "review" | "automatic";
     siteIntegrated?: boolean;
+  };
+  content: {
+    workspaceId?: string;
+    syncFrequency?: "weekly";
   };
 };
 

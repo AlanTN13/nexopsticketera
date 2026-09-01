@@ -11,6 +11,7 @@ export const companyA: Company = {
   modules: {
     metrics: { enabled: false, settings: {} },
     radar: { enabled: false, settings: {} },
+    content: { enabled: false, settings: {} },
   },
   createdAt: "2026-01-01T00:00:00.000Z",
 };

@@ -336,9 +336,11 @@ export async function updateCompanyModulesAction(formData: FormData): Promise<Mu
       modules: {
         metrics: formData.has("metricsEnabled"),
         radar: formData.has("radarEnabled"),
+        content: formData.has("contentEnabled"),
       },
       radarWorkspaceId: getString(formData, "radarWorkspaceId") || null,
       radarSiteIntegrated: formData.has("radarSiteIntegrated"),
+      contentWorkspaceId: getString(formData, "contentWorkspaceId") || null,
     });
   } catch (error) {
     return {
@@ -352,6 +354,7 @@ export async function updateCompanyModulesAction(formData: FormData): Promise<Mu
   revalidatePath("/portal");
   revalidatePath("/portal/metricas");
   revalidatePath("/portal/radar");
+  revalidatePath("/portal/contenido");
   revalidatePath(returnPath);
   redirect(
     buildSuccessRedirect(

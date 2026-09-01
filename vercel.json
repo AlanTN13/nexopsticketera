@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/metrics",
       "schedule": "5 3 * * *"
+    },
+    {
+      "path": "/api/cron/content",
+      "schedule": "15 9 * * 1"
     }
   ]
 }

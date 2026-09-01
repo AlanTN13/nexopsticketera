@@ -1,6 +1,6 @@
 import { Company, CompanyModules, UserProfile, isClientRole } from "@/lib/ticketing";
 
-export type PortalModule = "home" | "support" | "metrics" | "radar";
+export type PortalModule = "home" | "support" | "metrics" | "radar" | "content";
 
 export type MetricsCompanyProfile = {
   enabled?: boolean;
@@ -135,6 +135,26 @@ export function getRadarWorkspaceId(company: Company) {
   return company.modules.radar.settings.workspaceId ?? null;
 }
 
+export function getContentWorkspaceId(company: Company) {
+  if (!company.modules.content.enabled) return null;
+  return company.modules.content.settings.workspaceId ?? null;
+}
+
+export function resolveContentCompanyForActor(
+  companies: Company[],
+  actor: UserProfile,
+  internalWorkspaceId = "nexops",
+) {
+  if (actor.role === "platform_admin" || actor.role === "team_lead") {
+    return (
+      companies.find((company) => getContentWorkspaceId(company) === internalWorkspaceId) ?? null
+    );
+  }
+
+  if (!actor.companyId || !isClientRole(actor.role)) return null;
+  return companies.find((company) => company.id === actor.companyId) ?? null;
+}
+
 export function resolveRadarCompanyForActor(
   companies: Company[],
   actor: UserProfile,
@@ -172,6 +192,9 @@ export function buildPortalNavigation({
       : []),
     ...(modules.radar.enabled
       ? [{ href: "/portal/radar", label: "Radar", active: active === "radar" }]
+      : []),
+    ...(modules.content.enabled
+      ? [{ href: "/portal/contenido/fuentes", label: "Contenido", active: active === "content" }]
       : []),
   ];
 }

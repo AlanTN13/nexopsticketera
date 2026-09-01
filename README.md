@@ -8,6 +8,7 @@ Rutas de cliente:
 - `/portal/soporte`: tickets y seguimiento.
 - `/portal/metricas`: reportería habilitada por empresa.
 - `/portal/radar`: planificación de contenidos habilitada por empresa.
+- `/portal/contenido`: conexión oficial, fuentes observadas e historial de Instagram habilitado por workspace.
 - `/portal/tickets/[ticketCode]`: enlaces históricos y detalle de ticket compatibles.
 
 ## Arquitectura V1
@@ -16,7 +17,7 @@ Rutas de cliente:
 - Postgres y Data API bajo la identidad JWT del usuario autenticado.
 - RLS como barrera principal de aislamiento entre empresas.
 - Storage privado para adjuntos, también protegido por RLS.
-- `service_role` limitado a creación y actualización explícita de cuentas en `auth.admin`.
+- `service_role` limitado a Auth Admin y al adaptador server-only de Contenido que cifra credenciales y escribe snapshots.
 - Productos opcionales habilitados por empresa desde Backoffice y protegidos por RLS.
 - Sin JSON local, contraseña demo, seed automático ni fallback silencioso.
 
@@ -42,6 +43,11 @@ NEXT_PUBLIC_APP_URL=https://portal.nexopstech.com
 PORTAL_METRICS_META_SHEET_URL=
 PORTAL_METRICS_MAILCHIMP_SHEET_URL=
 PORTAL_METRICS_COMPANY_CONFIG=
+META_APP_ID=
+META_APP_SECRET=
+META_GRAPH_VERSION=v24.0
+META_TOKEN_ENCRYPTION_KEY=
+CRON_SECRET=
 ```
 
 La clave publicable puede estar en el frontend y queda limitada por grants y RLS. `SUPABASE_SERVICE_ROLE_KEY` es server-only y solo es necesaria para crear o editar usuarios desde acciones administrativas. Nunca debe llevar prefijo `NEXT_PUBLIC_`.
@@ -89,6 +95,7 @@ npm run dev
 - Soporte: `http://localhost:3000/portal/soporte`
 - Métricas: `http://localhost:3000/portal/metricas`
 - Radar: `http://localhost:3000/portal/radar`
+- Contenido: `http://localhost:3000/portal/contenido`
 - Backoffice: `http://localhost:3000/backoffice`
 - Diagnóstico: `http://localhost:3000/setup`
 

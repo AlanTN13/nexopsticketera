@@ -123,6 +123,7 @@ export type UpdateCompanyModulesInput = {
   modules: CompanyModuleAvailability;
   radarWorkspaceId: string | null;
   radarSiteIntegrated: boolean;
+  contentWorkspaceId: string | null;
 };
 
 export type UpdateRadarPreferencesInput = {
@@ -147,7 +148,7 @@ type CompanyRow = {
 
 type CompanyModuleRow = {
   company_id: string;
-  module: "metrics" | "radar";
+  module: "metrics" | "radar" | "content";
   enabled: boolean;
   settings: unknown;
 };
@@ -295,6 +296,7 @@ function emptyCompanyModules(): CompanyModules {
   return {
     metrics: { enabled: false, settings: {} },
     radar: { enabled: false, settings: {} },
+    content: { enabled: false, settings: {} },
   };
 }
 
@@ -332,13 +334,21 @@ function mapCompanyModules(rows: CompanyModuleRow[]) {
               : undefined,
         },
       };
-    } else {
+    } else if (row.module === "radar") {
       const preferences = parseRadarPreferences(settings);
       modules.radar = {
         enabled: row.enabled,
         settings: {
           workspaceId: optionalSetting(settings.workspaceId),
           ...preferences,
+        },
+      };
+    } else if (row.module === "content") {
+      modules.content = {
+        enabled: row.enabled,
+        settings: {
+          workspaceId: optionalSetting(settings.workspaceId),
+          syncFrequency: settings.syncFrequency === "weekly" ? "weekly" : undefined,
         },
       };
     }
@@ -1158,6 +1168,14 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
     throw new Error("El workspace de Radar no tiene un formato válido.");
   }
 
+  const contentWorkspaceId = input.contentWorkspaceId?.trim() || null;
+  if (input.modules.content && !contentWorkspaceId) {
+    throw new Error("Asigná un workspace antes de habilitar Contenido.");
+  }
+  if (contentWorkspaceId && !/^[a-z0-9][a-z0-9._-]{2,80}$/.test(contentWorkspaceId)) {
+    throw new Error("El workspace de Contenido no tiene un formato válido.");
+  }
+
   const client = await getSupabaseServerClient();
   const { error } = await client.rpc("update_company_module_configuration", {
     target_company_id: company.id,
@@ -1165,6 +1183,8 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
     radar_enabled: input.modules.radar,
     radar_workspace_id: radarWorkspaceId,
     radar_site_integrated: input.radarSiteIntegrated,
+    content_enabled: input.modules.content,
+    content_workspace_id: contentWorkspaceId,
   });
 
   assertNoError(error);
@@ -1188,7 +1208,14 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
           : {
               ...company.modules.radar.settings,
               siteIntegrated: input.radarSiteIntegrated,
-            },
+          },
+      },
+      content: {
+        ...company.modules.content,
+        enabled: input.modules.content,
+        settings: contentWorkspaceId
+          ? { workspaceId: contentWorkspaceId, syncFrequency: "weekly" as const }
+          : { ...company.modules.content.settings, syncFrequency: "weekly" as const },
       },
     },
   };

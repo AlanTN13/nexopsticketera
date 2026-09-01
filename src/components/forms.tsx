@@ -554,6 +554,12 @@ export function UpdateCompanyModulesForm({
       description: "Planificación y gestión integral del contenido de la empresa.",
       enabled: company.modules.radar.enabled,
     },
+    {
+      name: "contentEnabled",
+      title: "Contenido",
+      description: "Conexión oficial a Instagram, fuentes observadas e historial de datos.",
+      enabled: company.modules.content.enabled,
+    },
   ] as const;
 
   return (
@@ -597,6 +603,21 @@ export function UpdateCompanyModulesForm({
         />
         <span className="text-xs leading-5 text-slate-600">
           Es obligatorio para habilitar Radar y vincula esta empresa con un único espacio de datos.
+        </span>
+      </label>
+
+      <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="contentWorkspaceId">
+        <span className="text-xs font-semibold text-slate-700">Workspace de Contenido</span>
+        <input
+          id="contentWorkspaceId"
+          name="contentWorkspaceId"
+          defaultValue={company.modules.content.settings.workspaceId ?? ""}
+          placeholder="Ej.: nexops"
+          pattern="[a-z0-9][a-z0-9._-]{2,80}"
+          className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+        />
+        <span className="text-xs leading-5 text-slate-600">
+          Es obligatorio para habilitar Contenido. La recolección de Fase 1 queda fijada a una vez por semana.
         </span>
       </label>
 

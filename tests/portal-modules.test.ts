@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPortalNavigation,
+  getContentWorkspaceId,
   getMetricsProfile,
   getRadarWorkspaceId,
+  resolveContentCompanyForActor,
   resolveRadarCompanyForActor,
 } from "@/lib/portal-modules";
 import { Company, UserProfile } from "@/lib/ticketing";
@@ -20,6 +22,7 @@ function company(overrides: Partial<Company> = {}): Company {
     modules: {
       metrics: { enabled: true, settings: {} },
       radar: { enabled: false, settings: {} },
+      content: { enabled: false, settings: {} },
     },
     createdAt: "2026-08-01T00:00:00.000Z",
     ...overrides,
@@ -35,6 +38,7 @@ describe("portal module configuration", () => {
           modules: {
             metrics: { enabled: false, settings: {} },
             radar: { enabled: false, settings: {} },
+            content: { enabled: false, settings: {} },
           },
         }),
       ),
@@ -58,6 +62,7 @@ describe("portal module configuration", () => {
             settings: { accountName: "GT Ads", objective: "LEADS" },
           },
           radar: { enabled: false, settings: {} },
+          content: { enabled: false, settings: {} },
         },
       }),
     );
@@ -78,6 +83,7 @@ describe("portal module configuration", () => {
             },
           },
           radar: { enabled: false, settings: {} },
+          content: { enabled: false, settings: {} },
         },
       }),
     );
@@ -92,6 +98,7 @@ describe("portal module configuration", () => {
       modules: {
         metrics: { enabled: false, settings: {} },
         radar: { enabled: true, settings: {} },
+        content: { enabled: false, settings: {} },
       },
       ticketCount: 2,
     });
@@ -104,10 +111,23 @@ describe("portal module configuration", () => {
       modules: {
         metrics: { enabled: false, settings: {} },
         radar: { enabled: false, settings: {} },
+        content: { enabled: false, settings: {} },
       },
       ticketCount: 2,
     });
     expect(navigation.map((item) => item.label)).toEqual(["Inicio", "Soporte"]);
+  });
+
+  it("renders Contenido only when its entitlement is active", () => {
+    const modules = {
+      metrics: { enabled: false, settings: {} },
+      radar: { enabled: false, settings: {} },
+      content: { enabled: true, settings: { workspaceId: "nexops", syncFrequency: "weekly" as const } },
+    };
+    expect(buildPortalNavigation({ active: "content", modules }).map((item) => item.label)).toEqual([
+      "Inicio", "Soporte", "Contenido",
+    ]);
+    expect(getContentWorkspaceId(company({ modules }))).toBe("nexops");
   });
 
   it("requires a company-specific workspace before Radar can load data", () => {
@@ -117,6 +137,7 @@ describe("portal module configuration", () => {
           modules: {
             metrics: { enabled: false, settings: {} },
             radar: { enabled: true, settings: {} },
+            content: { enabled: false, settings: {} },
           },
         }),
       ),
@@ -128,6 +149,7 @@ describe("portal module configuration", () => {
           modules: {
             metrics: { enabled: false, settings: {} },
             radar: { enabled: true, settings: { workspaceId: "radar-global-trip" } },
+            content: { enabled: false, settings: {} },
           },
         }),
       ),
@@ -141,6 +163,7 @@ describe("portal module configuration", () => {
       modules: {
         metrics: { enabled: false, settings: {} },
         radar: { enabled: true, settings: { workspaceId: "nexops" } },
+        content: { enabled: false, settings: {} },
       },
     });
     const admin: UserProfile = {
@@ -163,6 +186,7 @@ describe("portal module configuration", () => {
       modules: {
         metrics: { enabled: false, settings: {} },
         radar: { enabled: true, settings: { workspaceId: "nexops" } },
+        content: { enabled: false, settings: {} },
       },
     });
     const agent: UserProfile = {
@@ -177,5 +201,23 @@ describe("portal module configuration", () => {
     };
 
     expect(resolveRadarCompanyForActor([nexops], agent)).toBeNull();
+  });
+
+  it("resolves the NexOps Contenido workspace for platform admins and team leads only", () => {
+    const nexops = company({
+      id: "nexops",
+      modules: {
+        metrics: { enabled: false, settings: {} },
+        radar: { enabled: false, settings: {} },
+        content: { enabled: true, settings: { workspaceId: "nexops", syncFrequency: "weekly" } },
+      },
+    });
+    const base: UserProfile = {
+      id: "internal", companyId: null, name: "NexOps", email: "info@nexopstech.com",
+      role: "platform_admin", status: "active", title: "", avatar: "",
+    };
+    expect(resolveContentCompanyForActor([nexops], base)).toBe(nexops);
+    expect(resolveContentCompanyForActor([nexops], { ...base, role: "team_lead" })).toBe(nexops);
+    expect(resolveContentCompanyForActor([nexops], { ...base, role: "agent" })).toBeNull();
   });
 });

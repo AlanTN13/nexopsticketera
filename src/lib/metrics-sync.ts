@@ -319,6 +319,7 @@ export async function refreshAllMetricsCompanies() {
         modules: {
           metrics: { enabled: true, settings: metricsSettings(module.settings) },
           radar: { enabled: false, settings: {} },
+          content: { enabled: false, settings: {} },
         },
       });
       if (!profile) return { companyId: String(company.id), refreshed: false, missing: true };
