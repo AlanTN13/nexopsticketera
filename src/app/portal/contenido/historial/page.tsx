@@ -4,13 +4,13 @@ import { refreshContentAction } from "@/app/portal/contenido/actions";
 import { ContentShell, ContentStatus } from "@/components/content/content-shell";
 import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
 import { InlineNotice, SectionCard } from "@/components/ui";
-import { getContentPortalContext } from "@/lib/content-store";
+import { getContentPortalPageContext } from "@/lib/content-page-context";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContentHistoryPage({ searchParams }: { searchParams: Promise<{ success?: string; wait?: string; company?: string }> }) {
   const params = await searchParams;
-  const context = await getContentPortalContext(params.company);
+  const context = await getContentPortalPageContext(params.company);
   return (
     <ContentShell context={context} active="history" title="Historial de recolección" description="Trazabilidad por corrida: origen, estado, cuentas procesadas y nuevos registros.">
       {params.success ? <InlineNotice tone="success">{params.success}</InlineNotice> : null}

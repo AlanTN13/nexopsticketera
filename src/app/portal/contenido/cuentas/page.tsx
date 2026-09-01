@@ -4,13 +4,13 @@ import { addObservedAccountAction, retireObservedAccountAction, setObservedAccou
 import { ContentShell, ContentStatus } from "@/components/content/content-shell";
 import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
 import { InlineNotice, SectionCard } from "@/components/ui";
-import { getContentPortalContext } from "@/lib/content-store";
+import { getContentPortalPageContext } from "@/lib/content-page-context";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContentAccountsPage({ searchParams }: { searchParams: Promise<{ success?: string; company?: string }> }) {
   const params = await searchParams;
-  const context = await getContentPortalContext(params.company);
+  const context = await getContentPortalPageContext(params.company);
   const observed = context.accounts.filter((account) => account.kind !== "own");
   const counts = {
     competitor: observed.filter((account) => account.kind === "competitor" && account.active).length,

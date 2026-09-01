@@ -74,6 +74,7 @@ describe("NexOps Contenido phase one", () => {
     expect(store).toContain("resolveContentCompanyForActor(db.companies, actor, companyLookup)");
     expect(store).toContain('hasModuleAccess(actor, company, "content", requiredLevel)');
     expect(migration).toMatch(/private\.has_module_access\(company_id,\s*'content',\s*'view'\)/);
+    expect(read("src/lib/content-page-context.ts")).toContain('redirect("/portal/login?reason=session")');
   });
 
   it("keeps raw payloads out of authenticated grants and pending selection encrypted with TTL", () => {

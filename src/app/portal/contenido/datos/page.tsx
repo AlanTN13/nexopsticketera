@@ -2,13 +2,13 @@ import { ExternalLink } from "lucide-react";
 
 import { ContentShell } from "@/components/content/content-shell";
 import { SectionCard } from "@/components/ui";
-import { getContentPortalContext } from "@/lib/content-store";
+import { getContentPortalPageContext } from "@/lib/content-page-context";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContentDataPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
   const params = await searchParams;
-  const context = await getContentPortalContext(params.company);
+  const context = await getContentPortalPageContext(params.company);
   const accountById = new Map(context.accounts.map((account) => [account.id, account]));
   const latestByAccount = new Map<string, (typeof context.latestSnapshots)[number]>();
   context.latestSnapshots.forEach((snapshot) => {

@@ -5,7 +5,7 @@ import { selectMetaAccountAction, setContentConnectorEnabledAction } from "@/app
 import { ContentShell, ContentStatus } from "@/components/content/content-shell";
 import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
 import { InlineNotice, SectionCard } from "@/components/ui";
-import { getContentPortalContext } from "@/lib/content-store";
+import { getContentPortalPageContext } from "@/lib/content-page-context";
 import { META_REQUIRED_SCOPES } from "@/lib/meta-instagram";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export default async function ContentSourcesPage({
   searchParams: Promise<{ success?: string; error?: string; company?: string }>;
 }) {
   const params = await searchParams;
-  const context = await getContentPortalContext(params.company);
+  const context = await getContentPortalPageContext(params.company);
   const connection = context.connection;
   return (
     <ContentShell context={context} active="sources" title="Fuentes oficiales" description="Conectá la cuenta propia y verificá exactamente qué acceso usa NexOps para recolectar datos.">
