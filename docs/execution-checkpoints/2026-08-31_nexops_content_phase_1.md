@@ -1,6 +1,6 @@
 # EXECUTION RECEIPT — NexOps Contenido · Fase 1
 
-Estado: EN EJECUCIÓN
+Estado: READY_FOR_META_SMOKE
 
 ## Trazabilidad
 
@@ -8,15 +8,16 @@ Estado: EN EJECUCIÓN
 - Issue técnico: `AlanTN13/nexopsticketera#48`.
 - Repo: `AlanTN13/nexopsticketera`.
 - Branch: `codex/nexops-content-phase-1`.
-- PR: pendiente de apertura como draft.
-- Preview: pendiente.
+- PR draft: `AlanTN13/nexopsticketera#49`.
+- Preview primario: `https://nexopsticketera-git-co-5d3214-alan-fernandezs-projects-f6e1f457.vercel.app`.
+- Preview secundario: `https://sdnexops-git-codex-nex-89ee75-alan-fernandezs-projects-f6e1f457.vercel.app`.
 
 ## Technical Snapshot
 
-- Base verificada: `main` en `7b008f9`.
-- WIP remoto: sin otra implementación funcional activa; PR Dependabot #22 aislada.
+- Base transversal: Alanos #46 / técnico #51 / PR #52 `VALIDATED` y mergeado a `main` antes de cerrar Contenido.
+- Head validado: `codex/nexops-content-phase-1` sobre `main`, con permisos comunes y sin autorización paralela.
 - Stack: Next.js 16 App Router, Supabase Auth/Postgres, Vercel y módulos por empresa.
-- Patrones reutilizados: `company_modules`, DAL `server-only`, Server Actions, cron autenticado, claims transaccionales y RLS por empresa.
+- Patrones reutilizados: `company_modules`, niveles `view/operate/admin`, DAL `server-only`, Server Actions, cron autenticado, claims transaccionales y RLS por empresa.
 - Clasificación: `T3 / L / R3`.
 - Arquitectura: `A1`, extensión del monolito modular; sin aplicación ni servicio nuevo.
 
@@ -34,23 +35,43 @@ No incluye análisis, scoring, benchmark razonado, estrategia, calendario, brief
 
 ## Gates
 
-- [ ] Issue técnico creado.
-- [ ] PR draft abierto.
-- [ ] Migración aditiva y reversible revisada.
-- [ ] Entitlement y rutas del módulo.
-- [ ] DAL y acciones autorizadas.
-- [ ] Adaptador Meta server-only.
-- [ ] Sync manual e idempotencia.
-- [ ] Cron semanal condicionado al smoke real.
-- [ ] Aislamiento A/B y secretos verificados.
-- [ ] Tests, lint, typecheck y build.
-- [ ] Preview READY y smoke.
-- [ ] Acción externa Meta o evidencia real.
+- [x] Issue técnico creado.
+- [x] PR draft abierto.
+- [x] Migraciones aditivas aplicadas y versiones repo/productivo alineadas.
+- [x] Entitlement y rutas del módulo.
+- [x] DAL y acciones autorizadas por workspace y nivel.
+- [x] Adaptador Meta server-only, paginado y con manejo de rate limit/reconexión.
+- [x] Sync manual, cooldown, idempotencia y lease fencing.
+- [x] Cron semanal instalado y condicionado a `scheduled_enabled`; piloto en `false`.
+- [x] Aislamiento A/B, secretos y payloads crudos verificados.
+- [x] Suite 38 archivos / 178 tests, lint, typecheck y build webpack.
+- [x] CI y dos previews READY.
+- [x] Smoke no autenticado: `/portal/contenido/fuentes` redirige al login sin error boundary.
+- [ ] OAuth y dos sincronizaciones reales: bloqueadas únicamente por configuración externa de Meta.
+
+## Evidencia Supabase productiva
+
+- Proyecto existente: `tfonsiurhjmllqaknhgh`; no se creó proyecto ni branch adicional.
+- Migraciones remotas: `20260901115425_nexops_content_phase_1_v2`, `20260901115713_fix_content_lease_trigger`, `20260901115759_fix_content_media_persistence`.
+- Harness `supabase/tests/content_phase_one_rls.sql`: PASS dentro de `BEGIN/ROLLBACK`.
+- Contratos probados: provisioning por módulo, aislamiento empresa A/B, denegación de credenciales/raw payloads, pending OAuth con TTL, finalización atómica, watchlist 5+3, identidad estable de publicaciones, snapshot sólo ante cambio y rechazo de lease vencido.
+- Estado posterior: 3 empresas, 5 usuarios, sólo `sysnexops` con Contenido habilitado, un workspace con agenda apagada, 0 conexiones, 0 cuentas, 0 corridas y 0 fixtures.
+- Advisors: sin hallazgo bloqueante nuevo. Las tablas de credenciales y estados OAuth muestran RLS sin policy de forma intencional para denegar todo acceso autenticado; sólo `service_role` opera. Los avisos de índices son informativos y no bloquean el piloto vacío.
+
+## Evidencia de aplicación
+
+- `npm run typecheck`: PASS.
+- `npm test -- --run`: 38 archivos / 178 tests PASS.
+- `npm run lint`: PASS.
+- `npm run build -- --webpack`: PASS.
+- CI `verify`: PASS.
+- Vercel `nexopsticketera` y `sdnexops`: READY.
+- El primer smoke del preview detectó una sesión ausente presentada como error boundary; se corrigió con redirección de página a `/portal/login?reason=session` y el segundo smoke mostró el login esperado, sin un error nuevo de runtime.
 
 ## Rollback
 
-Deshabilitar el entitlement y el job detiene exposición y recolección. La migración es aditiva: ante defecto se conserva historial y se aplica forward-fix; no se ejecutan `DROP`, borrados ni backfills destructivos.
+Deshabilitar el entitlement y `scheduled_enabled` detiene exposición y recolección. Las migraciones son aditivas: ante defecto se conserva historial y se aplica forward-fix; no se ejecutaron `DROP`, borrados ni backfills destructivos.
 
 ## Resultado final
 
-Pendiente de validaciones y evidencia.
+Todo lo independiente de Meta quedó implementado y validado. El PR permanece draft y no se promueve la aplicación ni se activa el cron hasta cargar la configuración oficial de Facebook Login for Business, autorizar la cuenta profesional de NexOps y ejecutar dos sincronizaciones reales. No se usaron datos ficticios como evidencia de Meta.
