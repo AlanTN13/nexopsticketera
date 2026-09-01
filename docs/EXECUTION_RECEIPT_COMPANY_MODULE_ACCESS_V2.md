@@ -1,6 +1,6 @@
 # EXECUTION RECEIPT — Portal NexOps: módulos y permisos V2
 
-Estado: `READY_FOR_DYNAMIC_VALIDATION` — código, revisión y preview verdes; SQL/RLS runtime pendiente en una base Supabase aislada
+Estado: `VALIDATED` — código, migración productiva autorizada, harness SQL/RLS transaccional y regresión de datos verdes
 
 Fecha de inicio: 2026-09-01
 
@@ -14,18 +14,18 @@ Issue técnico: `AlanTN13/nexopsticketera#51`
 
 PR draft: `AlanTN13/nexopsticketera#52`
 
-Commit revisado: `bea3a76150d073564cc66abc46d29c2f8ec7ca17`
+Commit revisado: `8638458a6f80b4cf21b157e2cfde8a355e711b25`
 
 ## WIP y alcance
 
 - Se ejecuta únicamente la base transversal de módulos y permisos de `Alanos#46`.
 - `Alanos#45` / Contenido–Instagram queda en espera. Su worktree y PR draft existentes no se modifican.
-- No se aplican migraciones productivas, no se cambian credenciales y no se promueve producción sin gate explícito.
+- Alan autorizó usar la base productiva como único entorno para evitar el costo de una branch. No se cambiaron credenciales.
 
 ## TECHNICAL SNAPSHOT
 
 - Stack: Next.js 16 App Router, React 19, Supabase Auth/SSR/Postgres/RLS, Vercel.
-- Baseline: `origin/main@7b008f9926b04006bed07cb5382b4f52b56f0264`.
+- Baseline integrada: `origin/main@b334da0a89d8d90cce7d6eb39bcd0e5bbb0635fe`.
 - Modelo vigente: identidad única en `auth.users` + `public.users`; rol base; empresa única para clientes; usuarios internos sin empresa; `company_modules` sólo para `metrics` y `radar`; Soporte implícito; internos con acceso global por rol.
 - Autorización vigente: helpers TypeScript y funciones `private.*` de Postgres. La navegación oculta módulos, pero no existe permiso por usuario/módulo ni asignación interna por empresa.
 - Tests: Vitest con tests de autorización, migraciones y aislamiento; lint, typecheck y build.
@@ -114,12 +114,12 @@ Triggers de evolución futura:
 ```text
 EXECUTION CHECKPOINT
 Proyecto / resultado: Portal NexOps — módulos y permisos V2
-Estado: READY_FOR_DYNAMIC_VALIDATION
+Estado: VALIDATED
 Repo / branch / PR: AlanTN13/nexopsticketera / codex/company-module-access-v2 / #52 draft
-Última evidencia: commit bea3a76; CI verify y dos deployments Vercel PASS
-Validaciones: diff-check, lint, typecheck, 35 archivos/146 tests, build webpack, QA y security review
-Bloqueos: falta base Supabase local/branch aislada para ejecutar migración + harness + smoke A/B autenticado
-Siguiente movimiento: crear base efímera, ejecutar runbook y cerrar gate dinámico; producción continúa bloqueada
+Última evidencia: commit 8638458; migraciones productivas 20260901102427 y 20260901102729; harness A/B PASS con ROLLBACK
+Validaciones: diff-check, lint, typecheck, 36 archivos/156 tests, build webpack, QA/security review y regresión de datos reales
+Bloqueos: ninguno para cerrar #46
+Siguiente movimiento: integrar #52 y retomar #45 sobre este contrato, sin hardcodes
 ```
 
 ## Validaciones ejecutadas
@@ -127,15 +127,20 @@ Siguiente movimiento: crear base efímera, ejecutar runbook y cerrar gate dinám
 - `git diff --check`: `PASS`.
 - ESLint: `PASS`.
 - TypeScript `tsc --noEmit --incremental false`: `PASS`.
-- Vitest: `PASS` — 35 archivos, 146 tests.
+- Vitest: `PASS` — 36 archivos, 156 tests.
 - Next.js production build con webpack: `PASS`.
 - GitHub Actions `verify`: `PASS` sobre `bea3a76`.
 - Vercel `nexopsticketera`: `PASS` — preview `https://nexopsticketera-git-co-e32fb5-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
 - Vercel `sdnexops`: `PASS` — preview `https://sdnexops-git-codex-com-3f3d82-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
 - Revisión QA independiente: `READY_CODE`, sin bloqueos de implementación.
 - Revisión independiente auth/RLS: `READY`, sin P0/P1 abiertos.
-- Ejecución real de `supabase db reset` y `supabase/tests/module_access_v2_rls.sql`: `NOT_RUN / BLOCKED_EXTERNAL`. El host no dispone de Docker, servidor Postgres local ni Supabase CLI utilizable; no se reutilizó ninguna base conectada para evitar tocar producción.
-- Smoke autenticado A/B por URL, acción, ID, Data API y Storage: `NOT_RUN / BLOCKED_EXTERNAL` hasta disponer de la base efímera anterior. El harness está preparado y se revierte íntegramente con `ROLLBACK`.
+- Gate productivo explícito: `PASS` — Alan indicó usar la base productiva y no crear una branch con costo.
+- Migración `company_module_access_v2`: `PASS` — aplicada atómicamente en Supabase productivo.
+- Primer harness dinámico: `FAIL SAFE` — detectó que el trigger de actividad de comentarios podía confundirse con un cambio de workflow; la transacción completa se revirtió.
+- Corrección forward-only `allow_comment_ticket_touch`: `PASS` — compara columnas de negocio explícitamente y mantiene `updated_at` fuera del workflow.
+- Segundo harness `supabase/tests/module_access_v2_rls.sql`: `PASS` — aislamiento A/B, niveles, usuario inactivo, módulo apagado, RPC, DML, Storage y auditoría; terminó con `ROLLBACK`.
+- Regresión productiva: `PASS` — 0 fixtures residuales; 3 empresas y 5 usuarios preservados; settings de Métricas/Radar sin cambios; Soporte habilitado para las tres empresas; Contenido deshabilitado para todas; agente existente asignado sólo a Soporte; historial 78 externo / 1 interno.
+- Asesores Supabase revisados: sin hallazgo nuevo que invalide el gate. Los avisos `SECURITY DEFINER` corresponden a RPCs autenticadas con autorización interna y grants mínimos; los avisos de índices son informativos y no alteran el aislamiento.
 
 ## Resultado final
 
@@ -143,8 +148,8 @@ Siguiente movimiento: crear base efímera, ejecutar runbook y cerrar gate dinám
 - Las rutas y acciones de Soporte, Métricas y Radar consumen el mismo contrato. Radar y Métricas requieren empresa explícita para actores internos; Soporte deja de otorgar acceso global por el mero rol interno.
 - Los accesos directos quedan cubiertos contractualmente y por harness: tenant A/B, ID ajeno, DML directo, RPC, nivel insuficiente, módulo deshabilitado, usuario inactivo, notas/adjuntos/historial internos, responsable interno y Storage owner/delete.
 - Los adjuntos se sirven mediante un endpoint autenticado que revalida RLS por request y emite una URL firmada de 30 segundos.
-- La entrega no se declara `VALIDATED` ni lista para producción hasta ejecutar el gate dinámico en Supabase aislado. No se aplicó ninguna migración ni cambio productivo.
-- `Alanos#45` sigue pausado. Cuando se retome, Contenido/Instagram deberá usar la clave `content`, la misma jerarquía y las mismas asignaciones, sin excepción ni hardcode para NexOps.
+- La entrega queda `VALIDATED`; el gate dinámico y la migración productiva fueron ejecutados con autorización explícita y evidencia de recuperación transaccional.
+- `Alanos#45` puede retomarse. Contenido/Instagram debe usar la clave `content`, la misma jerarquía y las mismas asignaciones, sin excepción ni hardcode para NexOps.
 
 ## Knowledge Delta propuesto
 

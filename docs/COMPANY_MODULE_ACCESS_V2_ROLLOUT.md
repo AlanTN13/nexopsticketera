@@ -1,6 +1,6 @@
 # Módulos y permisos V2 — Runbook de rollout
 
-Este runbook no autoriza producción. La migración sólo puede ejecutarse en una base local o una branch/preview aislada hasta que exista un gate productivo explícito.
+El gate productivo fue otorgado el 2026-09-01 con la indicación de usar la base existente y evitar una branch con costo. La ejecución y su evidencia están registradas en el Execution Receipt.
 
 ## Contrato de acceso
 
@@ -10,7 +10,7 @@ El acceso efectivo se concede únicamente cuando se cumplen las cuatro condicion
 
 ## Ensayo seguro
 
-1. Crear o seleccionar una base efímera sin datos productivos.
+1. Crear o seleccionar una base efímera sin datos productivos; si Dirección autoriza expresamente la base productiva como único entorno, capturar primero el snapshot lógico y usar fixtures sin colisiones dentro de una transacción con `ROLLBACK`.
 2. Aplicar todas las migraciones desde cero.
 3. Ejecutar `supabase/tests/module_access_v2_rls.sql` con `ON_ERROR_STOP=1`.
 4. Ejecutar lint, typecheck, tests y build de la aplicación.
@@ -24,7 +24,7 @@ El acceso efectivo se concede únicamente cuando se cumplen las cuatro condicion
 3. Desplegar la aplicación sobre la misma base de preview.
 4. Ejecutar la matriz A/B y revisar `access_audit_log`.
 5. Mantener el PR en draft mientras algún control figure `NOT_RUN` o `BLOCKED_EXTERNAL`.
-6. Solicitar un gate separado antes de cualquier migración o promoción productiva.
+6. Solicitar un gate separado antes de cualquier migración o promoción productiva. Gate de base recibido y ejecutado el 2026-09-01.
 
 ## Recuperación fail-closed
 
