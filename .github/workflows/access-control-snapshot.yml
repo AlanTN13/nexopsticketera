@@ -1,0 +1,26 @@
+name: Access control source snapshot
+
+on:
+  push:
+    branches:
+      - codex/access-control-matrix
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Package source without Git metadata
+        run: |
+          tar --exclude=.git --exclude=node_modules --exclude=.next -czf /tmp/nexopsticketera-source.tgz .
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: access-control-source
+          path: /tmp/nexopsticketera-source.tgz
+          if-no-files-found: error
+          retention-days: 1
