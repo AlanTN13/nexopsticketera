@@ -8,6 +8,7 @@ import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { buildBackofficeStats, filterTickets, getInternalUsers, sortTickets } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
+import { buildBackofficeNavigation } from "@/lib/backoffice-navigation";
 
 export const dynamic = "force-dynamic";
 type FilterValue = string | string[];
@@ -37,7 +38,7 @@ export default async function BackofficeQueuePage({ searchParams }: Props) {
   const returnPath = queueParams.size ? `/backoffice/queue?${queueParams.toString()}` : "/backoffice/queue";
 
   return <AppShell eyebrow="Backoffice · Tickets" title="Cola operativa" description="Priorizá y gestioná la atención de todas las empresas desde una vista compacta." tone="light"
-    navigation={[{ href: withActor("/backoffice/queue", actor.id), label: "Tickets", active: true, badge: stats.activeTickets }, { href: withActor("/backoffice/companies", actor.id), label: "Empresas", badge: db.companies.length }, { href: withActor("/backoffice/users", actor.id), label: "Usuarios" }]}
+    navigation={buildBackofficeNavigation({ actor, active: "tickets", ticketCount: stats.activeTickets, companyCount: db.companies.length })}
     actions={<><NavButton href={withActor("/backoffice/companies", actor.id)} label="Ver empresas" muted tone="light" /><LogoutClientForm tone="light" /></>}
   >
     <IndicatorBar items={[{ label: "Activos", value: stats.activeTickets }, { label: "Alta o crítica", value: stats.highPriority }, { label: "Esperando cliente", value: stats.waitingCustomer }, { label: "Empresas", value: stats.companies }]} />

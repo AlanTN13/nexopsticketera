@@ -8,6 +8,7 @@ import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { buildBackofficeStats, getClientUsersForCompany, getTicketsForCompany } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
+import { buildBackofficeNavigation } from "@/lib/backoffice-navigation";
 
 type CompaniesPageProps = {
   searchParams: Promise<{ error?: string; success?: string; created?: string }>;
@@ -32,11 +33,7 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
       title="Empresas y cuentas cliente"
       description="Catálogo de cuentas para consultar contexto, usuarios cliente y volumen operativo sin mezclarlo con la cola diaria."
       tone="light"
-      navigation={[
-        { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
-        { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true, badge: db.companies.length },
-        { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
-      ]}
+      navigation={buildBackofficeNavigation({ actor, active: "companies", companyCount: db.companies.length })}
       actions={
         <>
           <NavButton href={withActor("/backoffice/queue", actor.id)} label="Ver tickets" muted tone="light" />

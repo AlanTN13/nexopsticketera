@@ -4,11 +4,12 @@ import { AppShell, EmptyState, NavButton, PriorityPill, SectionCard, StatusPill,
 import { getAppSnapshot, getEligibleSupportAssigneeIds, getVisibleTicketReference } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getInternalUsers, getTicketById, getTicketHistory, getUser, getVisibleComments } from "@/lib/queries";
-import { ticketDetailPath, withActor } from "@/lib/routing";
+import { ticketDetailPath } from "@/lib/routing";
 import { formatRelativeDate, getTicketNextStep, translateHistoryMessage } from "@/lib/ticketing";
 import { CommentAttachments } from "@/components/comment-attachments";
 import { TicketContextLinks } from "@/components/ticket-context-links";
 import { hasModuleAccess } from "@/lib/authorization";
+import { buildBackofficeNavigation } from "@/lib/backoffice-navigation";
 
 export const dynamic = "force-dynamic";
 type Props = {
@@ -24,7 +25,7 @@ export default async function BackofficeTicketDetail({ params, searchParams }: P
 
   const visibleReference = await getVisibleTicketReference(ticketCode);
   const ticket = visibleReference ? getTicketById(db, actor, visibleReference.id) : null;
-  if (!ticket) return <AppShell eyebrow="Backoffice" title="Ticket no encontrado" description="No pudimos ubicar el ticket." tone="light" navigation={[{ href: "/backoffice/queue", label: "Tickets", active: true }]}><EmptyState title="Nada para mostrar" detail="El ticket no existe o no está disponible." tone="light" /></AppShell>;
+  if (!ticket) return <AppShell eyebrow="Backoffice" title="Ticket no encontrado" description="No pudimos ubicar el ticket." tone="light" navigation={buildBackofficeNavigation({ actor, active: "tickets" })}><EmptyState title="Nada para mostrar" detail="El ticket no existe o no está disponible." tone="light" /></AppShell>;
 
   const canonicalPath = ticketDetailPath("/backoffice", ticket);
   if (ticketCode !== ticket.code.toLocaleLowerCase("en-US")) permanentRedirect(canonicalPath);
@@ -48,7 +49,7 @@ export default async function BackofficeTicketDetail({ params, searchParams }: P
     : canonicalPath;
 
   return <AppShell eyebrow="Backoffice · Ticket" title={`${ticket.code} · ${ticket.title}`} description="Gestión operativa y conversación del caso." tone="light"
-    navigation={[{ href: queueReturnPath, label: "Tickets", active: true }, { href: withActor("/backoffice/companies", actor.id), label: "Empresas" }, { href: withActor("/backoffice/users", actor.id), label: "Usuarios" }]}
+    navigation={buildBackofficeNavigation({ actor, active: "tickets", ticketsHref: queueReturnPath })}
     actions={<><NavButton href={queueReturnPath} label="Volver a tickets" muted tone="light" /><LogoutClientForm tone="light" /></>}
   >
     <section className="rounded-xl border border-slate-200 bg-white px-4 py-3"><div className="flex flex-wrap items-center gap-2"><StatusPill status={ticket.status} /><PriorityPill priority={ticket.priority} /></div><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-5"><Meta label="Empresa" value={company?.name ?? "Sin empresa"} /><Meta label="Solicitante" value={creator?.name ?? "Sin identificar"} /><Meta label="Responsable" value={assignee?.name ?? "Sin asignar"} /><Meta label="Actualizado" value={formatRelativeDate(ticket.updatedAt)} /><Meta label="Próximo paso" value={getTicketNextStep(ticket)} /></dl></section>

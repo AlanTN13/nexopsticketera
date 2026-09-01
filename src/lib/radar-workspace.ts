@@ -91,7 +91,13 @@ function safeUrl(value: unknown) {
 
   try {
     const parsed = new URL(normalized);
-    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : null;
+    const hostname = parsed.hostname.toLowerCase();
+    const privateHost = hostname === "localhost" || hostname.endsWith(".local") ||
+      /^127\./.test(hostname) || /^10\./.test(hostname) || /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) || hostname === "::1";
+    return parsed.protocol === "https:" && !parsed.username && !parsed.password && !privateHost
+      ? parsed.toString()
+      : null;
   } catch {
     return null;
   }
@@ -255,8 +261,9 @@ function projectPublication(value: unknown): RadarPublication | null {
   return SENSITIVE_VALUE.test(JSON.stringify(projected)) ? null : projected;
 }
 
-function workspaceConfiguration(workspaceId: string): RadarWorkspaceConfig | null {
-  if (workspaceId !== "nexops") return null;
+function workspaceConfiguration(workspaceId: string, platformWorkspace = false): RadarWorkspaceConfig | null {
+  const configuredWorkspaceId = process.env.RADAR_PLATFORM_WORKSPACE_ID?.trim();
+  if (!platformWorkspace && workspaceId !== "nexops" && workspaceId !== configuredWorkspaceId) return null;
 
   return {
     publicationsUrl:
@@ -278,6 +285,16 @@ async function fetchJson(fetchImpl: FetchLike, url: string, init?: RequestInit) 
   return body;
 }
 
+export async function discoverPlatformRadarWorkspaceId(fetchImpl: FetchLike = fetch) {
+  const url = process.env.RADAR_PUBLICATIONS_URL ?? "https://www.nexopstech.com/radar-publications.json";
+  const body = asRecord(await fetchJson(fetchImpl, url, { cache: "no-store", headers: { accept: "application/json" } }));
+  const workspaceId = cleanText(body.workspace, 64);
+  if (body.schemaVersion !== 1 || !workspaceId || !/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(workspaceId)) {
+    throw new Error("Radar publication manifest has no valid platform workspace");
+  }
+  return workspaceId;
+}
+
 async function readPublications(fetchImpl: FetchLike, workspaceId: string, url: string) {
   const body = asRecord(
     await fetchJson(fetchImpl, url, {
@@ -292,6 +309,7 @@ async function readPublications(fetchImpl: FetchLike, workspaceId: string, url: 
   return {
     generatedAt: safeDate(body.generatedAt),
     publications: body.publications
+      .slice(0, 250)
       .map(projectPublication)
       .filter((item): item is RadarPublication => Boolean(item))
       .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt)),
@@ -385,8 +403,9 @@ async function readHistory(fetchImpl: FetchLike, config: RadarWorkspaceConfig) {
 export async function loadRadarWorkspace(
   workspaceId: string,
   fetchImpl: FetchLike = fetch,
+  platformWorkspace = false,
 ): Promise<RadarWorkspace> {
-  const config = workspaceConfiguration(workspaceId);
+  const config = workspaceConfiguration(workspaceId, platformWorkspace);
   if (!config) {
     return {
       workspaceId,

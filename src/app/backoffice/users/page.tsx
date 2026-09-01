@@ -8,6 +8,7 @@ import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
 import { getInternalDirectoryUsers } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
+import { buildBackofficeNavigation } from "@/lib/backoffice-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,7 @@ export default async function BackofficeUsersPage() {
       title="Equipo interno"
       description="Directorio operativo de NexOps. Los usuarios cliente se gestionan dentro de cada empresa para no mezclar contextos."
       tone="light"
-      navigation={[
-        { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
-        { href: withActor("/backoffice/companies", actor.id), label: "Empresas" },
-        { href: withActor("/backoffice/users", actor.id), label: "Usuarios", active: true, badge: internalUsers.length },
-      ]}
+      navigation={buildBackofficeNavigation({ actor, active: "users", userCount: internalUsers.length })}
       actions={
         <>
           <NavButton href={withActor("/backoffice/queue", actor.id)} label="Ver tickets" muted tone="light" />

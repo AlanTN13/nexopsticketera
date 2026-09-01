@@ -9,6 +9,7 @@ import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getClientUsersForCompany, getCompanyBySlugOrId, getTicketsForCompany, sortTickets } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 import { hasModuleAccess } from "@/lib/authorization";
+import { buildBackofficeNavigation } from "@/lib/backoffice-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +40,7 @@ export default async function BackofficeCompanyDetail({
         title="Empresa no encontrada"
         description="No pudimos ubicar la cuenta solicitada en el entorno actual."
         tone="light"
-        navigation={[
-          { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
-          { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true },
-          { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
-        ]}
+        navigation={buildBackofficeNavigation({ actor, active: "companies" })}
         actions={<NavButton href={withActor("/backoffice/companies", actor.id)} label="Volver a empresas" muted tone="light" />}
       >
         <EmptyState title="Nada para mostrar" detail="La empresa puede haberse eliminado o el entorno se reinició." tone="light" />
@@ -66,11 +63,7 @@ export default async function BackofficeCompanyDetail({
       title={company.name}
       description="Workspace de la cuenta con vista separada para datos, tickets y usuarios cliente."
       tone="light"
-      navigation={[
-        { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
-        { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true },
-        { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
-      ]}
+      navigation={buildBackofficeNavigation({ actor, active: "companies" })}
       actions={
         <>
           <NavButton href={withActor("/backoffice/companies", actor.id)} label="Volver a empresas" muted tone="light" />

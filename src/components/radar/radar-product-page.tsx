@@ -61,10 +61,11 @@ function formatDateTime(value: string | null) {
   return value ? dateTimeFormatter.format(new Date(value)) : "Sin actividad registrada";
 }
 
-function radarHref(path: string, companyLookup?: string) {
-  if (!companyLookup) return path;
-  const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}company=${encodeURIComponent(companyLookup)}`;
+function radarHref(path: string, companyLookup?: string, basePath = "/portal/radar") {
+  const scopedPath = path.replace("/portal/radar", basePath);
+  if (!companyLookup) return scopedPath;
+  const separator = scopedPath.includes("?") ? "&" : "?";
+  return `${scopedPath}${separator}company=${encodeURIComponent(companyLookup)}`;
 }
 
 function ViewHeader({
@@ -209,7 +210,7 @@ function OpportunityCard({ opportunity, compact = false }: { opportunity: RadarP
   );
 }
 
-function OverviewView({ model, companyName, companyLookup }: { model: RadarProductModel; companyName: string; companyLookup?: string }) {
+function OverviewView({ model, companyName, companyLookup, basePath, strategyAvailable }: { model: RadarProductModel; companyName: string; companyLookup?: string; basePath: string; strategyAvailable: boolean }) {
   const featured = model.opportunities.slice(0, 2);
   const needsAttention = model.health.state !== "healthy";
 
@@ -221,8 +222,8 @@ function OverviewView({ model, companyName, companyLookup }: { model: RadarProdu
           <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-montserrat)] text-3xl font-bold leading-tight tracking-[-0.03em] text-slate-950 sm:text-4xl">Oportunidades y contenido, en un solo lugar.</h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">Revisá qué encontró Radar, qué decidió publicar y qué descartó para cuidar el foco de la marca.</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href={radarHref("/portal/radar/oportunidades", companyLookup)} className="radar-primary-action inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#4f35b5] px-4 text-sm font-bold text-white transition hover:bg-[#43299c]">Ver oportunidades <ChevronRight size={16} /></Link>
-            <Link href={radarHref("/portal/radar/estrategia", companyLookup)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-950">Configurar estrategia</Link>
+            <Link href={radarHref("/portal/radar/oportunidades", companyLookup, basePath)} className="radar-primary-action inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#4f35b5] px-4 text-sm font-bold text-white transition hover:bg-[#43299c]">Ver oportunidades <ChevronRight size={16} /></Link>
+            {strategyAvailable ? <Link href={radarHref("/portal/radar/estrategia", companyLookup, basePath)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-950">Configurar estrategia</Link> : null}
           </div>
         </div>
 
@@ -250,7 +251,7 @@ function OverviewView({ model, companyName, companyLookup }: { model: RadarProdu
       </section>
 
       {needsAttention ? (
-        <Link href={radarHref("/portal/radar/historial", companyLookup)} className="flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <Link href={radarHref("/portal/radar/historial", companyLookup, basePath)} className="flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-amber-700 shadow-sm ring-1 ring-amber-200"><CircleAlert size={18} /></span><div><p className="font-semibold text-amber-950">{model.health.label}</p><p className="mt-1 text-sm leading-6 text-amber-800">{model.health.detail}</p></div></div>
           <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-800">Revisar estado <ChevronRight size={14} /></span>
         </Link>
@@ -259,7 +260,7 @@ function OverviewView({ model, companyName, companyLookup }: { model: RadarProdu
       <section>
         <div className="mb-5 flex items-end justify-between gap-4">
           <div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#6749c7]">Decisiones recientes</p><h2 className="mt-2 font-[family-name:var(--font-montserrat)] text-2xl font-bold text-slate-950">Últimas oportunidades evaluadas</h2></div>
-          <Link href={radarHref("/portal/radar/oportunidades", companyLookup)} className="hidden items-center gap-1 text-xs font-bold text-[#5b3db8] hover:text-[#43299c] sm:inline-flex">Ver todas <ChevronRight size={14} /></Link>
+          <Link href={radarHref("/portal/radar/oportunidades", companyLookup, basePath)} className="hidden items-center gap-1 text-xs font-bold text-[#5b3db8] hover:text-[#43299c] sm:inline-flex">Ver todas <ChevronRight size={14} /></Link>
         </div>
         {featured.length ? <div className="grid gap-5 xl:grid-cols-2">{featured.map((opportunity) => <OpportunityCard key={opportunity.id} opportunity={opportunity} compact />)}</div> : <EmptyState title="Todavía no hay decisiones visibles" detail="Las oportunidades aparecerán cuando Radar complete un ciclo con datos válidos." />}
       </section>
@@ -267,7 +268,7 @@ function OverviewView({ model, companyName, companyLookup }: { model: RadarProdu
   );
 }
 
-function OpportunitiesView({ model, filter, companyLookup }: { model: RadarProductModel; filter: "all" | "published" | "discarded"; companyLookup?: string }) {
+function OpportunitiesView({ model, filter, companyLookup, basePath }: { model: RadarProductModel; filter: "all" | "published" | "discarded"; companyLookup?: string; basePath: string }) {
   const opportunities = filter === "all" ? model.opportunities : model.opportunities.filter((item) => item.status === filter);
   const filters = [
     { value: "all", label: "Todas" },
@@ -279,7 +280,7 @@ function OpportunitiesView({ model, filter, companyLookup }: { model: RadarProdu
     <div className="grid gap-7">
       <ViewHeader eyebrow="Oportunidades" title="Ideas que merecieron una decisión" description="Radar explica qué encontró, qué valor detectó y por qué decidió publicar o proteger el foco de la marca." meta={`${model.opportunities.length} decisiones`} />
       <div className="flex flex-wrap gap-2" aria-label="Filtrar oportunidades">
-        {filters.map((item) => <Link key={item.value} href={radarHref(item.value === "all" ? "/portal/radar/oportunidades" : `/portal/radar/oportunidades?estado=${item.value}`, companyLookup)} aria-current={filter === item.value ? "page" : undefined} className={`rounded-full border px-3.5 py-2 text-xs font-bold transition ${filter === item.value ? "border-[#cfc3f4] bg-[#eeeafe] text-[#43299c]" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-950"}`}>{item.label}</Link>)}
+        {filters.map((item) => <Link key={item.value} href={radarHref(item.value === "all" ? "/portal/radar/oportunidades" : `/portal/radar/oportunidades?estado=${item.value}`, companyLookup, basePath)} aria-current={filter === item.value ? "page" : undefined} className={`rounded-full border px-3.5 py-2 text-xs font-bold transition ${filter === item.value ? "border-[#cfc3f4] bg-[#eeeafe] text-[#43299c]" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-950"}`}>{item.label}</Link>)}
       </div>
       {opportunities.length ? <section className="grid gap-5 xl:grid-cols-2">{opportunities.map((opportunity) => <OpportunityCard key={opportunity.id} opportunity={opportunity} />)}</section> : <EmptyState title="No hay oportunidades en este estado" detail="Radar actualizará esta vista automáticamente cuando registre una decisión nueva." />}
     </div>
@@ -496,6 +497,8 @@ export type RadarProductScreenContext = {
   exitHref: string;
   exitLabel: string;
   companyLookup?: string;
+  basePath?: string;
+  strategyAvailable?: boolean;
 };
 
 export function RadarProductScreen({
@@ -519,9 +522,11 @@ export function RadarProductScreen({
       exitHref={context.exitHref}
       exitLabel={context.exitLabel}
       companyLookup={context.companyLookup}
+      basePath={context.basePath}
+      strategyAvailable={context.strategyAvailable}
     >
-      {view === "overview" ? <OverviewView model={context.model} companyName={context.companyName} companyLookup={context.companyLookup} /> : null}
-      {view === "opportunities" ? <OpportunitiesView model={context.model} filter={opportunityFilter} companyLookup={context.companyLookup} /> : null}
+      {view === "overview" ? <OverviewView model={context.model} companyName={context.companyName} companyLookup={context.companyLookup} basePath={context.basePath ?? "/portal/radar"} strategyAvailable={context.strategyAvailable !== false} /> : null}
+      {view === "opportunities" ? <OpportunitiesView model={context.model} filter={opportunityFilter} companyLookup={context.companyLookup} basePath={context.basePath ?? "/portal/radar"} /> : null}
       {view === "published" ? <PublishedView model={context.model} /> : null}
       {view === "history" ? <HistoryView model={context.model} /> : null}
       {view === "strategy" ? <StrategyView preferences={context.preferences} actorId={context.actorId} companyId={context.companyId} canManage={context.canManagePreferences} saved={saved} /> : null}
