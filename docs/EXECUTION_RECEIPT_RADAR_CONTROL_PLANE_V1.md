@@ -57,9 +57,9 @@ Commit funcional validado: `8a43f4e`
 - ESLint: `PASS`.
 - Build Next.js 16: `PASS`, incluida `/api/radar/runs/[runId]/events` y `/portal/radar/operacion`.
 - Navegador autenticado local: configuración, persistencia, confirmación de guardado, alta manual visible, programación y ausencia del disclaimer amarillo: `PASS`. El modo desarrollo registra únicamente la advertencia esperada de CSP/`eval`; el build productivo compila limpio.
-- GitHub Actions `verify`: `PASS`.
-- Vercel `nexopsticketera`: `PENDING` para el commit actual.
-- Vercel `sdnexops`: `PENDING` para el commit actual.
+- GitHub Actions `verify`: `PASS` — corrida `33521316600`.
+- Vercel `nexopsticketera`: `PASS` — preview `https://nexopsticketera-git-co-fb7d18-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
+- Vercel `sdnexops`: `PASS` — preview `https://sdnexops-git-codex-rad-47291d-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
 
 ## Gates no ejecutados
 
