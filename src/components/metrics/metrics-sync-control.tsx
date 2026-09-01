@@ -27,7 +27,7 @@ export function MetricsSyncControl({
             <Clock3 aria-hidden size={19} />
           </span>
           <div>
-            <p className="text-sm font-semibold text-slate-950">Datos actualizados automáticamente</p>
+            <p className="text-sm font-semibold text-slate-950">Meta Ads y Emailing se actualizan automáticamente</p>
             <p className="mt-1 text-sm text-slate-600">
               Todos los días a las 00:05 · Última actualización: {formatUpdatedAt(sync?.lastSuccessAt)}
             </p>
@@ -36,7 +36,7 @@ export function MetricsSyncControl({
 
         <PendingForm action={action} className="shrink-0">
           <PendingSubmitButton
-            idleLabel="Actualizar datos"
+            idleLabel="Actualizar datos de Meta y Emailing"
             pendingLabel="Actualizando…"
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#4330a6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#37258f] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           />
@@ -44,7 +44,7 @@ export function MetricsSyncControl({
       </div>
       <p className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-500">
         <RefreshCw aria-hidden size={13} />
-        La actualización manual puede usarse una vez por minuto y nunca borra el último dato válido.
+        Esta actualización manual de Meta Ads y Emailing puede usarse una vez por minuto. Kommo usa los controles y datos de su reporte externo.
       </p>
     </section>
   );

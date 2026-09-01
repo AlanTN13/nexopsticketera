@@ -108,7 +108,12 @@ export default async function PortalMetricsPage({
         </InlineNotice>
       ) : null}
 
-      <MetricsWorkspace client={client} metaRows={data.metaRows} mailchimpRows={data.mailchimpRows} />
+      <MetricsWorkspace
+        client={client}
+        metaRows={data.metaRows}
+        mailchimpRows={data.mailchimpRows}
+        kommoEmbedUrl={profile.kommoEmbedUrl}
+      />
 
       <MetricsStrategyTimeline
         companyName={client.name}

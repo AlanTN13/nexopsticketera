@@ -583,6 +583,22 @@ export function UpdateCompanyModulesForm({
         ))}
       </div>
 
+      <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="kommoEmbedUrl">
+        <span className="text-xs font-semibold text-slate-700">Reporte embebido de Kommo</span>
+        <input
+          id="kommoEmbedUrl"
+          name="kommoEmbedUrl"
+          type="url"
+          inputMode="url"
+          defaultValue={company.modules.metrics.settings.kommoEmbedUrl ?? ""}
+          placeholder="https://lookerstudio.google.com/embed/reporting/.../page/..."
+          className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+        />
+        <span className="text-xs leading-5 text-slate-600">
+          Sólo se aceptan enlaces HTTPS de embed de Looker Studio o Data Studio. Dejalo vacío para deshabilitar el canal Kommo.
+        </span>
+      </label>
+
       <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="radarWorkspaceId">
         <span className="text-xs font-semibold text-slate-700">Workspace de Radar</span>
         <input

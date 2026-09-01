@@ -56,6 +56,7 @@ export type PortalModuleSettings = {
     strategySheetUrl?: string;
     metaSheetUrl?: string;
     mailchimpSheetUrl?: string;
+    kommoEmbedUrl?: string;
   };
   radar: {
     workspaceId?: string;

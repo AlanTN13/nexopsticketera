@@ -48,6 +48,7 @@ import {
 import { requireUserTitle } from "@/lib/validation";
 import { validateCommentImages, validateTicketImages } from "@/lib/comment-image-validation";
 import { getSafeTicketContextUrls, normalizeTicketContextUrls } from "@/lib/ticket-context-urls";
+import { parseKommoEmbedUrl, requireKommoEmbedUrl } from "@/lib/metrics-embed";
 import {
   RADAR_OPPORTUNITY_BEHAVIORS,
   RADAR_PUBLICATIONS_PER_WEEK,
@@ -133,6 +134,7 @@ export type UpdateCompanyModulesInput = {
   modules: CompanyModuleAvailability;
   radarWorkspaceId: string | null;
   radarSiteIntegrated: boolean;
+  kommoEmbedUrl: string | null;
 };
 
 export type UpdateUserModulePermissionsInput = {
@@ -377,6 +379,7 @@ function mapCompanyModules(rows: CompanyModuleRow[]) {
           strategySheetUrl: optionalSetting(settings.strategySheetUrl),
           metaSheetUrl: optionalSetting(settings.metaSheetUrl),
           mailchimpSheetUrl: optionalSetting(settings.mailchimpSheetUrl),
+          kommoEmbedUrl: parseKommoEmbedUrl(settings.kommoEmbedUrl),
           objective:
             objective === "CONVERSACIONES" || objective === "LEADS" || objective === "COMPRAS"
               ? objective
@@ -1257,6 +1260,12 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
   }
 
   const client = await getSupabaseServerClient();
+  const kommoEmbedUrl =
+    input.kommoEmbedUrl === null
+      ? null
+      : input.kommoEmbedUrl
+        ? requireKommoEmbedUrl(input.kommoEmbedUrl)
+        : "";
   const { error } = await client.rpc("set_company_modules", {
     target_company_id: company.id,
     module_updates: Object.entries(input.modules).map(([module, enabled]) => ({
@@ -1265,6 +1274,7 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
     })),
     radar_workspace_id: input.radarWorkspaceId,
     radar_site_integrated: input.radarSiteIntegrated,
+    kommo_embed_url: kommoEmbedUrl,
     change_reason: "Actualización desde Backoffice",
   });
 

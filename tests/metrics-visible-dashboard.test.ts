@@ -9,9 +9,8 @@ describe("metrics visible dashboard", () => {
   it("keeps the workspace visible before the performance source is connected", () => {
     const page = read("src/app/portal/metricas/page.tsx");
 
-    expect(page).toContain(
-      '<MetricsWorkspace client={client} metaRows={data.metaRows} mailchimpRows={data.mailchimpRows} />',
-    );
+    expect(page).toContain("<MetricsWorkspace");
+    expect(page).toContain("kommoEmbedUrl={profile.kommoEmbedUrl}");
     expect(page).not.toContain("hasPerformanceData ? (\n        <MetricsWorkspace");
     expect(page).not.toContain("Muy pronto, todas tus métricas en un solo lugar");
   });

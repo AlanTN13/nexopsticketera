@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { MetricsDateFilter } from "@/components/metrics/metrics-date-filter";
+import { KommoEmbed } from "@/components/metrics/kommo-embed";
 import { filterMailchimpRowsForClient } from "@/features/metrics/csv-parser";
 import {
   createDateRange,
@@ -17,7 +18,7 @@ import type {
   SheetRow,
 } from "@/features/metrics/types";
 
-type Channel = "meta" | "emailing";
+type Channel = "meta" | "emailing" | "kommo";
 
 const ClientDashboard = dynamic(() =>
   import("@/components/metrics/client-dashboard").then((module) => module.ClientDashboard),
@@ -32,10 +33,12 @@ export function MetricsWorkspace({
   client,
   metaRows,
   mailchimpRows,
+  kommoEmbedUrl,
 }: {
   client: Client;
   metaRows: SheetRow[];
   mailchimpRows: MailchimpCampaignRow[];
+  kommoEmbedUrl?: string;
 }) {
   const [channel, setChannel] = useState<Channel>("meta");
   const [dateRange, setDateRange] = useState<DateRangeFilter>(() => createDateRange("30d"));
@@ -82,8 +85,29 @@ export function MetricsWorkspace({
                   Emailing
                 </button>
               ) : null}
+              {kommoEmbedUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setChannel("kommo")}
+                  aria-pressed={channel === "kommo"}
+                  className={`min-h-10 rounded-lg px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${channel === "kommo" ? "bg-[#4330a6] text-white shadow-sm" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
+                >
+                  Kommo
+                </button>
+              ) : null}
             </div>
-            <MetricsDateFilter value={dateRange} onChange={setDateRange} />
+            {channel !== "kommo" ? (
+              <MetricsDateFilter value={dateRange} onChange={setDateRange} />
+            ) : (
+              <p className="text-xs font-medium text-slate-500">
+                El período se controla dentro del reporte de Kommo.
+              </p>
+            )}
+            {!kommoEmbedUrl ? (
+              <p className="max-w-md rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+                Kommo no está disponible para esta empresa porque todavía no tiene un reporte configurado.
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -95,13 +119,15 @@ export function MetricsWorkspace({
           hasSourceData={metaRows.length > 0}
           dateRangeLabel={dateRangeLabel}
         />
-      ) : (
+      ) : channel === "emailing" ? (
         <ClientEmailingDashboard
           client={client}
           rows={filteredMailchimpRows}
           hasSourceData={clientMailchimpRows.length > 0}
           dateRangeLabel={dateRangeLabel}
         />
+      ) : (
+        <KommoEmbed companyName={client.name} url={kommoEmbedUrl} />
       )}
     </section>
   );
