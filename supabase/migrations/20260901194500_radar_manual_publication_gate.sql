@@ -35,6 +35,12 @@ create table public.radar_publication_jobs (
 
 create index radar_publication_jobs_workspace_created_idx
   on public.radar_publication_jobs(workspace_id, created_at desc);
+create index radar_publication_jobs_company_idx
+  on public.radar_publication_jobs(company_id) where company_id is not null;
+create index radar_publication_jobs_requested_by_idx
+  on public.radar_publication_jobs(requested_by);
+create index radar_publication_jobs_workspace_company_idx
+  on public.radar_publication_jobs(workspace_id, company_id);
 
 alter table public.radar_publication_jobs enable row level security;
 
