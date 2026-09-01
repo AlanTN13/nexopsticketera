@@ -1501,11 +1501,73 @@ grant execute on function public.set_internal_company_access(uuid, uuid, boolean
 grant execute on function public.update_radar_preferences(uuid, text[], integer, text, text)
   to authenticated;
 
--- Legacy entitlement RPCs are superseded because they do not model the control plane.
-revoke execute on function public.update_company_module_availability(uuid, boolean, boolean)
-  from authenticated;
-revoke execute on function public.update_company_module_configuration(uuid, boolean, boolean, text, boolean)
-  from authenticated;
+-- Keep the currently deployed application compatible during the database-first
+-- rollout. These signatures remain adapters only: the V2 RPC performs the
+-- platform-admin authorization, validation, audit and writes.
+create or replace function public.update_company_module_availability(
+  target_company_id uuid,
+  metrics_enabled boolean,
+  radar_enabled boolean
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  existing_radar_settings jsonb;
+begin
+  select settings into existing_radar_settings
+  from public.company_modules
+  where company_id = target_company_id and module = 'radar';
+
+  perform public.set_company_modules(
+    target_company_id,
+    jsonb_build_array(
+      jsonb_build_object('module', 'metrics', 'enabled', metrics_enabled),
+      jsonb_build_object('module', 'radar', 'enabled', radar_enabled)
+    ),
+    existing_radar_settings ->> 'workspaceId',
+    coalesce((existing_radar_settings ->> 'siteIntegrated')::boolean, false),
+    'Adaptador de compatibilidad V1'
+  );
+end
+$$;
+
+create or replace function public.update_company_module_configuration(
+  target_company_id uuid,
+  metrics_enabled boolean,
+  radar_enabled boolean,
+  radar_workspace_id text,
+  radar_site_integrated boolean
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform public.set_company_modules(
+    target_company_id,
+    jsonb_build_array(
+      jsonb_build_object('module', 'metrics', 'enabled', metrics_enabled),
+      jsonb_build_object('module', 'radar', 'enabled', radar_enabled)
+    ),
+    nullif(btrim(radar_workspace_id), ''),
+    radar_site_integrated,
+    'Adaptador de compatibilidad V1'
+  );
+end
+$$;
+
+revoke all on function public.update_company_module_availability(uuid, boolean, boolean)
+  from public, anon, authenticated;
+revoke all on function public.update_company_module_configuration(uuid, boolean, boolean, text, boolean)
+  from public, anon, authenticated;
+grant execute on function public.update_company_module_availability(uuid, boolean, boolean)
+  to authenticated;
+grant execute on function public.update_company_module_configuration(uuid, boolean, boolean, text, boolean)
+  to authenticated;
 
 comment on table public.user_company_assignments is
   'Companies an internal NexOps user may attend. Clients remain single-company through public.users.company_id.';

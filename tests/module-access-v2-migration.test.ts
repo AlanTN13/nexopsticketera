@@ -57,6 +57,19 @@ describe("module access V2 migration", () => {
     );
   });
 
+  it("keeps the deployed V1 entitlement RPCs as V2-authorized rollout adapters", () => {
+    expect(migration).toMatch(
+      /create or replace function public\.update_company_module_availability[\s\S]*?perform public\.set_company_modules/,
+    );
+    expect(migration).toMatch(
+      /create or replace function public\.update_company_module_configuration[\s\S]*?perform public\.set_company_modules/,
+    );
+    expect(migration).toContain("Adaptador de compatibilidad V1");
+    expect(migration).toContain(
+      "revoke all on function public.update_company_module_configuration(uuid, boolean, boolean, text, boolean)",
+    );
+  });
+
   it("binds profile and company management to the internal assignment", () => {
     expect(migration).toContain("create or replace function private.can_manage_profile");
     expect(migration).toContain("private.can_access_company(target_company_id)");
