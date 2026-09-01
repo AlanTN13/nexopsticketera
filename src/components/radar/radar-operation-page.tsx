@@ -21,6 +21,7 @@ import {
 } from "@/app/portal/radar/operacion/actions";
 import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
 import { RadarShell } from "@/components/radar/radar-shell";
+import { RadarPublicationComposer } from "@/components/radar/radar-publication-composer";
 import { getRadarProductContext } from "@/lib/radar-context";
 import { getPlatformRadarContext } from "@/lib/platform-radar";
 import {
@@ -48,8 +49,9 @@ function formatDateTime(value: string | null) {
   return value ? dateTimeFormatter.format(new Date(value)) : "Todavía no registrada";
 }
 
-function RunCard({ run, workspaceId, canOperate }: { run: RadarRun; workspaceId: string; canOperate: boolean }) {
+function RunCard({ run, workspaceId, canOperate, canAdmin, publicationConnected }: { run: RadarRun; workspaceId: string; canOperate: boolean; canAdmin: boolean; publicationConnected: boolean }) {
   const reviewPending = run.status === "review_pending" && run.candidate;
+  const readyToCompose = run.status === "approved" && run.candidate?.draft;
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -99,6 +101,10 @@ function RunCard({ run, workspaceId, canOperate }: { run: RadarRun; workspaceId:
           </div>
         </div>
       ) : null}
+
+      {readyToCompose && run.candidate ? <RadarPublicationComposer runId={run.id} workspaceId={workspaceId} candidate={run.candidate} canPublish={canAdmin} publicationConnected={publicationConnected} /> : null}
+
+      {run.publication ? <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"><div className="flex flex-wrap items-center justify-between gap-3"><strong>{run.publication.status === "published" ? "Publicación verificada" : run.publication.status === "failed" ? "Publicación detenida" : "Publicación en curso"}</strong>{run.publication.externalPrUrl ? <a className="inline-flex items-center gap-1 text-xs font-bold text-[#4f35b5]" href={run.publication.externalPrUrl} target="_blank" rel="noreferrer">Ver validación <ExternalLink size={12} /></a> : null}</div>{run.publication.finalUrl ? <a className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-emerald-700" href={run.publication.finalUrl} target="_blank" rel="noreferrer">Abrir nota publicada <ExternalLink size={12} /></a> : null}{run.publication.errorMessage ? <p className="mt-3 text-xs text-rose-700">{run.publication.errorMessage}</p> : null}</div> : null}
 
       {run.events.length ? <details className="mt-5 border-t border-slate-200 pt-4"><summary className="cursor-pointer text-xs font-bold text-slate-600">Ver progreso ({run.events.length})</summary><ol className="mt-3 grid gap-2">{run.events.map((event) => <li key={event.id} className="grid grid-cols-[8px_minmax(0,1fr)] gap-2 text-xs text-slate-600"><span className="mt-1.5 size-1.5 rounded-full bg-violet-400" /><span>{event.message} · {formatDateTime(event.createdAt)}</span></li>)}</ol></details> : null}
     </article>
@@ -189,7 +195,7 @@ function ControlPlane({ snapshot, workspaceId, canOperate, canAdmin }: { snapsho
 
           </section>
 
-          <section><div className="mb-4 flex items-end justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#6749c7]">Historial operativo</p><h2 className="mt-2 text-2xl font-bold text-slate-950">Corridas y decisiones</h2></div><span className="text-xs text-slate-500">{snapshot.runs.length} registradas</span></div>{snapshot.runs.length ? <div className="grid gap-4">{snapshot.runs.map((run) => <RunCard key={run.id} run={run} workspaceId={workspaceId} canOperate={canOperate} />)}</div> : <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">Todavía no hay corridas iniciadas desde el Portal.</div>}</section>
+          <section><div className="mb-4 flex items-end justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#6749c7]">Historial operativo</p><h2 className="mt-2 text-2xl font-bold text-slate-950">Corridas y decisiones</h2></div><span className="text-xs text-slate-500">{snapshot.runs.length} registradas</span></div>{snapshot.runs.length ? <div className="grid gap-4">{snapshot.runs.map((run) => <RunCard key={run.id} run={run} workspaceId={workspaceId} canOperate={canOperate} canAdmin={canAdmin} publicationConnected={snapshot.publicationConnected} />)}</div> : <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">Todavía no hay corridas iniciadas desde el Portal.</div>}</section>
         </>
       )}
     </div>

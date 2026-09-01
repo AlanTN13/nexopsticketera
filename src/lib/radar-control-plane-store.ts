@@ -12,11 +12,13 @@ import {
   type RadarDecisionAction,
   type RadarRun,
   type RadarRunEvent,
+  type RadarPublicationJob,
   type RadarRunStatus,
 } from "@/lib/radar-control-plane";
 import { buildRadarQueueRequest, radarEngineConnected } from "@/lib/radar-engine-client";
 import { radarPayloadDigest } from "@/lib/radar-engine-contract";
 import { parseRadarPreferences } from "@/lib/radar-preferences";
+import { radarPublicationConnected } from "@/lib/radar-publication";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
 
 type UnknownRow = Record<string, unknown>;
@@ -45,7 +47,26 @@ function mapSettings(row: UnknownRow): RadarControlSettings | null {
   };
 }
 
-function mapRun(row: UnknownRow, events: RadarRunEvent[] = [], decisions: RadarRun["decisions"] = []): RadarRun | null {
+function mapPublication(row: UnknownRow): RadarPublicationJob | null {
+  const status = text(row.status);
+  const compositionDigest = text(row.composition_digest);
+  const createdAt = text(row.created_at);
+  if (!status || !["reserved", "dispatched", "published", "failed"].includes(status) || !compositionDigest || !createdAt) return null;
+  return {
+    status: status as RadarPublicationJob["status"],
+    compositionDigest,
+    externalPrNumber: typeof row.external_pr_number === "number" ? row.external_pr_number : null,
+    externalPrUrl: text(row.external_pr_url),
+    externalWorkflowUrl: text(row.external_workflow_url),
+    mergeSha: text(row.merge_sha),
+    finalUrl: text(row.final_url),
+    errorMessage: text(row.error_message),
+    createdAt,
+    completedAt: text(row.completed_at),
+  };
+}
+
+function mapRun(row: UnknownRow, events: RadarRunEvent[] = [], decisions: RadarRun["decisions"] = [], publication: RadarPublicationJob | null = null): RadarRun | null {
   const id = text(row.id);
   const workspaceId = text(row.workspace_id);
   const requestedBy = text(row.requested_by);
@@ -78,6 +99,7 @@ function mapRun(row: UnknownRow, events: RadarRunEvent[] = [], decisions: RadarR
     updatedAt,
     events,
     decisions,
+    publication,
   };
 }
 
@@ -93,21 +115,22 @@ export async function loadRadarControlPlane(workspaceId: string): Promise<RadarC
   ]);
 
   if (missingControlPlane(settingsResult.error) || missingControlPlane(runsResult.error)) {
-    return { availability: "not_configured", settings: null, runs: [], engineConnected: false };
+    return { availability: "not_configured", settings: null, runs: [], engineConnected: false, publicationConnected: false };
   }
   if (settingsResult.error || runsResult.error) {
-    return { availability: "unavailable", settings: null, runs: [], engineConnected: false };
+    return { availability: "unavailable", settings: null, runs: [], engineConnected: false, publicationConnected: false };
   }
 
   const settings = settingsResult.data ? mapSettings(settingsResult.data as UnknownRow) : null;
   const runRows = (runsResult.data ?? []) as UnknownRow[];
   const runIds = runRows.map((row) => text(row.id)).filter((id): id is string => Boolean(id));
-  const [eventsResult, decisionsResult] = runIds.length
+  const [eventsResult, decisionsResult, publicationsResult] = runIds.length
     ? await Promise.all([
         client.from("radar_run_events").select("*").in("run_id", runIds).order("created_at", { ascending: true }),
         client.from("radar_run_decisions").select("*").in("run_id", runIds).order("created_at", { ascending: true }),
+        client.from("radar_publication_jobs").select("*").in("run_id", runIds),
       ])
-    : [{ data: [], error: null }, { data: [], error: null }];
+    : [{ data: [], error: null }, { data: [], error: null }, { data: [], error: null }];
 
   const eventsByRun = new Map<string, RadarRunEvent[]>();
   for (const row of (eventsResult.data ?? []) as UnknownRow[]) {
@@ -133,15 +156,22 @@ export async function loadRadarControlPlane(workspaceId: string): Promise<RadarC
       createdAt,
     }]);
   }
+  const publicationsByRun = new Map<string, RadarPublicationJob>();
+  for (const row of (publicationsResult.data ?? []) as UnknownRow[]) {
+    const runId = text(row.run_id);
+    const publication = mapPublication(row);
+    if (runId && publication) publicationsByRun.set(runId, publication);
+  }
 
   return {
     availability: settings ? "ready" : "not_configured",
     settings,
     runs: runRows.map((row) => {
       const runId = text(row.id) ?? "";
-      return mapRun(row, eventsByRun.get(runId), decisionsByRun.get(runId));
+      return mapRun(row, eventsByRun.get(runId), decisionsByRun.get(runId), publicationsByRun.get(runId) ?? null);
     }).filter((run): run is RadarRun => Boolean(run)),
     engineConnected: radarEngineConnected(),
+    publicationConnected: radarPublicationConnected(),
   };
 }
 
@@ -227,6 +257,100 @@ export async function decideRadarRun(input: {
   const run = data ? mapRun(data as UnknownRow) : null;
   if (!run) throw new Error("Radar no devolvió una decisión válida.");
   return run;
+}
+
+export async function getRadarRunForPublication(runId: string) {
+  const client = await getSupabaseServerClient();
+  const { data, error } = await client.from("radar_runs").select("*").eq("id", runId).maybeSingle();
+  if (error) throw new Error(error.message);
+  const run = data ? mapRun(data as UnknownRow) : null;
+  if (!run) throw new Error("Corrida de Radar inexistente.");
+  return run;
+}
+
+export async function reserveRadarPublication(input: {
+  runId: string;
+  idempotencyKey: string;
+  compositionDigest: string;
+  composition: Record<string, unknown>;
+}) {
+  const client = await getSupabaseServerClient();
+  const { data, error } = await client.rpc("request_manual_radar_publication", {
+    target_run_id: input.runId,
+    publication_idempotency_key: input.idempotencyKey,
+    requested_composition_digest: input.compositionDigest,
+    requested_composition: input.composition,
+  });
+  if (error) throw new Error(error.message);
+  const job = data ? mapPublication(data as UnknownRow) : null;
+  if (!job) throw new Error("Radar no devolvió una reserva de publicación válida.");
+  return job;
+}
+
+export async function acceptRadarPublicationDispatch(input: {
+  runId: string;
+  compositionDigest: string;
+  pullRequestNumber: number;
+  pullRequestUrl: string;
+}) {
+  const client = getSupabaseAdminClient();
+  const { error } = await client.rpc("record_radar_publication_dispatch", {
+    target_run_id: input.runId,
+    requested_composition_digest: input.compositionDigest,
+    requested_pr_number: input.pullRequestNumber,
+    requested_pr_url: input.pullRequestUrl,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function failRadarPublicationDispatch(runId: string, message: string) {
+  const client = getSupabaseAdminClient();
+  const now = new Date().toISOString();
+  const { error } = await client.from("radar_publication_jobs").update({
+    status: "failed",
+    error_message: message.slice(0, 500),
+    completed_at: now,
+    updated_at: now,
+  }).eq("run_id", runId).eq("status", "reserved");
+  if (error) throw new Error(error.message);
+  const { error: runError } = await client.from("radar_runs").update({
+    status: "failed",
+    error_code: "PUBLICATION_DISPATCH_FAILED",
+    error_message: message.slice(0, 500),
+    completed_at: now,
+    updated_at: now,
+  }).eq("id", runId).eq("status", "validating");
+  if (runError) throw new Error(runError.message);
+  await client.from("radar_run_events").insert({
+    run_id: runId,
+    event_type: "manual_publication_dispatch_failed",
+    public_message: "La publicación se detuvo antes de ingresar a webneoxps.",
+  });
+}
+
+export async function recordRadarPublicationResult(input: {
+  runId: string;
+  compositionDigest: string;
+  deliveryId: string;
+  status: "published" | "failed";
+  workflowUrl: string | null;
+  mergeSha: string | null;
+  finalUrl: string | null;
+  errorMessage: string | null;
+}) {
+  const client = getSupabaseAdminClient();
+  const { data, error } = await client.rpc("record_radar_publication_result", {
+    target_run_id: input.runId,
+    requested_composition_digest: input.compositionDigest,
+    requested_delivery_id: input.deliveryId,
+    requested_status: input.status,
+    requested_workflow_url: input.workflowUrl,
+    requested_merge_sha: input.mergeSha,
+    requested_final_url: input.finalUrl,
+    requested_error_message: input.errorMessage,
+  });
+  if (error) throw new Error(error.message);
+  return { duplicate: data === true };
 }
 
 export async function reserveRadarDispatch(runId: string) {

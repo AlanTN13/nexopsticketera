@@ -19,6 +19,10 @@ const bridgeMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260901180902_radar_github_queue_bridge.sql"),
   "utf8",
 );
+const publicationMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260901194500_radar_manual_publication_gate.sql"),
+  "utf8",
+);
 const actions = readFileSync(
   join(process.cwd(), "src/app/portal/radar/operacion/actions.ts"),
   "utf8",
@@ -73,6 +77,8 @@ describe("Radar Control Plane V1", () => {
     expect(engineClient).toContain("queue/requests/");
     expect(engineClient).toContain('metadata.private !== true');
     expect(engineClient).toContain("RADAR_ENGINE_CALLBACK_SECRET");
+    expect(publicationMigration).toContain("request_manual_radar_publication");
+    expect(publicationMigration).toContain("or settings.scheduler_enabled");
     expect(actions).not.toContain("RADAR_PUBLICATION_GATE_ENABLED");
     expect(operationPage).not.toContain("Listo para operar");
     expect(operationPage).toContain("Panel activo · trabajador editorial pendiente");
@@ -80,7 +86,7 @@ describe("Radar Control Plane V1", () => {
 
   it("authorizes every server action before mutation and does not trust a client company id", () => {
     expect(actions.match(/requireRadarWorkspaceAccess\(workspaceId, "operate"\)/g)).toHaveLength(3);
-    expect(actions.match(/requireRadarWorkspaceAccess\(workspaceId, "admin"\)/g)).toHaveLength(2);
+    expect(actions.match(/requireRadarWorkspaceAccess\(workspaceId, "admin"\)/g)).toHaveLength(3);
     expect(actions).not.toContain('formData, "companyId"');
     expect(actions).not.toContain("getSupabaseAdminClient");
   });
