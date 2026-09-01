@@ -5,18 +5,19 @@ import { redirect } from "next/navigation";
 
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
+import { canAccessPlatformRadar } from "@/lib/authorization";
 import { buildRadarProductModel } from "@/lib/radar-product";
 import { parseRadarPreferences } from "@/lib/radar-preferences";
 import { discoverPlatformRadarWorkspaceId, loadRadarWorkspace } from "@/lib/radar-workspace";
-import type { UserProfile } from "@/lib/ticketing";
 
 export function getPlatformRadarWorkspaceId() {
-  const value = process.env.RADAR_PLATFORM_WORKSPACE_ID?.trim() ?? "";
-  return /^[a-z0-9][a-z0-9_-]{1,63}$/i.test(value) ? value : null;
-}
-
-export function canAccessPlatformRadar(actor: UserProfile) {
-  return actor.status === "active" && actor.role === "platform_admin";
+  const configured = process.env.RADAR_PLATFORM_WORKSPACE_ID;
+  if (configured === undefined || configured.trim() === "") return null;
+  const value = configured.trim();
+  if (!/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(value)) {
+    throw new Error("RADAR_PLATFORM_WORKSPACE_ID tiene un formato inválido.");
+  }
+  return value;
 }
 
 export const getPlatformRadarContext = cache(async () => {

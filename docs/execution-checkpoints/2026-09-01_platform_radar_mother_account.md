@@ -5,7 +5,7 @@
 - `info@nexopstech.com` conserva su identidad interna `platform_admin`; no se convierte en usuario cliente.
 - Radar se incorpora al Backoffice de la cuenta madre con rutas `/backoffice/radar/*`.
 - `Sysnexops` no participa de la resolución, autorización ni configuración del Radar interno; sigue siendo una empresa de prueba.
-- El workspace interno se descubre desde el manifiesto oficial firmado por esquema, o se fija opcionalmente mediante `RADAR_PLATFORM_WORKSPACE_ID`; nunca se obtiene de un `company_id`.
+- El workspace interno se descubre desde el manifiesto oficial validado por esquema, o se fija opcionalmente mediante `RADAR_PLATFORM_WORKSPACE_ID`; nunca se obtiene de un `company_id`.
 - El acceso falla cerrado: sólo aparece para un `platform_admin` activo y el manifiesto debe declarar un workspace válido.
 - La estrategia queda en modo lectura en esta corrección. No se reutilizan preferencias de una empresa cliente ni se introducen escrituras globales sin un modelo de auditoría específico.
 

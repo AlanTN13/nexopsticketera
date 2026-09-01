@@ -1,4 +1,4 @@
-import { canAccessPlatformRadar } from "@/lib/platform-radar";
+import { canAccessPlatformRadar } from "@/lib/authorization";
 import { withActor } from "@/lib/routing";
 import type { UserProfile } from "@/lib/ticketing";
 

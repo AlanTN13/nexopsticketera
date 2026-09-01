@@ -104,3 +104,7 @@ export function canAccessBackoffice(actor: UserProfile) {
 export function canManageAccessControl(actor: UserProfile) {
   return actor.status === "active" && actor.role === "platform_admin";
 }
+
+export function canAccessPlatformRadar(actor: UserProfile) {
+  return actor.status === "active" && actor.role === "platform_admin";
+}

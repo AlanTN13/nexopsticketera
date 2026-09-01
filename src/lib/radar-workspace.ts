@@ -91,7 +91,13 @@ function safeUrl(value: unknown) {
 
   try {
     const parsed = new URL(normalized);
-    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : null;
+    const hostname = parsed.hostname.toLowerCase();
+    const privateHost = hostname === "localhost" || hostname.endsWith(".local") ||
+      /^127\./.test(hostname) || /^10\./.test(hostname) || /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) || hostname === "::1";
+    return parsed.protocol === "https:" && !parsed.username && !parsed.password && !privateHost
+      ? parsed.toString()
+      : null;
   } catch {
     return null;
   }
@@ -303,6 +309,7 @@ async function readPublications(fetchImpl: FetchLike, workspaceId: string, url: 
   return {
     generatedAt: safeDate(body.generatedAt),
     publications: body.publications
+      .slice(0, 250)
       .map(projectPublication)
       .filter((item): item is RadarPublication => Boolean(item))
       .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt)),
