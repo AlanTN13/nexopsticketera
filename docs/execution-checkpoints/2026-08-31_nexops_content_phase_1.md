@@ -68,6 +68,14 @@ No incluye análisis, scoring, benchmark razonado, estrategia, calendario, brief
 - Vercel `nexopsticketera` y `sdnexops`: READY.
 - El primer smoke del preview detectó una sesión ausente presentada como error boundary; se corrigió con redirección de página a `/portal/login?reason=session` y el segundo smoke mostró el login esperado, sin un error nuevo de runtime.
 
+## Gate externo de Meta
+
+- Vercel fue inspeccionado sin revelar valores: `CRON_SECRET` ya existe y las variables `META_*` todavía no están cargadas.
+- Callback canónico a registrar en Meta: `https://portal.nexopstech.com/api/meta/instagram/callback`.
+- Configuración server-only requerida en Vercel: `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_VERSION`, `META_LOGIN_CONFIG_ID`, `META_OAUTH_REDIRECT_URI` y `META_TOKEN_ENCRYPTION_KEY`.
+- Acción externa: crear o seleccionar la app Business de NexOps, configurar Facebook Login for Business, vincular la cuenta profesional de Instagram con su Página y autorizar las capacidades de lectura e insights solicitadas por el Portal.
+- Una vez cargada la configuración, el cierre exige dos sincronizaciones manuales reales sin duplicados; recién entonces se habilita `scheduled_enabled`.
+
 ## Rollback
 
 Deshabilitar el entitlement y `scheduled_enabled` detiene exposición y recolección. Las migraciones son aditivas: ante defecto se conserva historial y se aplica forward-fix; no se ejecutaron `DROP`, borrados ni backfills destructivos.
