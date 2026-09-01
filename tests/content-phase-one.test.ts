@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const read = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
-const migration = read("supabase/migrations/20260901113526_nexops_content_phase_1_v2.sql");
+const migration = read("supabase/migrations/20260901115425_nexops_content_phase_1_v2.sql");
 
 describe("NexOps Contenido phase one", () => {
   it("keeps secrets server-only and ties every credential to its tenant connection", () => {
