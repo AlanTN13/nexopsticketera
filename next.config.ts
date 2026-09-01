@@ -12,6 +12,7 @@ const contentSecurityPolicy = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  "frame-src https://datastudio.google.com https://lookerstudio.google.com",
   "upgrade-insecure-requests",
 ].join("; ");
 

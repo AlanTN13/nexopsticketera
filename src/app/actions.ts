@@ -341,6 +341,7 @@ export async function updateCompanyModulesAction(formData: FormData): Promise<Mu
       },
       radarWorkspaceId: getString(formData, "radarWorkspaceId") || null,
       radarSiteIntegrated: formData.has("radarSiteIntegrated"),
+      kommoEmbedUrl: getString(formData, "kommoEmbedUrl"),
     });
   } catch (error) {
     return {

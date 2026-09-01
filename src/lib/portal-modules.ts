@@ -1,5 +1,6 @@
 import { Company, CompanyModules, UserProfile, isClientRole } from "@/lib/ticketing";
 import { hasModuleAccess } from "@/lib/authorization";
+import { parseKommoEmbedUrl } from "@/lib/metrics-embed";
 
 export type PortalModule = "home" | "support" | "metrics" | "radar";
 
@@ -16,6 +17,7 @@ export type MetricsCompanyProfile = {
   strategySheetUrl?: string;
   metaSheetUrl?: string;
   mailchimpSheetUrl?: string;
+  kommoEmbedUrl?: string;
 };
 
 type PortalNavigationItem = {
@@ -128,6 +130,7 @@ export function getMetricsProfile(
     strategySheetUrl: settings.strategySheetUrl ?? profile.strategySheetUrl,
     metaSheetUrl: settings.metaSheetUrl ?? profile.metaSheetUrl,
     mailchimpSheetUrl: settings.mailchimpSheetUrl ?? profile.mailchimpSheetUrl,
+    kommoEmbedUrl: parseKommoEmbedUrl(settings.kommoEmbedUrl ?? profile.kommoEmbedUrl),
   };
 }
 
