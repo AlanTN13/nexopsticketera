@@ -1,7 +1,7 @@
 import { verifyRadarCallbackSignature } from "@/lib/radar-engine-callback";
 import { isSafeHttpsUrl, parseRadarCandidate, type RadarRunStatus } from "@/lib/radar-control-plane";
 import { recordRadarEngineEvent } from "@/lib/radar-control-plane-store";
-import { radarPayloadDigest } from "@/lib/radar-engine-contract";
+import { isRadarWorkerWorkspaceId, radarPayloadDigest } from "@/lib/radar-engine-contract";
 
 export const runtime = "nodejs";
 
@@ -72,7 +72,7 @@ export async function POST(request: Request, context: { params: Promise<{ runId:
       deliveryId !== `radar-${runId}` || payload.publicationGate !== false || result?.publicationGate !== false ||
       !/^[0-9a-f]{64}$/.test(requestDigest) || !/^[0-9a-f]{64}$/.test(resultDigest) ||
       radarPayloadDigest(result) !== resultDigest ||
-      !/^[a-z0-9][a-z0-9._-]{2,80}$/.test(workspaceId) || !["manual", "scheduled"].includes(trigger) ||
+      !isRadarWorkerWorkspaceId(workspaceId) || !["manual", "scheduled"].includes(trigger) ||
       !["suggest", "review"].includes(mode) || !["opportunity_search", "manual_note"].includes(intent) ||
       (intent === "manual_note" && (mode !== "review" || trigger !== "manual")) ||
       !RESULT_STATUSES.includes(status as (typeof RESULT_STATUSES)[number]) || !publicMessage || publicMessage.length > 500 ||

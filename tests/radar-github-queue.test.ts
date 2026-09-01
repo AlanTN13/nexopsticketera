@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { buildRadarQueueRequest, dispatchRadarRun } from "@/lib/radar-engine-client";
+import { buildRadarQueueRequest, dispatchRadarRun, radarEngineConnected } from "@/lib/radar-engine-client";
+
+const callbackSecret = "callback-secret-that-is-at-least-32-bytes";
 
 const runId = "c40b81b7-6ac4-4da1-92e8-86a7a50f9dc4";
 const baseInput = {
@@ -27,7 +29,7 @@ describe("Radar private GitHub queue", () => {
     vi.stubEnv("RADAR_QUEUE_GITHUB_TOKEN", "private-test-token");
     vi.stubEnv("RADAR_QUEUE_GITHUB_REPOSITORY", "AlanTN13/radar-history");
     vi.stubEnv("RADAR_QUEUE_GITHUB_BASE_BRANCH", "history");
-    vi.stubEnv("RADAR_ENGINE_CALLBACK_SECRET", "callback-secret");
+    vi.stubEnv("RADAR_ENGINE_CALLBACK_SECRET", callbackSecret);
   });
 
   afterEach(() => {
@@ -74,7 +76,14 @@ describe("Radar private GitHub queue", () => {
     const queued = JSON.parse(Buffer.from(putBody.content, "base64").toString("utf8")) as Record<string, unknown>;
     expect(queued).toMatchObject({ requestId: runId, workspaceId: "nexops", publicationGate: false });
     expect(JSON.stringify(queued)).not.toContain("private-test-token");
-    expect(JSON.stringify(queued)).not.toContain("callback-secret");
+    expect(JSON.stringify(queued)).not.toContain(callbackSecret);
+  });
+
+  it("only reports the bridge connected with a worker-compatible callback secret", () => {
+    vi.stubEnv("RADAR_ENGINE_CALLBACK_SECRET", "x".repeat(31));
+    expect(radarEngineConnected()).toBe(false);
+    vi.stubEnv("RADAR_ENGINE_CALLBACK_SECRET", "x".repeat(32));
+    expect(radarEngineConnected()).toBe(true);
   });
 
   it("recovers a branch whose request commit exists but PR creation previously failed", async () => {

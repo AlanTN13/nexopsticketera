@@ -89,11 +89,13 @@ describe("Radar Control Plane V1", () => {
     const body = JSON.stringify({ status: "running" });
     const timestamp = "1788267600";
     const now = 1_788_267_600_000;
-    const signature = radarCallbackSignature(body, "test-secret", timestamp);
-    expect(verifyRadarCallbackSignature({ body, signature, timestamp, secret: "test-secret", now })).toBe(true);
-    expect(verifyRadarCallbackSignature({ body: `${body} `, signature, timestamp, secret: "test-secret", now })).toBe(false);
-    expect(verifyRadarCallbackSignature({ body, signature, timestamp, secret: "test-secret", now: now + 301_000 })).toBe(false);
-    expect(verifyRadarCallbackSignature({ body, signature: null, timestamp, secret: "test-secret", now })).toBe(false);
+    const secret = "test-secret-that-is-at-least-32-bytes";
+    const signature = radarCallbackSignature(body, secret, timestamp);
+    expect(verifyRadarCallbackSignature({ body, signature, timestamp, secret, now })).toBe(true);
+    expect(verifyRadarCallbackSignature({ body: `${body} `, signature, timestamp, secret, now })).toBe(false);
+    expect(verifyRadarCallbackSignature({ body, signature, timestamp, secret, now: now + 301_000 })).toBe(false);
+    expect(verifyRadarCallbackSignature({ body, signature: null, timestamp, secret, now })).toBe(false);
+    expect(verifyRadarCallbackSignature({ body, signature, timestamp, secret: "x".repeat(31), now })).toBe(false);
     expect(callbackRoute).toContain('request.headers.get("x-radar-signature")');
     expect(callbackRoute).toContain('request.headers.get("x-radar-timestamp")');
     expect(callbackRoute).toContain('request.headers.get("x-radar-delivery-id")');

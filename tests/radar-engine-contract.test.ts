@@ -5,10 +5,20 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { radarPayloadDigest } from "@/lib/radar-engine-contract";
+import { isRadarWorkerWorkspaceId, radarPayloadDigest } from "@/lib/radar-engine-contract";
 import { radarScheduleDate, radarScheduledIdempotencyKey } from "@/lib/radar-scheduler";
 
 describe("Radar bridge shared contract", () => {
+  it("accepts exactly the worker workspace identifier boundary", () => {
+    expect(isRadarWorkerWorkspaceId("nexops")).toBe(true);
+    expect(isRadarWorkerWorkspaceId("a_b-1")).toBe(true);
+    expect(isRadarWorkerWorkspaceId(`a${"b".repeat(63)}`)).toBe(true);
+    expect(isRadarWorkerWorkspaceId("workspace.with.dot")).toBe(false);
+    expect(isRadarWorkerWorkspaceId("a")).toBe(false);
+    expect(isRadarWorkerWorkspaceId(`a${"b".repeat(64)}`)).toBe(false);
+    expect(isRadarWorkerWorkspaceId("NexOps")).toBe(false);
+  });
+
   it("matches the worker canonical digest vectors", () => {
     const request = {
       schemaVersion: 1,

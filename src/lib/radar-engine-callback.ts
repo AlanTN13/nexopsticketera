@@ -13,7 +13,7 @@ export function verifyRadarCallbackSignature(input: {
   secret: string;
   now?: number;
 }) {
-  if (!input.signature || !input.timestamp || !input.secret || !/^\d{10}$/.test(input.timestamp)) return false;
+  if (!input.signature || !input.timestamp || input.secret.trim().length < 32 || !/^\d{10}$/.test(input.timestamp)) return false;
   const timestampSeconds = Number(input.timestamp);
   const nowSeconds = Math.floor((input.now ?? Date.now()) / 1_000);
   if (!Number.isSafeInteger(timestampSeconds) || Math.abs(nowSeconds - timestampSeconds) > CALLBACK_TOLERANCE_SECONDS) {

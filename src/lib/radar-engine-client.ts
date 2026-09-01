@@ -1,6 +1,7 @@
 import "server-only";
 
 import { isSafeHttpsUrl, type RadarAutonomyMode, type RadarManualNoteRequest, type RadarRequestKind } from "@/lib/radar-control-plane";
+import { isRadarWorkerWorkspaceId } from "@/lib/radar-engine-contract";
 
 const DEFAULT_REPOSITORY = "AlanTN13/radar-history";
 const DEFAULT_BASE_BRANCH = "history";
@@ -63,7 +64,7 @@ async function githubFetch(url: string, token: string, init?: RequestInit) {
 }
 
 export function radarEngineConnected() {
-  return Boolean(queueToken() && process.env.RADAR_ENGINE_CALLBACK_SECRET?.trim());
+  return Boolean(queueToken() && (process.env.RADAR_ENGINE_CALLBACK_SECRET?.trim().length ?? 0) >= 32);
 }
 
 export function buildRadarQueueRequest(input: {
@@ -76,7 +77,7 @@ export function buildRadarQueueRequest(input: {
   manualNote?: RadarManualNoteRequest | null;
   callbackUrl: string;
 }): RadarQueueRequest {
-  if (!/^[0-9a-f-]{36}$/i.test(input.runId) || !/^[a-z0-9][a-z0-9._-]{2,80}$/.test(input.workspaceId) ||
+  if (!/^[0-9a-f-]{36}$/i.test(input.runId) || !isRadarWorkerWorkspaceId(input.workspaceId) ||
       !Number.isFinite(Date.parse(input.requestedAt)) || !isSafeHttpsUrl(input.callbackUrl) ||
       (input.manualNote && !isSafeHttpsUrl(input.manualNote.sourceUrl)) ||
       (input.requestKind === "manual_note" && (!input.manualNote || input.autonomyMode !== "review"))) {
@@ -157,7 +158,7 @@ export async function dispatchRadarRun(input: Parameters<typeof buildRadarQueueR
   const token = queueToken();
   const repository = queueRepository();
   const baseBranch = queueBaseBranch();
-  if (!token) throw new Error("El trabajador editorial todavía no está configurado.");
+  if (!radarEngineConnected()) throw new Error("El trabajador editorial todavía no está configurado.");
   if (!REPOSITORY.test(repository) || !BRANCH.test(baseBranch)) {
     throw new Error("La cola editorial no tiene una configuración válida.");
   }

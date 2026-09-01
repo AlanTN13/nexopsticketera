@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { dispatchRadarRun, radarEngineConnected } from "@/lib/radar-engine-client";
+import { isRadarWorkerWorkspaceId } from "@/lib/radar-engine-contract";
 import { getPublicAppUrl } from "@/lib/public-app-url";
 import { requireRadarWorkspaceAccess } from "@/lib/radar-control-plane-auth";
 import {
@@ -47,7 +48,7 @@ export async function requestRadarRunAction(formData: FormData): Promise<RadarCo
   const workspaceId = value(formData, "workspaceId");
   const idempotencyKey = value(formData, "idempotencyKey");
   const mode = value(formData, "mode");
-  if (!/^[a-z0-9][a-z0-9._-]{2,80}$/.test(workspaceId) || !uuid(idempotencyKey) || !["suggest", "review"].includes(mode)) {
+  if (!isRadarWorkerWorkspaceId(workspaceId) || !uuid(idempotencyKey) || !["suggest", "review"].includes(mode)) {
     return { error: "La solicitud de Radar no es válida." };
   }
 
@@ -94,7 +95,7 @@ export async function createManualRadarNoteAction(formData: FormData): Promise<R
   const title = value(formData, "title").slice(0, 300) || null;
   const sourceUrl = value(formData, "sourceUrl");
   const instructions = value(formData, "instructions").slice(0, 1_000) || null;
-  if (!/^[a-z0-9][a-z0-9._-]{2,80}$/.test(workspaceId) || !uuid(idempotencyKey) || !isSafeHttpsUrl(sourceUrl)) {
+  if (!isRadarWorkerWorkspaceId(workspaceId) || !uuid(idempotencyKey) || !isSafeHttpsUrl(sourceUrl)) {
     return { error: "Completá una URL pública y segura para dar de alta la nota." };
   }
 
@@ -151,7 +152,7 @@ export async function updateRadarPreferencesAction(formData: FormData): Promise<
   const opportunityBehavior = value(formData, "opportunityBehavior");
   const publishingMode = value(formData, "publishingMode");
   if (
-    !/^[a-z0-9][a-z0-9._-]{2,80}$/.test(workspaceId) ||
+    !isRadarWorkerWorkspaceId(workspaceId) ||
     !topics.length ||
     !RADAR_PUBLICATIONS_PER_WEEK.includes(publicationsPerWeek as (typeof RADAR_PUBLICATIONS_PER_WEEK)[number]) ||
     !RADAR_OPPORTUNITY_BEHAVIORS.includes(opportunityBehavior as (typeof RADAR_OPPORTUNITY_BEHAVIORS)[number]) ||
@@ -182,7 +183,7 @@ export async function updateRadarScheduleAction(formData: FormData): Promise<Rad
   const scheduleHour = Number.parseInt(value(formData, "scheduleHour"), 10);
   const scheduleDays = formData.getAll("scheduleDays").map(Number).filter((day) => Number.isInteger(day));
   const schedulerEnabled = value(formData, "schedulerEnabled") === "true";
-  if (!/^[a-z0-9][a-z0-9._-]{2,80}$/.test(workspaceId) || !isRadarAutonomyMode(autonomyMode) ||
+  if (!isRadarWorkerWorkspaceId(workspaceId) || !isRadarAutonomyMode(autonomyMode) ||
       autonomyMode !== "review" || scheduleHour !== 7 || scheduleDays.join(",") !== "1,2,3,4,5,6") {
     return { error: "La programación de Radar no es válida." };
   }

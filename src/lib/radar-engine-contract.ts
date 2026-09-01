@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 
+export function isRadarWorkerWorkspaceId(value: string) {
+  return /^[a-z0-9][a-z0-9_-]{1,63}$/.test(value);
+}
+
 function sortValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortValue);
   if (value && typeof value === "object") {
