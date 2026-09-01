@@ -7,6 +7,10 @@ const migration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260901002826_company_module_access_v2.sql"),
   "utf8",
 );
+const commentTouchFix = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260901102622_allow_comment_ticket_touch.sql"),
+  "utf8",
+);
 
 describe("module access V2 migration", () => {
   it("creates the normalized access model and keeps settings", () => {
@@ -67,6 +71,16 @@ describe("module access V2 migration", () => {
     expect(migration).toContain("Adaptador de compatibilidad V1");
     expect(migration).toContain(
       "revoke all on function public.update_company_module_configuration(uuid, boolean, boolean, text, boolean)",
+    );
+  });
+
+  it("allows the protected comment timestamp touch without opening workflow writes", () => {
+    expect(commentTouchFix).not.toMatch(/new\.updated_at\s+is distinct from old\.updated_at/);
+    expect(commentTouchFix).toContain("new.status is distinct from old.status");
+    expect(commentTouchFix).toContain("new.assigned_to_id is distinct from old.assigned_to_id");
+    expect(commentTouchFix).toContain("private.has_module_access(target_company_id, 'support', 'operate')");
+    expect(commentTouchFix).toContain(
+      "revoke all on function private.enforce_support_operation()",
     );
   });
 
