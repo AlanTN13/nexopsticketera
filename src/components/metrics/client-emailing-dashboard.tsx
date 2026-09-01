@@ -39,17 +39,21 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { Client, MailchimpCampaignRow } from "@/features/metrics/types";
-import { calculateMailchimpMetrics, filterMailchimpRowsForClient } from "@/features/metrics/csv-parser";
+import type { Client, MailchimpCampaignRow } from "@/features/metrics/types";
+import { calculateMailchimpMetrics } from "@/features/metrics/csv-parser";
 
 interface ClientEmailingDashboardProps {
   client: Client;
-  allMailchimpRows: MailchimpCampaignRow[];
+  rows: MailchimpCampaignRow[];
+  hasSourceData: boolean;
+  dateRangeLabel: string;
 }
 
 export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = ({
   client,
-  allMailchimpRows,
+  rows,
+  hasSourceData,
+  dateRangeLabel,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>("all");
@@ -57,19 +61,14 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
   const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc");
   const [selectedCampaignModal, setSelectedCampaignModal] = useState<MailchimpCampaignRow | null>(null);
 
-  // Filter rows for this specific client
-  const clientRows = useMemo(() => {
-    return filterMailchimpRowsForClient(allMailchimpRows, client);
-  }, [allMailchimpRows, client]);
-
   // Aggregated KPIs
   const metrics = useMemo(() => {
-    return calculateMailchimpMetrics(clientRows);
-  }, [clientRows]);
+    return calculateMailchimpMetrics(rows);
+  }, [rows]);
 
   // Filtered & Sorted campaigns
   const displayedCampaigns = useMemo(() => {
-    return clientRows
+    return rows
       .filter((row) => {
         const matchesSearch =
           row.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -115,11 +114,11 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
           return valA > valB ? 1 : valA < valB ? -1 : 0;
         }
       });
-  }, [clientRows, searchTerm, selectedTypeFilter, sortField, sortDirection]);
+  }, [rows, searchTerm, selectedTypeFilter, sortField, sortDirection]);
 
   // Prepare chart data (chronological)
   const chartData = useMemo(() => {
-    return [...clientRows]
+    return [...rows]
       .sort((a, b) => new Date(a.sendDate).getTime() - new Date(b.sendDate).getTime())
       .map((row) => {
         const shortDate = row.rawSendDate ? row.rawSendDate.split(" ")[0] : row.sendDate.substring(5);
@@ -135,7 +134,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
           enviados: row.emailsSent,
         };
       });
-  }, [clientRows]);
+  }, [rows]);
 
   const toggleSort = (field: typeof sortField) => {
     if (sortField === field) {
@@ -147,7 +146,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
   };
 
   // If no campaigns detected for this client
-  if (clientRows.length === 0) {
+  if (rows.length === 0) {
     return (
       <div className="p-4 sm:p-5">
         {/* Banner */}
@@ -156,10 +155,14 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
             <Mail className="w-7 h-7" />
           </div>
           <h2 className="text-xl font-bold text-slate-800">
-            Todavía no hay campañas disponibles para {client.name}
+            {hasSourceData
+              ? `No hay campañas en ${dateRangeLabel.toLowerCase()}`
+              : `Todavía no hay campañas disponibles para ${client.name}`}
           </h2>
           <p className="text-sm text-slate-500 max-w-lg mx-auto mt-2 leading-relaxed">
-            Cuando existan envíos asociados a tu empresa vas a ver aquí su rendimiento. Si esperabas información, escribinos desde Soporte.
+            {hasSourceData
+              ? "Probá con un rango más amplio o elegí Todo el histórico."
+              : "Cuando existan envíos asociados a tu empresa vas a ver aquí su rendimiento. Si esperabas información, escribinos desde Soporte."}
           </p>
         </div>
       </div>
@@ -182,10 +185,10 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
               <span className="inline-flex items-center gap-1 text-xs font-semibold bg-violet-50 text-violet-800 px-2.5 py-0.5 rounded-full border border-violet-200 ">
                 Cuenta: {client.mailchimpName || client.accountName}
               </span>
-              {clientRows[0]?.audience && (
+              {rows[0]?.audience && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full">
                   <Users className="w-3 h-3 text-slate-500" />
-                  Audiencia: {clientRows[0].audience}
+                  Audiencia: {rows[0].audience}
                 </span>
               )}
             </div>
@@ -210,7 +213,7 @@ export const ClientEmailingDashboard: React.FC<ClientEmailingDashboardProps> = (
               Último envío
             </span>
             <span className="text-xs font-semibold text-slate-700  block mt-0.5">
-              {clientRows[0]?.rawSendDate || clientRows[0]?.sendDate || "-"}
+              {rows[0]?.rawSendDate || rows[0]?.sendDate || "-"}
             </span>
           </div>
         </div>
