@@ -8,15 +8,17 @@ Decisión canónica: `AlanTN13/Alanos#48`
 
 Issue técnico: `AlanTN13/nexopsticketera#56`
 
-Branch: `codex/radar-control-plane-v1`, apilada sobre el PR draft `#55`
+Branch: `codex/radar-control-plane-v1`, basada en `main` después del merge de `#55`
 
 PR draft: `AlanTN13/nexopsticketera#57`
 
-Commit funcional validado: `9cde6d08548520a6a952ff1183fbacf708ee585e`
+Commit funcional validado: `8a43f4e`
 
 ## Resultado
 
 - Radar se opera desde `/portal/radar/operacion`; no existe un nuevo cerebro editorial ni una aplicación paralela.
+- La cuenta madre y cada workspace autorizado pueden configurar temáticas, frecuencia de una a seis notas por semana y comportamiento sugerir/descartar.
+- “Nueva nota” es un ingreso manual separado de “Buscar oportunidades”: guarda fuente y contexto, exige HTTPS pública y entra siempre por revisión.
 - El Portal conserva sesión, workspace, empresa, permisos, configuración, solicitudes, progreso, candidatos, decisiones e historial visible.
 - `webneoxps` sigue siendo el destino server-to-server para ejecutar el motor editorial.
 - La publicación y el scheduler productivo permanecen bloqueados por diseño.
@@ -25,8 +27,8 @@ Commit funcional validado: `9cde6d08548520a6a952ff1183fbacf708ee585e`
 ## Contrato de seguridad
 
 - `view`: lectura de settings, corridas, eventos y decisiones del workspace autorizado.
-- `operate`: iniciar una corrida y decidir un candidato en revisión.
-- `admin`: preparar frecuencia, horario y autonomía; no puede activar el scheduler V1.
+- `operate`: iniciar una búsqueda, ingresar una nota manual y decidir un candidato en revisión.
+- `admin`: preparar preferencias editoriales, frecuencia, horario y autonomía; no puede activar el scheduler V1.
 - La habilitación comercial sigue reservada al `platform_admin` y sincroniza el estado del control plane.
 - Server Actions revalidan sesión y workspace. Los RPC vuelven a validar nivel y estado. RLS aísla todas las lecturas. Las escrituras directas están revocadas.
 - La devolución del motor exige HMAC sobre el cuerpo crudo, URLs HTTPS seguras, candidato proyectado y una transición de estado permitida.
@@ -34,8 +36,8 @@ Commit funcional validado: `9cde6d08548520a6a952ff1183fbacf708ee585e`
 
 ## Persistencia
 
-- `radar_control_settings`: habilitación, modo, frecuencia preparada y próxima corrida.
-- `radar_runs`: solicitud, modo, estado, referencia externa, candidato, resultado, error y URL final.
+- `radar_control_settings`: habilitación, preferencias editoriales, modo, frecuencia preparada y próxima corrida.
+- `radar_runs`: tipo de solicitud, payload seguro de nota manual, modo, estado, referencia externa, candidato, resultado, error y URL final.
 - `radar_run_events`: progreso visible.
 - `radar_run_decisions`: aprobación, descarte o postergación durable.
 - `NO_PUBLICATION` es un estado terminal durable en el Portal; la confirmación end-to-end contra `radar-history` queda pendiente del runner real.
@@ -46,15 +48,16 @@ Commit funcional validado: `9cde6d08548520a6a952ff1183fbacf708ee585e`
 - Harness SQL transaccional `supabase/tests/radar_control_plane_v1.sql`: `PASS / ROLLBACK`.
 - Matriz A/B: lectura por URL/ID, acción directa, nivel insuficiente, administración y aislamiento: `PASS`.
 - Reintento de solicitud y decisión: `PASS`, sin duplicados.
+- Preferencias editoriales por workspace y alta manual segura: `PASS`.
 - `NO_PUBLICATION` local durable y scheduler apagado: `PASS`.
-- Vitest: `38 archivos / 168 pruebas`: `PASS`.
+- Vitest: `38 archivos / 169 pruebas`: `PASS`.
 - TypeScript: `PASS`.
 - ESLint: `PASS`.
 - Build Next.js 16: `PASS`, incluida `/api/radar/runs/[runId]/events` y `/portal/radar/operacion`.
-- Navegador autenticado local: login, URL de Operación, contenido, controles, estado pausado e historial: `PASS`; sin overlay ni errores de consola.
+- Navegador autenticado local: configuración, persistencia, confirmación de guardado, alta manual visible, programación y ausencia del disclaimer amarillo: `PASS`. El modo desarrollo registra únicamente la advertencia esperada de CSP/`eval`; el build productivo compila limpio.
 - GitHub Actions `verify`: `PASS`.
-- Vercel `nexopsticketera`: `PASS` — preview `https://nexopsticketera-git-co-fb7d18-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
-- Vercel `sdnexops`: `PASS` — preview `https://sdnexops-git-codex-rad-47291d-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
+- Vercel `nexopsticketera`: `PENDING` para el commit actual.
+- Vercel `sdnexops`: `PENDING` para el commit actual.
 
 ## Gates no ejecutados
 
@@ -74,6 +77,7 @@ Commit funcional validado: `9cde6d08548520a6a952ff1183fbacf708ee585e`
 ## Acción externa requerida para completar el circuito real
 
 1. Definir o señalar el runner de investigación real que debe recibir `radar_control_plane_run`; el repositorio actual no contiene esa capacidad invocable.
+   Ese runner debe distinguir `intent: opportunity_search | manual_note` y, para `manual_note`, consumir el bloque seguro `manualNote`.
 2. En un gate posterior, configurar el token GitHub de despacho y el secreto HMAC compartido, sin exponerlos al navegador.
 3. Autorizar por separado migración/despliegue seguro y una única corrida `suggest` o `review` sin publicación.
 
