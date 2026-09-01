@@ -4,9 +4,15 @@ import {
   buildPortalNavigation,
   getMetricsProfile,
   getRadarWorkspaceId,
+  resolveMetricsCompanyForActor,
   resolveRadarCompanyForActor,
 } from "@/lib/portal-modules";
 import { Company, UserProfile } from "@/lib/ticketing";
+
+const baseModules = {
+  support: { enabled: true, settings: {} },
+  content: { enabled: false, settings: {} },
+} as const;
 
 function company(overrides: Partial<Company> = {}): Company {
   return {
@@ -18,6 +24,7 @@ function company(overrides: Partial<Company> = {}): Company {
     status: "active",
     primaryContact: "Alan",
     modules: {
+      ...baseModules,
       metrics: { enabled: true, settings: {} },
       radar: { enabled: false, settings: {} },
     },
@@ -33,6 +40,7 @@ describe("portal module configuration", () => {
       getMetricsProfile(
         company({
           modules: {
+            ...baseModules,
             metrics: { enabled: false, settings: {} },
             radar: { enabled: false, settings: {} },
           },
@@ -49,10 +57,31 @@ describe("portal module configuration", () => {
     expect(profile?.accountName).toBe("Nueva Empresa");
   });
 
+  it("resolves Metrics for an internal user only inside an assigned company", () => {
+    const companyA = company({ id: "company-a", slug: "company-a" });
+    const companyB = company({ id: "company-b", slug: "company-b" });
+    const agent: UserProfile = {
+      id: "metrics-agent",
+      companyId: null,
+      name: "Metrics Agent",
+      email: "metrics-agent@example.test",
+      role: "agent",
+      status: "active",
+      title: "",
+      avatar: "",
+      assignedCompanyIds: [companyA.id],
+      modulePermissions: [{ companyId: companyA.id, module: "metrics", level: "view" }],
+    };
+
+    expect(resolveMetricsCompanyForActor([companyA, companyB], agent, companyA.id)).toBe(companyA);
+    expect(resolveMetricsCompanyForActor([companyA, companyB], agent, companyB.id)).toBeNull();
+  });
+
   it("prefers company-specific reportería settings over legacy defaults", () => {
     const profile = getMetricsProfile(
       company({
         modules: {
+          ...baseModules,
           metrics: {
             enabled: true,
             settings: { accountName: "GT Ads", objective: "LEADS" },
@@ -70,6 +99,7 @@ describe("portal module configuration", () => {
     const profile = getMetricsProfile(
       company({
         modules: {
+          ...baseModules,
           metrics: {
             enabled: true,
             settings: {
@@ -90,6 +120,7 @@ describe("portal module configuration", () => {
     const navigation = buildPortalNavigation({
       active: "home",
       modules: {
+        ...baseModules,
         metrics: { enabled: false, settings: {} },
         radar: { enabled: true, settings: {} },
       },
@@ -102,6 +133,7 @@ describe("portal module configuration", () => {
     const navigation = buildPortalNavigation({
       active: "home",
       modules: {
+        ...baseModules,
         metrics: { enabled: false, settings: {} },
         radar: { enabled: false, settings: {} },
       },
@@ -115,6 +147,7 @@ describe("portal module configuration", () => {
       getRadarWorkspaceId(
         company({
           modules: {
+            ...baseModules,
             metrics: { enabled: false, settings: {} },
             radar: { enabled: true, settings: {} },
           },
@@ -126,6 +159,7 @@ describe("portal module configuration", () => {
       getRadarWorkspaceId(
         company({
           modules: {
+            ...baseModules,
             metrics: { enabled: false, settings: {} },
             radar: { enabled: true, settings: { workspaceId: "radar-global-trip" } },
           },
@@ -134,11 +168,12 @@ describe("portal module configuration", () => {
     ).toBe("radar-global-trip");
   });
 
-  it("lets the platform admin open the NexOps Radar without becoming a client user", () => {
+  it("requires an explicit company when an internal user opens Radar", () => {
     const nexops = company({
       id: "nexops",
       name: "Sysnexops",
       modules: {
+        ...baseModules,
         metrics: { enabled: false, settings: {} },
         radar: { enabled: true, settings: { workspaceId: "nexops" } },
       },
@@ -154,13 +189,15 @@ describe("portal module configuration", () => {
       avatar: "",
     };
 
-    expect(resolveRadarCompanyForActor([company(), nexops], admin)).toBe(nexops);
+    expect(resolveRadarCompanyForActor([company(), nexops], admin)).toBeNull();
+    expect(resolveRadarCompanyForActor([company(), nexops], admin, "nexops")).toBe(nexops);
     expect(admin.companyId).toBeNull();
   });
 
   it("does not expose the NexOps Radar to other internal roles", () => {
     const nexops = company({
       modules: {
+        ...baseModules,
         metrics: { enabled: false, settings: {} },
         radar: { enabled: true, settings: { workspaceId: "nexops" } },
       },

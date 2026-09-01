@@ -9,8 +9,10 @@ export const companyA: Company = {
   status: "active",
   primaryContact: "a@example.test",
   modules: {
+    support: { enabled: true, settings: {} },
     metrics: { enabled: false, settings: {} },
     radar: { enabled: false, settings: {} },
+    content: { enabled: false, settings: {} },
   },
   createdAt: "2026-01-01T00:00:00.000Z",
 };
@@ -35,10 +37,10 @@ function user(input: Partial<UserProfile> & Pick<UserProfile, "id" | "role">): U
   };
 }
 
-export const clientA = user({ id: "client-a", companyId: companyA.id, role: "client_admin" });
-export const viewerA = user({ id: "viewer-a", companyId: companyA.id, role: "client_viewer" });
-export const clientB = user({ id: "client-b", companyId: companyB.id, role: "client_operator" });
-export const nexopsAgent = user({ id: "agent", role: "agent" });
+export const clientA = user({ id: "client-a", companyId: companyA.id, role: "client_admin", modulePermissions: [{ companyId: companyA.id, module: "support", level: "admin" }] });
+export const viewerA = user({ id: "viewer-a", companyId: companyA.id, role: "client_viewer", modulePermissions: [{ companyId: companyA.id, module: "support", level: "view" }] });
+export const clientB = user({ id: "client-b", companyId: companyB.id, role: "client_operator", modulePermissions: [{ companyId: companyB.id, module: "support", level: "operate" }] });
+export const nexopsAgent = user({ id: "agent", role: "agent", assignedCompanyIds: [companyA.id], modulePermissions: [{ companyId: companyA.id, module: "support", level: "operate" }] });
 export const platformAdmin = user({ id: "admin", role: "platform_admin" });
 
 function ticket(input: Pick<TicketRecord, "id" | "companyId" | "createdById">): TicketRecord {

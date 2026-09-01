@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 
 import { CreateUserForm, LogoutClientForm, UpdateCompanyForm, UpdateCompanyModulesForm, UpdateUserForm } from "@/components/forms";
+import { AccessMatrixForm } from "@/components/access-matrix-form";
 import { TicketTable, UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getClientUsersForCompany, getCompanyBySlugOrId, getTicketsForCompany, sortTickets } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
+import { hasModuleAccess } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +43,6 @@ export default async function BackofficeCompanyDetail({
           { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
           { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true },
           { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
-          ...(actor.role === "platform_admin" ? [{ href: "/portal/radar", label: "Radar" }] : []),
         ]}
         actions={<NavButton href={withActor("/backoffice/companies", actor.id)} label="Volver a empresas" muted tone="light" />}
       >
@@ -69,7 +70,6 @@ export default async function BackofficeCompanyDetail({
         { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
         { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true },
         { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
-        ...(actor.role === "platform_admin" ? [{ href: "/portal/radar", label: "Radar" }] : []),
       ]}
       actions={
         <>
@@ -129,7 +129,7 @@ export default async function BackofficeCompanyDetail({
 
       <SectionCard
         title="Productos del Portal"
-        description="Habilitá únicamente las herramientas contratadas o acordadas con esta empresa. Soporte permanece disponible como módulo base."
+        description="Habilitá únicamente las herramientas contratadas o acordadas. La disponibilidad comercial y el permiso personal se validan por separado."
         tone="light"
       >
         <UpdateCompanyModulesForm
@@ -137,6 +137,18 @@ export default async function BackofficeCompanyDetail({
           company={company}
           returnPath={`/backoffice/companies/${company.slug}`}
         />
+        {hasModuleAccess(actor, company, "metrics", "view") ? (
+          <div className="mt-4 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+            <NavButton href={`/portal/metricas?company=${company.slug}`} label="Abrir Métricas" muted tone="light" />
+            {hasModuleAccess(actor, company, "radar", "view") && company.modules.radar.settings.workspaceId ? (
+              <NavButton href={`/portal/radar?company=${company.slug}`} label="Abrir Radar" muted tone="light" />
+            ) : null}
+          </div>
+        ) : hasModuleAccess(actor, company, "radar", "view") && company.modules.radar.settings.workspaceId ? (
+          <div className="mt-4 border-t border-slate-200 pt-4">
+            <NavButton href={`/portal/radar?company=${company.slug}`} label="Abrir Radar" muted tone="light" />
+          </div>
+        ) : null}
       </SectionCard>
 
       <SectionCard title="Tickets de la empresa" description="Cola específica de esta cuenta, sin perder consistencia con la tabla global." tone="light">
@@ -166,12 +178,38 @@ export default async function BackofficeCompanyDetail({
                     returnPath={`/backoffice/companies/${company.slug}`}
                     tone="light"
                   />
+                  <div className="mt-5 border-t border-slate-200 pt-5">
+                    <AccessMatrixForm
+                      actor={actor}
+                      user={user}
+                      company={company}
+                      returnPath={`/backoffice/companies/${company.slug}`}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         ) : (
           <EmptyState title="Todavía no hay usuarios cliente" detail="Creá el admin inicial o sumá miembros desde el panel lateral." tone="light" />
+        )}
+      </SectionCard>
+
+      <SectionCard title="Auditoría de accesos" description="Últimos cambios de módulos y permisos de esta empresa." tone="light">
+        {(db.accessAudit ?? []).filter((entry) => entry.companyId === company.id).length ? (
+          <div className="grid gap-2">
+            {(db.accessAudit ?? []).filter((entry) => entry.companyId === company.id).slice(0, 20).map((entry) => (
+              <div key={entry.id} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                <p className="font-semibold text-slate-950">{entry.action}</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {entry.module ? `Módulo ${entry.module} · ` : ""}{entry.targetUserId ? `Usuario ${entry.targetUserId} · ` : ""}{new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))}
+                </p>
+                {entry.reason ? <p className="mt-1 text-xs text-slate-600">Motivo: {entry.reason}</p> : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Sin cambios auditados" detail="Los próximos cambios de módulos, empresas y niveles aparecerán acá." tone="light" />
         )}
       </SectionCard>
     </AppShell>

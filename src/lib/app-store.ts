@@ -2,7 +2,13 @@ import "server-only";
 
 import { PostgrestError } from "@supabase/supabase-js";
 
-import { canCommentOnTicket, canCreateCompanyTicket, canUpdateTicketWorkflow } from "@/lib/authorization";
+import {
+  canCommentOnTicket,
+  canCreateCompanyTicket,
+  hasModuleAccess,
+  canManageAccessControl,
+  canUpdateTicketWorkflow,
+} from "@/lib/authorization";
 import { getPublicAppUrl, sendAccountInvitationEmail, sendNotificationEmail } from "@/lib/email-service";
 import {
   buildCommentNotification,
@@ -26,6 +32,11 @@ import {
   TicketStatus,
   TicketType,
   UserProfile,
+  UserModulePermission,
+  PortalModuleKey,
+  ModuleAccessLevel,
+  AccessAuditEntry,
+  PORTAL_MODULES,
   UserRole,
   UserStatus,
   canAssignUserRole,
@@ -41,7 +52,6 @@ import {
   RADAR_OPPORTUNITY_BEHAVIORS,
   RADAR_PUBLICATIONS_PER_WEEK,
   RADAR_PUBLISHING_MODES,
-  canManageRadarPreferences,
   normalizeRadarTopics,
   parseRadarPreferences,
   type RadarOpportunityBehavior,
@@ -125,6 +135,18 @@ export type UpdateCompanyModulesInput = {
   radarSiteIntegrated: boolean;
 };
 
+export type UpdateUserModulePermissionsInput = {
+  actorId: string;
+  userId: string;
+  companyId: string;
+  permissions: Record<PortalModuleKey, ModuleAccessLevel>;
+  reason: string | null;
+};
+
+export type UpdateInternalCompanyAccessInput = UpdateUserModulePermissionsInput & {
+  assigned: boolean;
+};
+
 export type UpdateRadarPreferencesInput = {
   actorId: string;
   companyId: string;
@@ -147,9 +169,34 @@ type CompanyRow = {
 
 type CompanyModuleRow = {
   company_id: string;
-  module: "metrics" | "radar";
+  module: PortalModuleKey;
   enabled: boolean;
   settings: unknown;
+};
+
+type UserCompanyAssignmentRow = {
+  user_id: string;
+  company_id: string;
+};
+
+type UserModulePermissionRow = {
+  user_id: string;
+  company_id: string;
+  module: PortalModuleKey;
+  access_level: Exclude<ModuleAccessLevel, "none">;
+};
+
+type AccessAuditRow = {
+  id: string;
+  actor_user_id: string;
+  company_id: string | null;
+  target_user_id: string | null;
+  module: PortalModuleKey | null;
+  action: string;
+  previous_value: unknown;
+  new_value: unknown;
+  reason: string | null;
+  created_at: string;
 };
 
 type UserRow = {
@@ -293,8 +340,10 @@ function mapCompany(
 
 function emptyCompanyModules(): CompanyModules {
   return {
+    support: { enabled: false, settings: {} },
     metrics: { enabled: false, settings: {} },
     radar: { enabled: false, settings: {} },
+    content: { enabled: false, settings: {} },
   };
 }
 
@@ -315,7 +364,9 @@ function mapCompanyModules(rows: CompanyModuleRow[]) {
     const modules = byCompanyId.get(row.company_id) ?? emptyCompanyModules();
     const settings = objectSettings(row.settings);
 
-    if (row.module === "metrics") {
+    if (row.module === "support" || row.module === "content") {
+      modules[row.module] = { enabled: row.enabled, settings: {} };
+    } else if (row.module === "metrics") {
       const objective = settings.objective;
       modules.metrics = {
         enabled: row.enabled,
@@ -349,7 +400,11 @@ function mapCompanyModules(rows: CompanyModuleRow[]) {
   return byCompanyId;
 }
 
-function mapUser(row: UserRow): UserProfile {
+function mapUser(
+  row: UserRow,
+  assignedCompanyIds: string[] = [],
+  modulePermissions: UserModulePermission[] = [],
+): UserProfile {
   const status = (["active", "invited", "disabled"] as const).find(
     (candidate) => candidate === row.status,
   ) ?? "invited";
@@ -363,6 +418,23 @@ function mapUser(row: UserRow): UserProfile {
     status,
     title: row.title ?? "",
     avatar: row.avatar ?? avatarFromName(row.name),
+    assignedCompanyIds,
+    modulePermissions,
+  };
+}
+
+function mapAccessAudit(row: AccessAuditRow): AccessAuditEntry {
+  return {
+    id: row.id,
+    actorUserId: row.actor_user_id,
+    companyId: row.company_id,
+    targetUserId: row.target_user_id,
+    module: row.module,
+    action: row.action,
+    previousValue: row.previous_value,
+    newValue: row.new_value,
+    reason: row.reason,
+    createdAt: row.created_at,
   };
 }
 
@@ -424,25 +496,10 @@ function mapAttachment(row: AttachmentRow) {
     sizeLabel: formatBytes(row.size_bytes),
     kind: row.kind,
     commentId: row.comment_id ?? null,
-    url: row.storage_path,
+    url: row.storage_path.startsWith("seed/")
+      ? "#"
+      : `/api/ticket-attachments/${encodeURIComponent(row.id)}`,
   };
-}
-
-async function getSignedAttachmentUrl(storagePath: string) {
-  if (!storagePath || storagePath.startsWith("seed/")) {
-    return "#";
-  }
-
-  const client = await getSupabaseServerClient();
-  const { data, error } = await client.storage
-    .from("ticket-attachments")
-    .createSignedUrl(storagePath, 60 * 60);
-
-  if (error || !data?.signedUrl) {
-    return "#";
-  }
-
-  return data.signedUrl;
 }
 
 function sanitizeFileName(fileName: string) {
@@ -507,7 +564,7 @@ async function uploadTicketImages(input: {
       sizeLabel: formatBytes(Number(data.size_bytes ?? 0)),
       kind: "screenshot",
       commentId: null,
-      url: await getSignedAttachmentUrl(String(data.storage_path)),
+      url: `/api/ticket-attachments/${encodeURIComponent(String(data.id))}`,
     });
   }
 
@@ -552,11 +609,14 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
     };
   }
 
-  const [companiesResult, companyModulesResult, usersResult, ticketsResult, commentsResult, attachmentsResult, historyResult] =
+  const [companiesResult, companyModulesResult, usersResult, assignmentsResult, permissionsResult, accessAuditResult, ticketsResult, commentsResult, attachmentsResult, historyResult] =
     await Promise.all([
       client.from("companies").select("*").order("created_at", { ascending: false }),
       client.from("company_modules").select("company_id, module, enabled, settings"),
       client.from("users").select("*").order("created_at", { ascending: false }),
+      client.from("user_company_assignments").select("user_id, company_id"),
+      client.from("user_module_permissions").select("user_id, company_id, module, access_level"),
+      client.from("access_audit_log").select("*").order("created_at", { ascending: false }).limit(100),
       client.from("tickets").select("*").order("updated_at", { ascending: false }),
       client.from("ticket_comments").select("*").order("created_at", { ascending: true }),
       client.from("ticket_attachments").select("*").order("created_at", { ascending: true }),
@@ -566,20 +626,38 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
   assertNoError(companiesResult.error);
   assertNoError(companyModulesResult.error);
   assertNoError(usersResult.error);
+  assertNoError(assignmentsResult.error);
+  assertNoError(permissionsResult.error);
+  assertNoError(accessAuditResult.error);
   assertNoError(ticketsResult.error);
   assertNoError(commentsResult.error);
   assertNoError(attachmentsResult.error);
   assertNoError(historyResult.error);
 
   const attachmentRows = (attachmentsResult.data ?? []) as AttachmentRow[];
-  const signedAttachmentUrls = await Promise.all(
-    attachmentRows.map((row) => getSignedAttachmentUrl(row.storage_path)),
-  );
 
   const tickets = (ticketsResult.data ?? []).map((row) => mapTicket(row as TicketRow));
   const modulesByCompanyId = mapCompanyModules(
     (companyModulesResult.data ?? []) as CompanyModuleRow[],
   );
+  const assignmentRows = (assignmentsResult.data ?? []) as UserCompanyAssignmentRow[];
+  const permissionRows = (permissionsResult.data ?? []) as UserModulePermissionRow[];
+  const assignedCompaniesByUser = new Map<string, string[]>();
+  const permissionsByUser = new Map<string, UserModulePermission[]>();
+  for (const assignment of assignmentRows) {
+    const companies = assignedCompaniesByUser.get(assignment.user_id) ?? [];
+    companies.push(assignment.company_id);
+    assignedCompaniesByUser.set(assignment.user_id, companies);
+  }
+  for (const permission of permissionRows) {
+    const permissions = permissionsByUser.get(permission.user_id) ?? [];
+    permissions.push({
+      companyId: permission.company_id,
+      module: permission.module,
+      level: permission.access_level,
+    });
+    permissionsByUser.set(permission.user_id, permissions);
+  }
   const assignedTicketIds = tickets
     .filter((ticket) => ticket.assignedToId)
     .map((ticket) => ticket.id);
@@ -602,17 +680,22 @@ async function getSupabaseSnapshot(): Promise<TicketDatabase> {
       const company = row as CompanyRow;
       return mapCompany(company, modulesByCompanyId.get(company.id));
     }),
-    users: (usersResult.data ?? []).map((row) => mapUser(row as UserRow)),
+    users: (usersResult.data ?? []).map((row) => {
+      const user = row as UserRow;
+      return mapUser(
+        user,
+        assignedCompaniesByUser.get(user.id),
+        permissionsByUser.get(user.id),
+      );
+    }),
     tickets: tickets.map((ticket) => ({
       ...ticket,
       assigneeName: assigneeNameByTicketId.get(ticket.id) ?? null,
     })),
     comments: (commentsResult.data ?? []).map((row) => mapComment(row as CommentRow)),
-    attachments: attachmentRows.map((row, index) => ({
-      ...mapAttachment(row),
-      url: signedAttachmentUrls[index] ?? "#",
-    })),
+    attachments: attachmentRows.map((row) => mapAttachment(row)),
     history: (historyResult.data ?? []).map((row) => mapHistory(row as HistoryRow)),
+    accessAudit: (accessAuditResult.data ?? []).map((row) => mapAccessAudit(row as AccessAuditRow)),
   };
 }
 
@@ -743,8 +826,11 @@ async function createTicketInSupabase(input: {
 }) {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
+  const company = actor.companyId
+    ? db.companies.find((item) => item.id === actor.companyId)
+    : null;
 
-  if (!actor.companyId || !canCreateCompanyTicket(actor, actor.companyId)) {
+  if (!company || !canCreateCompanyTicket(actor, company)) {
     throw new Error("Solo usuarios cliente pueden crear tickets en este entorno.");
   }
 
@@ -799,12 +885,15 @@ async function addCommentInSupabase(input: {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
   const ticket = db.tickets.find((item) => item.id === input.ticketId);
+  const company = ticket
+    ? db.companies.find((item) => item.id === ticket.companyId)
+    : null;
 
-  if (!ticket) {
+  if (!ticket || !company) {
     throw new Error("No pudimos encontrar el ticket.");
   }
 
-  if (!canCommentOnTicket(actor, ticket, input.visibility)) {
+  if (!canCommentOnTicket(actor, ticket, company, input.visibility)) {
     throw new Error("Tu rol puede ver el ticket, pero no publicar comentarios.");
   }
 
@@ -869,8 +958,11 @@ async function updateTicketWorkflowInSupabase(input: {
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
   const ticket = db.tickets.find((item) => item.id === input.ticketId);
+  const company = ticket
+    ? db.companies.find((item) => item.id === ticket.companyId)
+    : null;
 
-  if (!ticket || !canUpdateTicketWorkflow(actor)) {
+  if (!ticket || !company || !canUpdateTicketWorkflow(actor, company)) {
     throw new Error("No tenés permisos para actualizar el workflow.");
   }
 
@@ -1076,6 +1168,20 @@ async function createCompanyInSupabase(input: {
       title: input.adminTitle,
     });
 
+    const { error: permissionError } = await client.rpc("set_user_module_permissions", {
+      target_user_id: adminUser.id,
+      target_company_id: companyRecord.id,
+      permission_updates: PORTAL_MODULES.map((module) => ({
+        module,
+        level: module === "support" ? "admin" : "none",
+      })),
+      change_reason: "Bootstrap del administrador inicial",
+    });
+    if (permissionError) {
+      await getSupabaseAdminClient().auth.admin.deleteUser(adminUser.id);
+      throw new Error(permissionError.message);
+    }
+
     return { company: mapCompany(companyRecord as CompanyRow), adminUser };
   } catch (error) {
     await client.from("companies").delete().eq("id", companyRecord.id);
@@ -1141,7 +1247,7 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
   const db = await getSupabaseSnapshot();
   const actor = ensureActor(db, input.actorId);
 
-  if (!canManageGlobalCatalog(actor.role)) {
+  if (!canManageAccessControl(actor)) {
     throw new Error("No tenés permisos para habilitar productos.");
   }
 
@@ -1150,21 +1256,16 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
     throw new Error("No pudimos encontrar la empresa.");
   }
 
-  const radarWorkspaceId = input.radarWorkspaceId?.trim() || null;
-  if (input.modules.radar && !radarWorkspaceId) {
-    throw new Error("Asigná un workspace antes de habilitar Radar.");
-  }
-  if (radarWorkspaceId && !/^[a-z0-9][a-z0-9._-]{2,80}$/.test(radarWorkspaceId)) {
-    throw new Error("El workspace de Radar no tiene un formato válido.");
-  }
-
   const client = await getSupabaseServerClient();
-  const { error } = await client.rpc("update_company_module_configuration", {
+  const { error } = await client.rpc("set_company_modules", {
     target_company_id: company.id,
-    metrics_enabled: input.modules.metrics,
-    radar_enabled: input.modules.radar,
-    radar_workspace_id: radarWorkspaceId,
+    module_updates: Object.entries(input.modules).map(([module, enabled]) => ({
+      module,
+      enabled,
+    })),
+    radar_workspace_id: input.radarWorkspaceId,
     radar_site_integrated: input.radarSiteIntegrated,
+    change_reason: "Actualización desde Backoffice",
   });
 
   assertNoError(error);
@@ -1172,6 +1273,10 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
   return {
     ...company,
     modules: {
+      support: {
+        ...company.modules.support,
+        enabled: input.modules.support,
+      },
       metrics: {
         ...company.modules.metrics,
         enabled: input.modules.metrics,
@@ -1179,19 +1284,68 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
       radar: {
         ...company.modules.radar,
         enabled: input.modules.radar,
-        settings: radarWorkspaceId
-          ? {
-              ...company.modules.radar.settings,
-              workspaceId: radarWorkspaceId,
-              siteIntegrated: input.radarSiteIntegrated,
-            }
-          : {
-              ...company.modules.radar.settings,
-              siteIntegrated: input.radarSiteIntegrated,
-            },
+      },
+      content: {
+        ...company.modules.content,
+        enabled: input.modules.content,
       },
     },
   };
+}
+
+async function updateUserModulePermissionsInSupabase(
+  input: UpdateUserModulePermissionsInput,
+) {
+  const db = await getSupabaseSnapshot();
+  const actor = ensureActor(db, input.actorId);
+  if (!canManageAccessControl(actor)) {
+    throw new Error("Sólo un administrador de plataforma puede cambiar accesos.");
+  }
+
+  const target = db.users.find((user) => user.id === input.userId);
+  const company = db.companies.find((item) => item.id === input.companyId);
+  if (!target || !company) throw new Error("No pudimos encontrar el usuario o la empresa.");
+
+  const client = await getSupabaseServerClient();
+  const { error } = await client.rpc("set_user_module_permissions", {
+    target_user_id: target.id,
+    target_company_id: company.id,
+    permission_updates: Object.entries(input.permissions).map(([module, level]) => ({
+      module,
+      level,
+    })),
+    change_reason: input.reason,
+  });
+  assertNoError(error);
+}
+
+async function updateInternalCompanyAccessInSupabase(
+  input: UpdateInternalCompanyAccessInput,
+) {
+  const db = await getSupabaseSnapshot();
+  const actor = ensureActor(db, input.actorId);
+  if (!canManageAccessControl(actor)) {
+    throw new Error("Sólo un administrador de plataforma puede asignar empresas.");
+  }
+
+  const target = db.users.find((user) => user.id === input.userId);
+  const company = db.companies.find((item) => item.id === input.companyId);
+  if (!target || !company || isClientRole(target.role)) {
+    throw new Error("La asignación interna no es válida.");
+  }
+
+  const client = await getSupabaseServerClient();
+  const { error } = await client.rpc("set_internal_company_access", {
+    target_user_id: target.id,
+    target_company_id: company.id,
+    company_assigned: input.assigned,
+    permission_updates: Object.entries(input.permissions).map(([module, level]) => ({
+      module,
+      level,
+    })),
+    change_reason: input.reason,
+  });
+  assertNoError(error);
 }
 
 async function updateRadarPreferencesInSupabase(input: UpdateRadarPreferencesInput) {
@@ -1202,10 +1356,7 @@ async function updateRadarPreferencesInSupabase(input: UpdateRadarPreferencesInp
   if (!company || !company.modules.radar.enabled) {
     throw new Error("Radar no está habilitado para esta empresa.");
   }
-  if (
-    !canManageRadarPreferences(actor.role) ||
-    (actor.role !== "platform_admin" && actor.companyId !== company.id)
-  ) {
+  if (!hasModuleAccess(actor, company, "radar", "admin")) {
     throw new Error("Tu rol puede revisar la estrategia, pero no modificarla.");
   }
 
@@ -1245,6 +1396,20 @@ export async function getVisibleTicketReference(reference: string) {
   return getVisibleTicketReferenceFromSupabase(reference);
 }
 
+export async function getEligibleSupportAssigneeIds(companyId: string) {
+  const client = await getSupabaseServerClient();
+  const { data, error } = await client.rpc("support_assignee_ids", {
+    target_company_id: companyId,
+  });
+  assertNoError(error);
+  const rows = (data ?? []) as Array<{ user_id: string | null }>;
+  return new Set(
+    rows
+      .map((row) => row.user_id)
+      .filter((userId): userId is string => typeof userId === "string"),
+  );
+}
+
 export async function createTicket(input: CreateTicketInput) {
   return createTicketInSupabase(input);
 }
@@ -1275,6 +1440,14 @@ export async function updateCompany(input: UpdateCompanyInput) {
 
 export async function updateCompanyModules(input: UpdateCompanyModulesInput) {
   return updateCompanyModulesInSupabase(input);
+}
+
+export async function updateUserModulePermissions(input: UpdateUserModulePermissionsInput) {
+  return updateUserModulePermissionsInSupabase(input);
+}
+
+export async function updateInternalCompanyAccess(input: UpdateInternalCompanyAccessInput) {
+  return updateInternalCompanyAccessInSupabase(input);
 }
 
 export async function updateRadarPreferences(input: UpdateRadarPreferencesInput) {

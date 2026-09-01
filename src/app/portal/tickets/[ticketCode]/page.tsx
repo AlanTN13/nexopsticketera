@@ -5,8 +5,9 @@ import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot, getVisibleTicketReference } from "@/lib/app-store";
 import { getTicketById, getTicketHistory, getUser, getVisibleComments } from "@/lib/queries";
 import { ticketDetailPath } from "@/lib/routing";
-import { buildPortalNavigation } from "@/lib/portal-modules";
-import { canCommentOnTickets, formatRelativeDate, getTicketNextStep, translateHistoryMessage } from "@/lib/ticketing";
+import { buildPortalNavigation, getVisibleCompanyModules } from "@/lib/portal-modules";
+import { hasModuleAccess } from "@/lib/authorization";
+import { formatRelativeDate, getTicketNextStep, translateHistoryMessage } from "@/lib/ticketing";
 import { CommentAttachments } from "@/components/comment-attachments";
 import { TicketContextLinks } from "@/components/ticket-context-links";
 
@@ -20,9 +21,10 @@ export default async function PortalTicketDetail({ params, searchParams }: Props
   if (!actor) redirect("/portal/login?reason=session");
   const company = db.companies.find((item) => item.id === actor.companyId);
   if (!company) redirect("/portal/login?reason=company");
+  if (!hasModuleAccess(actor, company, "support", "view")) redirect("/portal");
   const navigation = buildPortalNavigation({
     active: "support",
-    modules: company.modules,
+    modules: getVisibleCompanyModules(actor, company),
     ticketCount: db.tickets.filter((item) => item.companyId === company.id).length,
   });
 
@@ -49,7 +51,7 @@ export default async function PortalTicketDetail({ params, searchParams }: Props
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
       <SectionCard title="Conversación" description="Los mensajes aparecen del más antiguo al más reciente." tone="light">
         <div className="grid gap-2.5">{comments.length ? comments.map((comment) => { const author = getUser(db, comment.authorId); const images = db.attachments.filter((item) => item.commentId === comment.id); return <article key={comment.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3"><div className="flex items-start justify-between gap-3"><p className="text-sm font-semibold text-slate-950">{author?.name ?? "NexOps"}</p><TimelineDate value={comment.createdAt} tone="light" /></div><p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{comment.body}</p><CommentAttachments attachments={images} /></article>; }) : <EmptyState title="Todavía no hay mensajes" detail="Las respuestas del equipo aparecerán acá." tone="light" />}</div>
-        <div className="mt-4 border-t border-slate-200 pt-4">{canCommentOnTickets(actor.role) ? <AddCommentForm actor={actor} ticketId={ticket.id} returnPath={canonicalPath} label="Escribí un mensaje" submitLabel="Enviar mensaje" tone="light" /> : <EmptyState title="Sin permisos para comentar" detail="Podés seguir el ticket, pero no publicar mensajes." tone="light" />}</div>
+        <div className="mt-4 border-t border-slate-200 pt-4">{hasModuleAccess(actor, company, "support", "operate") ? <AddCommentForm actor={actor} ticketId={ticket.id} returnPath={canonicalPath} label="Escribí un mensaje" submitLabel="Enviar mensaje" tone="light" /> : <EmptyState title="Sin permisos para comentar" detail="Podés seguir el ticket, pero no publicar mensajes." tone="light" />}</div>
       </SectionCard>
       <div className="grid content-start gap-3">
         <SectionCard title="Descripción" tone="light"><p className="whitespace-pre-line text-sm leading-6 text-slate-700">{ticket.description}</p>{ticket.contextUrls.length ? <div className="mt-3 border-t border-slate-200 pt-3"><p className="mb-2 text-sm font-semibold text-slate-800">Enlaces aportados ({ticket.contextUrls.length})</p><TicketContextLinks urls={ticket.contextUrls} /></div> : null}{attachments.length ? <details className="mt-3 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-sm font-semibold text-slate-800">Archivos adjuntos ({attachments.length})</summary><div className="mt-2 grid gap-2">{attachments.map((item) => <a key={item.id} href={item.url} className="text-sm text-violet-700 underline">{item.name}</a>)}</div></details> : null}</SectionCard>

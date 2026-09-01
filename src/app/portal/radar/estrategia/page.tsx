@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 export default async function RadarStrategyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; company?: string }>;
 }) {
-  const { saved } = await searchParams;
-  return <RadarProductPage view="strategy" saved={saved === "1"} />;
+  const { saved, company } = await searchParams;
+  return <RadarProductPage view="strategy" saved={saved === "1"} companyLookup={company} />;
 }

@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { assertAuthenticatedActorId, clearClientSession, isInternalActor } from "@/lib/auth";
-import { addComment, createCompany, createTicket, createUser, getAppSnapshot, updateCompany, updateCompanyModules, updateTicketWorkflow, updateUser } from "@/lib/app-store";
-import { COMPANY_PLANS, MAX_COMMENT_IMAGES, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES, USER_STATUSES } from "@/lib/ticketing";
+import { addComment, createCompany, createTicket, createUser, getAppSnapshot, updateCompany, updateCompanyModules, updateInternalCompanyAccess, updateTicketWorkflow, updateUser, updateUserModulePermissions } from "@/lib/app-store";
+import { COMPANY_PLANS, MAX_COMMENT_IMAGES, MAX_TICKET_CONTEXT_URLS, MAX_TICKET_IMAGES, MODULE_ACCESS_LEVELS, PORTAL_MODULES, TICKET_AREAS, TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES, USER_ROLES, USER_STATUSES, type ModuleAccessLevel, type PortalModuleKey } from "@/lib/ticketing";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { ticketDetailPath } from "@/lib/routing";
 import { requireUserTitle } from "@/lib/validation";
@@ -334,8 +334,10 @@ export async function updateCompanyModulesAction(formData: FormData): Promise<Mu
       actorId: actor.id,
       companyId,
       modules: {
+        support: formData.has("supportEnabled"),
         metrics: formData.has("metricsEnabled"),
         radar: formData.has("radarEnabled"),
+        content: formData.has("contentEnabled"),
       },
       radarWorkspaceId: getString(formData, "radarWorkspaceId") || null,
       radarSiteIntegrated: formData.has("radarSiteIntegrated"),
@@ -359,6 +361,62 @@ export async function updateCompanyModulesAction(formData: FormData): Promise<Mu
       "Productos habilitados actualizados.",
     ),
   );
+}
+
+function getModulePermissions(formData: FormData) {
+  return Object.fromEntries(
+    PORTAL_MODULES.map((module) => [
+      module,
+      assertInSet(getString(formData, `permission-${module}`) || "none", MODULE_ACCESS_LEVELS),
+    ]),
+  ) as Record<PortalModuleKey, ModuleAccessLevel>;
+}
+
+export async function updateUserModulePermissionsAction(formData: FormData): Promise<MutationState> {
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
+  const returnPath = getString(formData, "returnPath");
+
+  try {
+    await updateUserModulePermissions({
+      actorId: actor.id,
+      userId: getString(formData, "userId"),
+      companyId: getString(formData, "companyId"),
+      permissions: getModulePermissions(formData),
+      reason: getString(formData, "reason") || null,
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No pudimos actualizar los accesos." };
+  }
+
+  revalidatePath("/portal");
+  revalidatePath("/backoffice");
+  revalidatePath(returnPath);
+  redirect(buildSuccessRedirect(buildPostActionRedirect(returnPath, actor.id), "Acceso por módulo actualizado."));
+}
+
+export async function updateInternalCompanyAccessAction(formData: FormData): Promise<MutationState> {
+  const db = await getAppSnapshot();
+  const actor = await assertAuthenticatedActorId(db, getString(formData, "actorId"));
+  const returnPath = getString(formData, "returnPath");
+
+  try {
+    await updateInternalCompanyAccess({
+      actorId: actor.id,
+      userId: getString(formData, "userId"),
+      companyId: getString(formData, "companyId"),
+      assigned: formData.has("companyAssigned"),
+      permissions: getModulePermissions(formData),
+      reason: getString(formData, "reason") || null,
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No pudimos actualizar la asignación." };
+  }
+
+  revalidatePath("/portal");
+  revalidatePath("/backoffice");
+  revalidatePath(returnPath);
+  redirect(buildSuccessRedirect(buildPostActionRedirect(returnPath, actor.id), "Asignación y accesos actualizados."));
 }
 
 export async function updateUserAction(formData: FormData): Promise<MutationState> {

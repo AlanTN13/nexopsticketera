@@ -58,19 +58,20 @@ Decisión arquitectónica:
 - `user_module_permissions` asigna `view`, `operate` o `admin` por usuario, empresa y módulo.
 - El acceso efectivo exige: usuario activo + empresa accesible + módulo habilitado + permiso suficiente. `platform_admin` conserva acceso global explícito, siempre sujeto a que el módulo esté habilitado para la empresa.
 - `access_audit_log` registra actor, empresa, usuario/módulo afectados, valor anterior/nuevo, acción, motivo y timestamp. Triggers cubren también escrituras directas autorizadas.
-- Los clientes siguen vinculados a una sola empresa. En esta primera versión, sólo NexOps administra permisos por módulo; `client_admin` no habilita productos ni concede niveles.
+- Los clientes siguen vinculados a una sola empresa. El control plane queda reservado a `platform_admin`: `team_lead`, `client_admin` y el nivel funcional `admin` no habilitan productos, asignan empresas ni conceden niveles.
+- `private.can_access_company` resuelve sólo tenant/asignación. Un helper separado exige además módulo habilitado y nivel; RLS, Storage y cada RPC de negocio usan ese segundo contrato.
 - Server Actions vuelven a autenticar la sesión y delegan la mutación en RPCs transaccionales. La UI nunca es la autoridad.
 
 Reglas configurables vs. invariantes:
 
 - Configurable: módulos habilitados, asignaciones internas, nivel por usuario/módulo, settings propios del módulo.
-- Invariantes: cliente en una sola empresa; jerarquía `view < operate < admin`; módulo deshabilitado anula todo permiso; usuario inactivo no accede; sólo `platform_admin` es global; cambios de acceso se auditan.
+- Invariantes: cliente en una sola empresa; jerarquía `view < operate < admin`; `admin` no administra el control plane; módulo deshabilitado anula todo permiso; usuario inactivo no accede; sólo `platform_admin` es global; cambios de acceso se auditan.
 
 Datos y migración:
 
 - Migración aditiva y reintentable: crear catálogo/tablas/índices/policies/helpers; quitar el check enumerado de `company_modules`; sembrar filas para todos los módulos/empresas.
-- Backfill compatible: Soporte habilitado para todas las empresas; se preservan settings y flags de Métricas/Radar; clientes reciben niveles según rol base en módulos hoy habilitados; internos activos existentes reciben asignaciones a empresas actuales y permisos según rol para no cortar acceso; futuros internos nacen sin empresas.
-- El helper histórico `private.can_access_company` se reemplaza para que las RLS existentes de tickets, comentarios, adjuntos e historial hereden la nueva asignación.
+- Backfill compatible: Soporte habilitado para todas las empresas; se preservan settings y flags de Métricas/Radar; clientes reciben `view/operate/admin` según su rol base en módulos hoy habilitados; internos activos existentes reciben asignaciones a empresas actuales y sólo permisos de Soporte (`agent=operate`, `team_lead=admin`) para no expandir privilegios; futuros internos nacen sin empresas; `platform_admin` no necesita filas.
+- Las RLS de tickets, comentarios, adjuntos, historial y Storage pasan a exigir `support` y el nivel correspondiente. Las RPC existentes se revalidan dentro de la transacción; los checks de UI/Server Action son defensa adicional.
 - No hay eliminación de datos ni de columnas en esta entrega.
 
 Plan de validación:
@@ -86,8 +87,8 @@ Plan de validación:
 Rollout / rollback:
 
 - Rollout: aplicar migración sólo en branch/local o preview seguro; desplegar app; ejecutar smoke por roles; recién después solicitar gate productivo.
-- Rollback lógico: deshabilitar la UI nueva y conservar tablas/backfill sin pérdida; la aplicación anterior ignora las tablas nuevas.
-- Rollback SQL previo a producción: script documentado que restaura el helper histórico y revoca RPCs/policies nuevas. No se ejecuta automáticamente.
+- Rollback lógico fail-closed: deshabilitar la UI nueva y conservar RLS estricta, tablas y backfill sin pérdida. Nunca restaurar el helper global histórico.
+- Recuperación previa a producción: revertir la aplicación y mantener el control de datos restrictivo; cualquier ajuste SQL debe preservar asignaciones y módulo/nivel. No se ejecuta automáticamente.
 
 Triggers de evolución futura:
 
