@@ -2,13 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 
-import { dispatchRadarRun } from "@/lib/radar-engine-client";
+import { dispatchRadarRun, radarEngineConnected } from "@/lib/radar-engine-client";
 import { getPublicAppUrl } from "@/lib/public-app-url";
 import { requireRadarWorkspaceAccess } from "@/lib/radar-control-plane-auth";
 import {
   decideRadarRun,
   createRadarRun,
-  markRadarDispatch,
+  acceptRadarDispatch,
+  failRadarDispatch,
+  reserveRadarDispatch,
   updateRadarPreferences,
   updateRadarSchedule,
 } from "@/lib/radar-control-plane-store";
@@ -54,18 +56,29 @@ export async function requestRadarRunAction(formData: FormData): Promise<RadarCo
     const origin = getPublicAppUrl();
     if (!origin) throw new Error("Falta configurar la URL pública del Portal.");
     const run = await createRadarRun({ workspaceId, idempotencyKey, mode: mode as "suggest" | "review" });
-    await markRadarDispatch(run.id, "dispatching");
+    const reserved = await reserveRadarDispatch(run.id);
+    if (!reserved) {
+      revalidateRadarOperation();
+      return { error: null, success: "La solicitud ya estaba registrada en la cola editorial." };
+    }
     try {
-      await dispatchRadarRun({
+      const queued = await dispatchRadarRun({
         runId: run.id,
+        requestedAt: run.createdAt,
         workspaceId,
+        triggerKind: run.triggerKind,
         autonomyMode: mode as "suggest" | "review",
         requestKind: "opportunity_search",
         callbackUrl: `${origin}/api/radar/runs/${run.id}/events`,
       });
+      await acceptRadarDispatch({
+        runId: run.id,
+        externalRunId: queued.externalRunId,
+        externalRunUrl: queued.externalRunUrl,
+      });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo contactar al motor.";
-      await markRadarDispatch(run.id, "failed", message);
+      const message = error instanceof Error ? error.message : "No se pudo contactar la cola editorial.";
+      await failRadarDispatch(run.id, message);
       throw error;
     }
     revalidateRadarOperation();
@@ -97,19 +110,30 @@ export async function createManualRadarNoteAction(formData: FormData): Promise<R
       requestKind: "manual_note",
       requestPayload: manualNote,
     });
-    await markRadarDispatch(run.id, "dispatching");
+    const reserved = await reserveRadarDispatch(run.id);
+    if (!reserved) {
+      revalidateRadarOperation();
+      return { error: null, success: "La nota ya estaba registrada en la cola editorial." };
+    }
     try {
-      await dispatchRadarRun({
+      const queued = await dispatchRadarRun({
         runId: run.id,
+        requestedAt: run.createdAt,
         workspaceId,
+        triggerKind: run.triggerKind,
         autonomyMode: "review",
         requestKind: "manual_note",
         manualNote,
         callbackUrl: `${origin}/api/radar/runs/${run.id}/events`,
       });
+      await acceptRadarDispatch({
+        runId: run.id,
+        externalRunId: queued.externalRunId,
+        externalRunUrl: queued.externalRunUrl,
+      });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo contactar al motor.";
-      await markRadarDispatch(run.id, "failed", message);
+      const message = error instanceof Error ? error.message : "No se pudo contactar la cola editorial.";
+      await failRadarDispatch(run.id, message);
       throw error;
     }
     revalidateRadarOperation();
@@ -158,11 +182,18 @@ export async function updateRadarScheduleAction(formData: FormData): Promise<Rad
   const scheduleHour = Number.parseInt(value(formData, "scheduleHour"), 10);
   const scheduleDays = formData.getAll("scheduleDays").map(Number).filter((day) => Number.isInteger(day));
   const schedulerEnabled = value(formData, "schedulerEnabled") === "true";
-  if (!/^[a-z0-9][a-z0-9._-]{2,80}$/.test(workspaceId) || !isRadarAutonomyMode(autonomyMode)) {
+  if (!/^[a-z0-9][a-z0-9._-]{2,80}$/.test(workspaceId) || !isRadarAutonomyMode(autonomyMode) ||
+      autonomyMode !== "review" || scheduleHour !== 7 || scheduleDays.join(",") !== "1,2,3,4,5,6") {
     return { error: "La programación de Radar no es válida." };
   }
   try {
     await requireRadarWorkspaceAccess(workspaceId, "admin");
+    if (schedulerEnabled && !radarEngineConnected()) {
+      throw new Error("No se puede activar la programación hasta conectar el trabajador editorial.");
+    }
+    if (schedulerEnabled && autonomyMode !== "review") {
+      throw new Error("La programación temporal sólo puede operar en modo revisión.");
+    }
     await updateRadarSchedule({
       workspaceId,
       schedulerEnabled,
@@ -172,7 +203,7 @@ export async function updateRadarScheduleAction(formData: FormData): Promise<Rad
       autonomyMode,
     });
     revalidateRadarOperation();
-    return { error: null, success: "Configuración guardada. El scheduler productivo continúa pausado." };
+    return { error: null, success: schedulerEnabled ? "Programación activada en modo revisión." : "Programación guardada y pausada." };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "No pudimos guardar la programación." };
   }

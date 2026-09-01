@@ -14,7 +14,8 @@ import {
   type RadarRunEvent,
   type RadarRunStatus,
 } from "@/lib/radar-control-plane";
-import { radarEngineConnected } from "@/lib/radar-engine-client";
+import { buildRadarQueueRequest, radarEngineConnected } from "@/lib/radar-engine-client";
+import { radarPayloadDigest } from "@/lib/radar-engine-contract";
 import { parseRadarPreferences } from "@/lib/radar-preferences";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
 
@@ -228,26 +229,115 @@ export async function decideRadarRun(input: {
   return run;
 }
 
-export async function markRadarDispatch(runId: string, state: "dispatching" | "failed", message?: string) {
+export async function reserveRadarDispatch(runId: string) {
+  const client = getSupabaseAdminClient();
+  const { data, error } = await client.from("radar_runs").update({
+    status: "dispatching",
+    error_code: null,
+    error_message: null,
+    completed_at: null,
+    updated_at: new Date().toISOString(),
+  }).eq("id", runId).eq("status", "queued").select("id").maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return false;
+  const { error: eventError } = await client.from("radar_run_events").insert({
+    run_id: runId,
+    event_type: "dispatch_started",
+    public_message: "Solicitud reservada para la cola editorial privada.",
+  });
+  if (eventError) throw new Error(eventError.message);
+  return true;
+}
+
+export async function acceptRadarDispatch(input: { runId: string; externalRunId: string; externalRunUrl: string }) {
   const client = getSupabaseAdminClient();
   const { error } = await client.from("radar_runs").update({
-    status: state,
-    error_code: state === "failed" ? "ENGINE_DISPATCH_FAILED" : null,
-    error_message: state === "failed" ? message?.slice(0, 500) ?? "No se pudo contactar al motor." : null,
-    completed_at: state === "failed" ? new Date().toISOString() : null,
+    external_run_id: input.externalRunId.slice(0, 120),
+    external_run_url: input.externalRunUrl,
     updated_at: new Date().toISOString(),
-  }).eq("id", runId).in("status", ["queued", "dispatching"]);
+  }).eq("id", input.runId).eq("status", "dispatching");
   if (error) throw new Error(error.message);
-  await client.from("radar_run_events").insert({
-    run_id: runId,
-    event_type: state === "failed" ? "dispatch_failed" : "dispatch_started",
-    public_message: state === "failed" ? "No pudimos iniciar la búsqueda. NexOps ya tiene el detalle técnico." : "Solicitud enviada al motor de Radar.",
+  const { error: eventError } = await client.from("radar_run_events").insert({
+    run_id: input.runId,
+    event_type: "queue_accepted",
+    public_message: "Solicitud ingresada en la cola editorial privada.",
   });
+  if (eventError) throw new Error(eventError.message);
+}
+
+export async function failRadarDispatch(runId: string, message?: string) {
+  const client = getSupabaseAdminClient();
+  const { error } = await client.from("radar_runs").update({
+    status: "failed",
+    error_code: "QUEUE_DISPATCH_FAILED",
+    error_message: message?.slice(0, 500) ?? "No se pudo contactar la cola editorial.",
+    completed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }).eq("id", runId).eq("status", "dispatching");
+  if (error) throw new Error(error.message);
+  const { error: eventError } = await client.from("radar_run_events").insert({
+    run_id: runId,
+    event_type: "dispatch_failed",
+    public_message: "No pudimos ingresar la solicitud en la cola. NexOps ya tiene el detalle técnico.",
+  });
+  if (eventError) throw new Error(eventError.message);
+}
+
+export async function createScheduledRadarRun(input: {
+  workspaceId: string;
+  idempotencyKey: string;
+}) {
+  const client = getSupabaseAdminClient();
+  const { data: existing, error: existingError } = await client.from("radar_runs")
+    .select("*")
+    .eq("workspace_id", input.workspaceId)
+    .eq("idempotency_key", input.idempotencyKey)
+    .maybeSingle();
+  if (existingError) throw new Error(existingError.message);
+  if (existing) return mapRun(existing as UnknownRow);
+
+  const { data: settings, error: settingsError } = await client.from("radar_control_settings")
+    .select("workspace_id,company_id,enabled,scheduler_enabled")
+    .eq("workspace_id", input.workspaceId)
+    .maybeSingle();
+  if (settingsError || !settings || settings.enabled !== true || settings.scheduler_enabled !== true) {
+    throw new Error("El scheduler de Radar está pausado.");
+  }
+  const { data: actor, error: actorError } = await client.from("users")
+    .select("id")
+    .eq("role", "platform_admin")
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (actorError || !actor) throw new Error("Radar no encontró un responsable interno activo.");
+
+  const { data, error } = await client.from("radar_runs").insert({
+    workspace_id: settings.workspace_id,
+    company_id: settings.company_id,
+    requested_by: actor.id,
+    idempotency_key: input.idempotencyKey,
+    trigger_kind: "scheduled",
+    request_kind: "opportunity_search",
+    request_payload: {},
+    autonomy_mode: "review",
+    status: "queued",
+  }).select("*").single();
+  if (error) throw new Error(error.message);
+  const { error: eventError } = await client.from("radar_run_events").insert({
+    run_id: data.id,
+    event_type: "scheduled_request_created",
+    public_message: "Corrida programada creada por el Portal en modo revisión.",
+  });
+  if (eventError) throw new Error(eventError.message);
+  const run = mapRun(data as UnknownRow);
+  if (!run) throw new Error("Radar no devolvió una corrida programada válida.");
+  return run;
 }
 
 const ALLOWED_TRANSITIONS: Record<RadarRunStatus, RadarRunStatus[]> = {
   queued: ["dispatching", "failed", "canceled"],
-  dispatching: ["running", "failed", "canceled"],
+  dispatching: ["running", "no_publication", "suggested", "review_pending", "failed", "canceled"],
   running: ["no_publication", "suggested", "review_pending", "failed", "canceled"],
   no_publication: [],
   suggested: [],
@@ -264,40 +354,63 @@ const ALLOWED_TRANSITIONS: Record<RadarRunStatus, RadarRunStatus[]> = {
 
 export async function recordRadarEngineEvent(input: {
   runId: string;
+  workspaceId: string;
+  triggerKind: "manual" | "scheduled";
+  autonomyMode: Exclude<RadarAutonomyMode, "automatic">;
+  requestKind: "opportunity_search" | "manual_note";
+  callbackUrl: string;
+  deliveryId: string;
+  requestDigest: string;
+  resultDigest: string;
   status: RadarRunStatus;
   publicMessage: string;
   externalRunId?: string | null;
   externalRunUrl?: string | null;
   candidate?: unknown;
   resultReason?: string | null;
-  finalUrl?: string | null;
 }) {
   const client = getSupabaseAdminClient();
-  const { data: row, error: readError } = await client.from("radar_runs").select("status").eq("id", input.runId).maybeSingle();
+  const { data: row, error: readError } = await client.from("radar_runs")
+    .select("status,workspace_id,trigger_kind,autonomy_mode,request_kind,request_payload,created_at")
+    .eq("id", input.runId)
+    .maybeSingle();
   if (readError || !row || !isRadarRunStatus(String(row.status))) throw new Error("Corrida de Radar inexistente.");
+  if (row.workspace_id !== input.workspaceId || row.trigger_kind !== input.triggerKind ||
+      row.autonomy_mode !== input.autonomyMode || row.request_kind !== input.requestKind) {
+    throw new Error("El callback no corresponde a esta corrida de Radar.");
+  }
+  const request = buildRadarQueueRequest({
+    runId: input.runId,
+    requestedAt: String(row.created_at),
+    workspaceId: input.workspaceId,
+    triggerKind: input.triggerKind,
+    autonomyMode: input.autonomyMode,
+    requestKind: input.requestKind,
+    manualNote: input.requestKind === "manual_note" ? parseRadarManualNoteRequest(row.request_payload) : null,
+    callbackUrl: input.callbackUrl,
+  });
+  if (radarPayloadDigest(request) !== input.requestDigest) {
+    throw new Error("El callback no corresponde al contenido original de la solicitud.");
+  }
   const currentStatus = String(row.status) as RadarRunStatus;
   if (currentStatus !== input.status && !ALLOWED_TRANSITIONS[currentStatus].includes(input.status)) {
     throw new Error(`Transición de Radar inválida: ${currentStatus} → ${input.status}.`);
   }
   const candidate = input.candidate === undefined ? undefined : parseRadarCandidate(input.candidate);
   if (input.candidate !== undefined && !candidate) throw new Error("El candidato del motor no es seguro.");
-  const terminal = ["no_publication", "suggested", "published", "failed", "canceled", "rejected"].includes(input.status);
-  const { error: updateError } = await client.from("radar_runs").update({
-    status: input.status,
-    external_run_id: input.externalRunId?.slice(0, 120) ?? undefined,
-    external_run_url: input.externalRunUrl ?? undefined,
-    candidate,
-    result_reason: input.resultReason?.slice(0, 1200) ?? undefined,
-    final_url: input.finalUrl ?? undefined,
-    started_at: input.status === "running" ? new Date().toISOString() : undefined,
-    completed_at: terminal ? new Date().toISOString() : undefined,
-    updated_at: new Date().toISOString(),
-  }).eq("id", input.runId);
-  if (updateError) throw new Error(updateError.message);
-  const { error: eventError } = await client.from("radar_run_events").insert({
-    run_id: input.runId,
-    event_type: `engine_${input.status}`,
-    public_message: input.publicMessage.slice(0, 500),
+  const { data: duplicate, error } = await client.rpc("record_radar_worker_result", {
+    target_run_id: input.runId,
+    expected_status: currentStatus,
+    requested_status: input.status,
+    requested_public_message: input.publicMessage.slice(0, 500),
+    requested_candidate: candidate ?? null,
+    requested_result_reason: input.resultReason?.slice(0, 1200) ?? null,
+    requested_external_run_id: input.externalRunId?.slice(0, 120) ?? null,
+    requested_external_run_url: input.externalRunUrl ?? null,
+    requested_delivery_id: input.deliveryId,
+    requested_request_digest: input.requestDigest,
+    requested_result_digest: input.resultDigest,
   });
-  if (eventError) throw new Error(eventError.message);
+  if (error) throw new Error(error.message);
+  return { duplicate: duplicate === true };
 }
