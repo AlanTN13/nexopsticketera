@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   BookOpenCheck,
   History,
+  ListChecks,
   LayoutDashboard,
   Lightbulb,
   RadioTower,
@@ -12,10 +13,11 @@ import {
 import { LogoutClientForm } from "@/components/forms";
 import type { RadarProductHealth } from "@/lib/radar-product";
 
-export type RadarView = "overview" | "opportunities" | "published" | "history" | "strategy";
+export type RadarView = "overview" | "operation" | "opportunities" | "published" | "history" | "strategy";
 
 const NAVIGATION = [
   { view: "overview" as const, label: "Centro de control", href: "/portal/radar", icon: LayoutDashboard },
+  { view: "operation" as const, label: "Operación", href: "/portal/radar/operacion", icon: ListChecks },
   { view: "opportunities" as const, label: "Oportunidades", href: "/portal/radar/oportunidades", icon: Lightbulb },
   { view: "published" as const, label: "Publicadas", href: "/portal/radar/publicadas", icon: BookOpenCheck },
   { view: "history" as const, label: "Historial", href: "/portal/radar/historial", icon: History },
