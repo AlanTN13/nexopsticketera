@@ -139,6 +139,9 @@ Siguiente movimiento: integrar #52 y retomar #45 sobre este contrato, sin hardco
 - Primer harness dinámico: `FAIL SAFE` — detectó que el trigger de actividad de comentarios podía confundirse con un cambio de workflow; la transacción completa se revirtió.
 - Corrección forward-only `allow_comment_ticket_touch`: `PASS` — compara columnas de negocio explícitamente y mantiene `updated_at` fuera del workflow.
 - Segundo harness `supabase/tests/module_access_v2_rls.sql`: `PASS` — aislamiento A/B, niveles, usuario inactivo, módulo apagado, RPC, DML, Storage y auditoría; terminó con `ROLLBACK`.
+- Reproducción local sin costo: `PASS` — Supabase CLI 2.116.0 sobre Colima; `db reset --local --no-seed` aplicó desde cero las 19 migraciones, incluidas V2 y la corrección forward-only.
+- Harness SQL local sobre la cadena final: `PASS` con `ON_ERROR_STOP=1` y `ROLLBACK`.
+- Storage API local autenticada: `PASS` — upload interno; descarga cliente denegada; delete cliente sin efecto; descarga del interno asignado; delete del owner; lectura posterior denegada. La prueba reproducible vive en `supabase/tests/module_access_v2_storage.mjs` y usa fixtures exclusivamente locales.
 - Regresión productiva: `PASS` — 0 fixtures residuales; 3 empresas y 5 usuarios preservados; settings de Métricas/Radar sin cambios; Soporte habilitado para las tres empresas; Contenido deshabilitado para todas; agente existente asignado sólo a Soporte; historial 78 externo / 1 interno.
 - Asesores Supabase revisados: sin hallazgo nuevo que invalide el gate. Los avisos `SECURITY DEFINER` corresponden a RPCs autenticadas con autorización interna y grants mínimos; los avisos de índices son informativos y no alteran el aislamiento.
 

@@ -59,6 +59,9 @@ describe("module access V2 migration", () => {
     expect(migration).toMatch(
       /create or replace function public\.support_assignee_ids[\s\S]*?where private\.is_internal_user\(\)/,
     );
+    expect(migration).toMatch(
+      /if tg_table_name = 'company_modules' and tg_op = 'UPDATE' then[\s\S]*?old\.module = new\.module/,
+    );
   });
 
   it("keeps the deployed V1 entitlement RPCs as V2-authorized rollout adapters", () => {

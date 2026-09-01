@@ -249,11 +249,6 @@ select pg_temp.assert_true(
   (select count(*) = 0 from storage.objects where id = '40000000-0000-0000-0000-000000000001'),
   'client must not read the storage object for an internal-comment attachment'
 );
-delete from storage.objects where id = '40000000-0000-0000-0000-000000000001';
-select pg_temp.assert_true(
-  (select count(*) = 0 from storage.objects where id = '40000000-0000-0000-0000-000000000001'),
-  'client must not delete a hidden storage object'
-);
 select pg_temp.assert_true(
   (select count(*) = 0 from public.ticket_history where visibility = 'internal'),
   'client must not read history events for internal comments'
@@ -266,11 +261,6 @@ select pg_temp.assert_true(
 select pg_temp.assert_true(
   (select count(*) = 1 from storage.objects where id = '40000000-0000-0000-0000-000000000001'),
   'assigned internal owner must read the internal storage object'
-);
-delete from storage.objects where id = '40000000-0000-0000-0000-000000000001';
-select pg_temp.assert_true(
-  (select count(*) = 0 from storage.objects where id = '40000000-0000-0000-0000-000000000001'),
-  'assigned internal owner must be able to delete its storage object'
 );
 select pg_temp.assert_true(
   (select count(*) = 1 from public.ticket_history where visibility = 'internal'),

@@ -691,18 +691,18 @@ security definer
 set search_path = ''
 as $$
 begin
-  if tg_table_name = 'company_modules'
-    and tg_op = 'UPDATE'
-    and old.company_id = new.company_id
-    and old.module = new.module
-    and old.enabled = new.enabled
-  then
-    if not private.can_manage_access_control()
-      and not private.has_module_access(new.company_id, new.module, 'admin')
+  if tg_table_name = 'company_modules' and tg_op = 'UPDATE' then
+    if old.company_id = new.company_id
+      and old.module = new.module
+      and old.enabled = new.enabled
     then
-      raise exception 'No autorizado para administrar la configuración del módulo.' using errcode = '42501';
+      if not private.can_manage_access_control()
+        and not private.has_module_access(new.company_id, new.module, 'admin')
+      then
+        raise exception 'No autorizado para administrar la configuración del módulo.' using errcode = '42501';
+      end if;
+      return new;
     end if;
-    return new;
   end if;
 
   if not private.can_manage_access_control() then
@@ -817,14 +817,13 @@ as $$
 declare
   target_company_id uuid;
 begin
-  if tg_table_name = 'tickets'
-    and tg_op = 'UPDATE'
-    and not private.is_internal_user()
-  then
-    raise exception 'Sólo un integrante interno puede actualizar el flujo del ticket.' using errcode = '42501';
-  end if;
-
   if tg_table_name = 'tickets' then
+    if tg_op = 'UPDATE'
+      and not private.is_internal_user()
+      and (to_jsonb(new) - 'updated_at') is distinct from (to_jsonb(old) - 'updated_at')
+    then
+      raise exception 'Sólo un integrante interno puede actualizar el flujo del ticket.' using errcode = '42501';
+    end if;
     target_company_id := new.company_id;
   else
     select company_id into target_company_id
@@ -838,25 +837,26 @@ begin
     raise exception 'No autorizado para operar Soporte en esta empresa.' using errcode = '42501';
   end if;
 
-  if tg_table_name = 'tickets'
-    and new.assigned_to_id is not null
-    and (
-      not exists (
-        select 1 from public.users assignee
-        where assignee.id = new.assigned_to_id
-          and assignee.company_id is null
-          and assignee.status = 'active'
-          and assignee.role in ('agent', 'team_lead', 'platform_admin')
+  if tg_table_name = 'tickets' then
+    if new.assigned_to_id is not null
+      and (
+        not exists (
+          select 1 from public.users assignee
+          where assignee.id = new.assigned_to_id
+            and assignee.company_id is null
+            and assignee.status = 'active'
+            and assignee.role in ('agent', 'team_lead', 'platform_admin')
+        )
+        or not private.user_has_module_access(
+          new.assigned_to_id,
+          target_company_id,
+          'support',
+          'operate'
+        )
       )
-      or not private.user_has_module_access(
-        new.assigned_to_id,
-        target_company_id,
-        'support',
-        'operate'
-      )
-    )
-  then
-    raise exception 'El responsable no está asignado a esta empresa.' using errcode = '42501';
+    then
+      raise exception 'El responsable no está asignado a esta empresa.' using errcode = '42501';
+    end if;
   end if;
   return new;
 end
