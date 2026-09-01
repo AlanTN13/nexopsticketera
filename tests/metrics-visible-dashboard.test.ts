@@ -27,4 +27,17 @@ describe("metrics visible dashboard", () => {
     expect(dashboard).toContain('{ title: "Campañas"');
     expect(dashboard).toContain('{ title: "Creatividades"');
   });
+
+  it("applies one shared date range to Meta Ads and Emailing", () => {
+    const workspace = read("src/components/metrics/metrics-workspace.tsx");
+    const filter = read("src/components/metrics/metrics-date-filter.tsx");
+    const dateRange = read("src/features/metrics/date-range.ts");
+
+    expect(workspace).toContain("<MetricsDateFilter value={dateRange} onChange={setDateRange} />");
+    expect(workspace).toContain("filterByDateRange(metaRows, dateRange, (row) => row.day)");
+    expect(workspace).toContain("filterByDateRange(clientMailchimpRows, dateRange, (row) => row.sendDate)");
+    expect(dateRange).toContain("Últimos 7 días");
+    expect(dateRange).toContain("Mes anterior");
+    expect(filter).toContain('type="date"');
+  });
 });
