@@ -113,6 +113,9 @@ describe("Kommo metrics embed", () => {
     const migration = read(
       "supabase/migrations/20260901231851_kommo_metrics_embed.sql",
     );
+    const noOpMigration = read(
+      "supabase/migrations/20260901233018_preserve_unrelated_module_settings.sql",
+    );
 
     expect(form).toContain("Reporte embebido de Kommo");
     expect(form).toContain("if (!canManageAccessControl(actor))");
@@ -121,5 +124,6 @@ describe("Kommo metrics embed", () => {
     expect(migration).toContain("private.is_valid_kommo_embed_url");
     expect(migration).toContain("settings - 'kommoEmbedUrl'");
     expect(migration).toContain("settings || jsonb_build_object('kommoEmbedUrl'");
+    expect(noOpMigration).toContain("and settings is distinct from");
   });
 });
