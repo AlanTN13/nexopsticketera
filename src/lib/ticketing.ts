@@ -26,7 +26,9 @@ export const USER_ROLES = [
   "platform_admin",
 ] as const;
 export const USER_STATUSES = ["active", "invited", "disabled"] as const;
-export const OPTIONAL_PORTAL_MODULES = ["metrics", "radar"] as const;
+export const PORTAL_MODULES = ["support", "metrics", "radar", "content"] as const;
+export const OPTIONAL_PORTAL_MODULES = ["metrics", "radar", "content"] as const;
+export const MODULE_ACCESS_LEVELS = ["none", "view", "operate", "admin"] as const;
 export const MAX_TICKET_IMAGES = 3;
 export const MAX_COMMENT_IMAGES = 3;
 export const MAX_COMMENT_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -40,9 +42,12 @@ export type TicketPriority = (typeof TICKET_PRIORITIES)[number];
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 export type UserRole = (typeof USER_ROLES)[number];
 export type UserStatus = (typeof USER_STATUSES)[number];
+export type PortalModuleKey = (typeof PORTAL_MODULES)[number];
 export type OptionalPortalModule = (typeof OPTIONAL_PORTAL_MODULES)[number];
+export type ModuleAccessLevel = (typeof MODULE_ACCESS_LEVELS)[number];
 
 export type PortalModuleSettings = {
+  support: Record<string, never>;
   metrics: {
     accountName?: string;
     mailchimpName?: string;
@@ -60,18 +65,25 @@ export type PortalModuleSettings = {
     publishingMode?: "review" | "automatic";
     siteIntegrated?: boolean;
   };
+  content: Record<string, never>;
 };
 
-export type CompanyModuleEntitlement<Module extends OptionalPortalModule> = {
+export type CompanyModuleEntitlement<Module extends PortalModuleKey> = {
   enabled: boolean;
   settings: PortalModuleSettings[Module];
 };
 
 export type CompanyModules = {
-  [Module in OptionalPortalModule]: CompanyModuleEntitlement<Module>;
+  [Module in PortalModuleKey]: CompanyModuleEntitlement<Module>;
 };
 
-export type CompanyModuleAvailability = Record<OptionalPortalModule, boolean>;
+export type CompanyModuleAvailability = Record<PortalModuleKey, boolean>;
+
+export type UserModulePermission = {
+  companyId: string;
+  module: PortalModuleKey;
+  level: Exclude<ModuleAccessLevel, "none">;
+};
 
 export type Company = {
   id: string;
@@ -94,6 +106,21 @@ export type UserProfile = {
   status: UserStatus;
   title: string;
   avatar: string;
+  assignedCompanyIds?: string[];
+  modulePermissions?: UserModulePermission[];
+};
+
+export type AccessAuditEntry = {
+  id: string;
+  actorUserId: string;
+  companyId: string | null;
+  targetUserId: string | null;
+  module: PortalModuleKey | null;
+  action: string;
+  previousValue: unknown;
+  newValue: unknown;
+  reason: string | null;
+  createdAt: string;
 };
 
 export type TicketAttachment = {
@@ -149,6 +176,7 @@ export type TicketDatabase = {
   comments: TicketComment[];
   attachments: TicketAttachment[];
   history: TicketHistoryEntry[];
+  accessAudit?: AccessAuditEntry[];
 };
 
 export const typeLabels: Record<TicketType, string> = {
@@ -223,7 +251,8 @@ export function canAssignUserRole(
 
   return (
     actor.role === "platform_admin" ||
-    actor.role === "team_lead" ||
+    (actor.role === "team_lead" &&
+      Boolean(actor.assignedCompanyIds?.includes(targetCompanyId))) ||
     (actor.role === "client_admin" && actor.companyId === targetCompanyId)
   );
 }
@@ -257,7 +286,7 @@ export function canManageOperations(role: UserRole) {
 }
 
 export function canManageGlobalCatalog(role: UserRole) {
-  return role === "team_lead" || role === "platform_admin";
+  return role === "platform_admin";
 }
 
 export function isRoleCompatibleWithCompany(role: UserRole, companyId: string | null) {

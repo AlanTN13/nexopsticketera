@@ -7,28 +7,31 @@ import { MetricsSyncControl } from "@/components/metrics/metrics-sync-control";
 import { AppShell, InlineNotice, SidebarUserCard } from "@/components/ui";
 import { Client } from "@/features/metrics/types";
 import { refreshMetricsAction } from "@/app/portal/metricas/actions";
-import { getAuthenticatedClientActor } from "@/lib/auth";
+import { getAuthenticatedActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
 import { loadMetricsData } from "@/lib/metrics-data";
-import { buildPortalNavigation, getMetricsProfile } from "@/lib/portal-modules";
+import { buildPortalNavigation, getMetricsProfile, resolveMetricsCompanyForActor } from "@/lib/portal-modules";
+import { getVisibleCompanyModules } from "@/lib/portal-modules";
+import { hasModuleAccess } from "@/lib/authorization";
+import { isClientRole } from "@/lib/ticketing";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalMetricsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ updated?: string; partial?: string; wait?: string }>;
+  searchParams: Promise<{ updated?: string; partial?: string; wait?: string; company?: string }>;
 }) {
-  const { updated, partial, wait } = await searchParams;
+  const { updated, partial, wait, company: companyLookup } = await searchParams;
   const db = await getAppSnapshot();
-  const actor = await getAuthenticatedClientActor(db);
+  const actor = await getAuthenticatedActor(db);
   if (!actor) redirect("/portal/login?reason=session");
 
-  const company = db.companies.find((item) => item.id === actor.companyId);
-  if (!company) redirect("/portal/login?reason=company");
+  const company = resolveMetricsCompanyForActor(db.companies, actor, companyLookup);
+  if (!company) redirect(isClientRole(actor.role) ? "/portal" : "/backoffice/queue");
 
   const profile = getMetricsProfile(company);
-  if (!profile) redirect("/portal");
+  if (!profile || !hasModuleAccess(actor, company, "metrics", "view")) redirect(isClientRole(actor.role) ? "/portal" : "/backoffice/queue");
 
   const data = await loadMetricsData(company.id, profile);
   const source = data.clientSource;
@@ -57,18 +60,27 @@ export default async function PortalMetricsPage({
       title="Métricas"
       description={`Toda la reportería de ${company.name}, clara y accesible en un solo lugar.`}
       tone="light"
-      navigation={buildPortalNavigation({
-        active: "metrics",
-        modules: company.modules,
-        ticketCount: companyTickets.length,
-      })}
+      navigation={isClientRole(actor.role) ? buildPortalNavigation({
+          active: "metrics",
+          modules: getVisibleCompanyModules(actor, company),
+          ticketCount: companyTickets.length,
+        }) : [
+          { href: "/backoffice/queue", label: "Tickets" },
+          { href: "/backoffice/companies", label: "Empresas" },
+          { href: "/backoffice/users", label: "Usuarios" },
+          { href: `/portal/metricas?company=${company.slug}`, label: "Métricas", active: true },
+        ]}
       sidebarFooter={
         <SidebarUserCard name={actor.name} detail={company.name}>
           <LogoutClientForm tone="light" />
         </SidebarUserCard>
       }
     >
-      <MetricsSyncControl sync={data.sync} action={refreshMetricsAction} />
+      {hasModuleAccess(actor, company, "metrics", "operate") ? (
+        <MetricsSyncControl sync={data.sync} action={refreshMetricsAction.bind(null, company.id)} />
+      ) : (
+        <InlineNotice tone="info">Tu nivel permite consultar Métricas, pero no actualizar sus fuentes.</InlineNotice>
+      )}
 
       {updated === "1" ? (
         <InlineNotice tone={partial === "1" ? "info" : "success"}>

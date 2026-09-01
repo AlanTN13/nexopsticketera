@@ -50,7 +50,8 @@ describe("metrics daily snapshots", () => {
     const action = read("src/app/portal/metricas/actions.ts");
     const control = read("src/components/metrics/metrics-sync-control.tsx");
 
-    expect(action).toContain("getAuthenticatedClientActor(db)");
+    expect(action).toContain("getAuthenticatedActor(db)");
+    expect(action).toContain("resolveMetricsCompanyForActor(db.companies, actor, companyLookup)");
     expect(action).toContain("companyId: company.id");
     expect(action).not.toContain('formData.get("companyId")');
     expect(control).toContain("Actualizar datos");

@@ -1,8 +1,7 @@
 import "server-only";
 
-import { getSupabaseAdminClient } from "@/lib/supabase-server";
+import { getSupabaseServerClient } from "@/lib/supabase-server";
 import {
-  canManageRadarPreferences,
   parseRadarPreferences,
   type RadarOpportunityBehavior,
   type RadarPublishingMode,
@@ -23,15 +22,8 @@ export async function persistRadarPreferences(input: {
   opportunityBehavior: RadarOpportunityBehavior;
   publishingMode: RadarPublishingMode;
 }) {
-  if (
-    !canManageRadarPreferences(input.actor.role) ||
-    (input.actor.role !== "platform_admin" && input.actor.companyId !== input.companyId)
-  ) {
-    throw new Error("Tu rol puede revisar la estrategia, pero no modificarla.");
-  }
-
-  const adminClient = getSupabaseAdminClient();
-  const { data: moduleData, error: moduleError } = await adminClient
+  const client = await getSupabaseServerClient();
+  const { data: moduleData, error: moduleError } = await client
     .from("company_modules")
     .select("enabled, settings")
     .eq("company_id", input.companyId)
@@ -49,22 +41,13 @@ export async function persistRadarPreferences(input: {
     throw new Error("La publicación automática requiere que NexOps conecte el sitio.");
   }
 
-  const { error } = await adminClient
-    .from("company_modules")
-    .update({
-      settings: {
-        ...currentSettings,
-        topics: input.topics,
-        publicationsPerWeek: input.publicationsPerWeek,
-        opportunityBehavior: input.opportunityBehavior,
-        publishingMode: input.publishingMode,
-      },
-    })
-    .eq("company_id", input.companyId)
-    .eq("module", "radar")
-    .eq("enabled", true)
-    .select("company_id")
-    .single();
+  const { error } = await client.rpc("update_radar_preferences", {
+    target_company_id: input.companyId,
+    radar_topics: input.topics,
+    radar_publications_per_week: input.publicationsPerWeek,
+    radar_opportunity_behavior: input.opportunityBehavior,
+    radar_publishing_mode: input.publishingMode,
+  });
 
   if (error) throw new Error(error.message);
 

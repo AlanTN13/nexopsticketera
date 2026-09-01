@@ -2,10 +2,11 @@ import { redirect } from "next/navigation";
 
 import { LogoutClientForm } from "@/components/forms";
 import { PortalHomeCard } from "@/components/portal-home-card";
-import { AppShell, IndicatorBar, NavButton, SidebarUserCard } from "@/components/ui";
+import { AppShell, EmptyState, IndicatorBar, NavButton, SidebarUserCard } from "@/components/ui";
 import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
-import { buildPortalNavigation, getMetricsProfile } from "@/lib/portal-modules";
+import { buildPortalNavigation, getMetricsProfile, getVisibleCompanyModules } from "@/lib/portal-modules";
+import { hasModuleAccess } from "@/lib/authorization";
 import { buildPortalStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -34,11 +35,14 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
   if (!company) redirect("/portal/login?reason=company");
 
   const tickets = db.tickets.filter((ticket) => ticket.companyId === company.id);
+  const supportVisible = hasModuleAccess(actor, company, "support", "view");
   const stats = buildPortalStats(tickets);
-  const metricsProfile = getMetricsProfile(company);
+  const metricsProfile = hasModuleAccess(actor, company, "metrics", "view") ? getMetricsProfile(company) : null;
   const resolved = tickets.filter((ticket) => ["resolved", "closed"].includes(ticket.status)).length;
-  const optionalModuleCount =
-    Number(company.modules.metrics.enabled) + Number(company.modules.radar.enabled);
+  const visibleModuleCount =
+    Number(supportVisible) +
+    Number(hasModuleAccess(actor, company, "metrics", "view")) +
+    Number(hasModuleAccess(actor, company, "radar", "view"));
 
   return (
     <AppShell
@@ -48,7 +52,7 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
       tone="light"
       navigation={buildPortalNavigation({
         active: "home",
-        modules: company.modules,
+        modules: getVisibleCompanyModules(actor, company),
         ticketCount: tickets.length,
       })}
       sidebarFooter={
@@ -58,36 +62,40 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
       }
       actions={<NavButton href="/portal/users" label="Gestionar accesos" muted tone="light" />}
     >
-      <IndicatorBar
-        items={[
-          { label: "Tickets abiertos", value: stats.open },
-          { label: "En progreso", value: tickets.filter((ticket) => ticket.status === "in_progress").length },
-          { label: "Esperando respuesta", value: tickets.filter((ticket) => ticket.status === "waiting_for_client").length },
-          { label: "Resueltos", value: resolved },
-        ]}
-      />
+      {supportVisible ? (
+        <IndicatorBar
+          items={[
+            { label: "Tickets abiertos", value: stats.open },
+            { label: "En progreso", value: tickets.filter((ticket) => ticket.status === "in_progress").length },
+            { label: "Esperando respuesta", value: tickets.filter((ticket) => ticket.status === "waiting_for_client").length },
+            { label: "Resueltos", value: resolved },
+          ]}
+        />
+      ) : null}
 
       <div
         className={`grid gap-4 ${
-          optionalModuleCount > 1
+          visibleModuleCount > 2
             ? "xl:grid-cols-3"
-            : optionalModuleCount === 1
+            : visibleModuleCount === 2
               ? "lg:grid-cols-2"
               : "max-w-3xl"
         }`}
       >
-        <PortalHomeCard
-          href="/portal/soporte"
-          eyebrow="Soporte"
-          title="Solicitudes y seguimiento"
-          description="Creá tickets, conversá con el equipo y seguí el estado de cada necesidad sin depender de mensajes dispersos."
-          meta={`${tickets.length} ticket${tickets.length === 1 ? "" : "s"} en tu empresa`}
-        >
-          <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
-            <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-800">{stats.open} abiertos</span>
-            <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-emerald-800">{resolved} resueltos</span>
-          </div>
-        </PortalHomeCard>
+        {supportVisible ? (
+          <PortalHomeCard
+            href="/portal/soporte"
+            eyebrow="Soporte"
+            title="Solicitudes y seguimiento"
+            description="Creá tickets, conversá con el equipo y seguí el estado de cada necesidad sin depender de mensajes dispersos."
+            meta={`${tickets.length} ticket${tickets.length === 1 ? "" : "s"} en tu empresa`}
+          >
+            <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
+              <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-800">{stats.open} abiertos</span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-emerald-800">{resolved} resueltos</span>
+            </div>
+          </PortalHomeCard>
+        ) : null}
 
         {metricsProfile ? (
           <PortalHomeCard
@@ -106,7 +114,7 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
           </PortalHomeCard>
         ) : null}
 
-        {company.modules.radar.enabled ? (
+        {hasModuleAccess(actor, company, "radar", "view") ? (
           <PortalHomeCard
             href="/portal/radar"
             eyebrow="Radar"
@@ -119,6 +127,14 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
               <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-indigo-800">Autonomía</span>
             </div>
           </PortalHomeCard>
+        ) : null}
+
+        {visibleModuleCount === 0 ? (
+          <EmptyState
+            title="Todavía no tenés módulos asignados"
+            detail="Un administrador de NexOps debe habilitar el producto y asignarte un nivel antes de que aparezca en el Portal."
+            tone="light"
+          />
         ) : null}
       </div>
     </AppShell>
