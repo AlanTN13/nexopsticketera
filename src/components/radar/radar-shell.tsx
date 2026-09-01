@@ -60,6 +60,8 @@ export function RadarShell({
   exitHref,
   exitLabel,
   companyLookup,
+  basePath = "/portal/radar",
+  strategyAvailable = true,
   children,
 }: {
   active: RadarView;
@@ -70,6 +72,8 @@ export function RadarShell({
   exitHref: string;
   exitLabel: string;
   companyLookup?: string;
+  basePath?: string;
+  strategyAvailable?: boolean;
   children: React.ReactNode;
 }) {
   const initials = actorName
@@ -98,13 +102,13 @@ export function RadarShell({
           </div>
 
           <nav aria-label="Navegación de Radar" className="mt-6 grid gap-1.5">
-            {NAVIGATION.map((item) => {
+            {NAVIGATION.filter((item) => strategyAvailable || item.view !== "strategy").map((item) => {
               const Icon = item.icon;
               const selected = item.view === active;
               return (
                 <Link
                   key={item.view}
-                  href={withRadarCompany(item.href, companyLookup)}
+                  href={withRadarCompany(item.href.replace("/portal/radar", basePath), companyLookup)}
                   aria-current={selected ? "page" : undefined}
                   className={`flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-sm font-medium transition ${
                     selected
@@ -154,11 +158,11 @@ export function RadarShell({
               </div>
             </div>
             <nav aria-label="Secciones de Radar" className="flex gap-1 overflow-x-auto px-4 pb-3 sm:px-6 xl:hidden">
-              {NAVIGATION.map((item) => {
+              {NAVIGATION.filter((item) => strategyAvailable || item.view !== "strategy").map((item) => {
                 const Icon = item.icon;
                 const selected = item.view === active;
                 return (
-                  <Link key={item.view} href={withRadarCompany(item.href, companyLookup)} aria-current={selected ? "page" : undefined} className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${selected ? "bg-[#eeeafe] text-[#43299c]" : "text-slate-500"}`}>
+                  <Link key={item.view} href={withRadarCompany(item.href.replace("/portal/radar", basePath), companyLookup)} aria-current={selected ? "page" : undefined} className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${selected ? "bg-[#eeeafe] text-[#43299c]" : "text-slate-500"}`}>
                     <Icon size={14} aria-hidden="true" />
                     {item.label}
                   </Link>

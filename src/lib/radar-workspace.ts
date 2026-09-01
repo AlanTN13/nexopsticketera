@@ -255,8 +255,9 @@ function projectPublication(value: unknown): RadarPublication | null {
   return SENSITIVE_VALUE.test(JSON.stringify(projected)) ? null : projected;
 }
 
-function workspaceConfiguration(workspaceId: string): RadarWorkspaceConfig | null {
-  if (workspaceId !== "nexops") return null;
+function workspaceConfiguration(workspaceId: string, platformWorkspace = false): RadarWorkspaceConfig | null {
+  const configuredWorkspaceId = process.env.RADAR_PLATFORM_WORKSPACE_ID?.trim();
+  if (!platformWorkspace && workspaceId !== "nexops" && workspaceId !== configuredWorkspaceId) return null;
 
   return {
     publicationsUrl:
@@ -276,6 +277,16 @@ async function fetchJson(fetchImpl: FetchLike, url: string, init?: RequestInit) 
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new Error(`Radar source returned ${response.status}`);
   return body;
+}
+
+export async function discoverPlatformRadarWorkspaceId(fetchImpl: FetchLike = fetch) {
+  const url = process.env.RADAR_PUBLICATIONS_URL ?? "https://www.nexopstech.com/radar-publications.json";
+  const body = asRecord(await fetchJson(fetchImpl, url, { cache: "no-store", headers: { accept: "application/json" } }));
+  const workspaceId = cleanText(body.workspace, 64);
+  if (body.schemaVersion !== 1 || !workspaceId || !/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(workspaceId)) {
+    throw new Error("Radar publication manifest has no valid platform workspace");
+  }
+  return workspaceId;
 }
 
 async function readPublications(fetchImpl: FetchLike, workspaceId: string, url: string) {
@@ -385,8 +396,9 @@ async function readHistory(fetchImpl: FetchLike, config: RadarWorkspaceConfig) {
 export async function loadRadarWorkspace(
   workspaceId: string,
   fetchImpl: FetchLike = fetch,
+  platformWorkspace = false,
 ): Promise<RadarWorkspace> {
-  const config = workspaceConfiguration(workspaceId);
+  const config = workspaceConfiguration(workspaceId, platformWorkspace);
   if (!config) {
     return {
       workspaceId,
