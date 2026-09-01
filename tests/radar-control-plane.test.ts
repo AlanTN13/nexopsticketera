@@ -102,12 +102,12 @@ describe("Radar Control Plane V1", () => {
       companyId: null,
       enabled: true,
       schedulerEnabled: false,
-      scheduleDays: [1, 2, 3, 4, 5],
-      scheduleHour: 9,
+      scheduleDays: [1, 2, 3, 4, 5, 6],
+      scheduleHour: 7,
       scheduleTimezone: "America/Argentina/Buenos_Aires",
       autonomyMode: "review",
       nextRunAt: null,
     };
-    expect(scheduleLabel(settings)).toBe("Programación pausada");
+    expect(scheduleLabel(settings)).toBe("Pausada · preparada lun a sáb · 07:00–07:59");
   });
 });

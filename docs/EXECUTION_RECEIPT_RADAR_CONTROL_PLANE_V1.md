@@ -69,7 +69,7 @@ Commit funcional validado: `9cde6d08548520a6a952ff1183fbacf708ee585e`
 - La tarea diaria de ChatGPT/Codex `radar-nexops-ciclo-diario` fue eliminada y no se restauró.
 - Los workflows técnicos existentes de `webneoxps` siguen presentes; no se eliminaron ni pausaron.
 - Ningún workflow actual de `webneoxps` tiene `schedule:`. El de publicación autónoma sólo reacciona a PR confiable y conserva sus gates.
-- El scheduler nuevo del Portal queda persistido como `scheduler_enabled = false`; V1 rechaza cualquier intento de activarlo.
+- El scheduler nuevo del Portal queda preparado para lunes a sábado, una vez dentro de la franja `07:00–07:59 America/Argentina/Buenos_Aires`, con `scheduler_enabled = false` hasta conectar el runner; V1 rechaza activarlo antes de ese gate.
 
 ## Acción externa requerida para completar el circuito real
 

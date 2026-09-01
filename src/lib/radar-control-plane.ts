@@ -145,6 +145,10 @@ export function parseRadarCandidate(value: unknown): RadarRunCandidate | null {
 }
 
 export function scheduleLabel(settings: RadarControlSettings) {
-  if (!settings.schedulerEnabled) return "Programación pausada";
-  return `${settings.scheduleDays.length} días por semana · ${String(settings.scheduleHour).padStart(2, "0")}:00`;
+  const dayLabel = settings.scheduleDays.join(",") === "1,2,3,4,5,6"
+    ? "Lun a sáb"
+    : `${settings.scheduleDays.length} días por semana`;
+  const hour = String(settings.scheduleHour).padStart(2, "0");
+  const window = `${dayLabel} · ${hour}:00–${hour}:59`;
+  return settings.schedulerEnabled ? window : `Pausada · preparada ${window.toLowerCase()}`;
 }

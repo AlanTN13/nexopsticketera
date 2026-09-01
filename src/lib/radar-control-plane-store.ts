@@ -32,8 +32,8 @@ function mapSettings(row: UnknownRow): RadarControlSettings | null {
     schedulerEnabled: row.scheduler_enabled === true,
     scheduleDays: Array.isArray(row.schedule_days)
       ? row.schedule_days.filter((day): day is number => Number.isInteger(day) && Number(day) >= 0 && Number(day) <= 6)
-      : [1, 2, 3, 4, 5],
-    scheduleHour: typeof row.schedule_hour === "number" ? row.schedule_hour : 9,
+      : [1, 2, 3, 4, 5, 6],
+    scheduleHour: typeof row.schedule_hour === "number" ? row.schedule_hour : 7,
     scheduleTimezone: text(row.schedule_timezone) ?? "America/Argentina/Buenos_Aires",
     autonomyMode,
     nextRunAt: text(row.next_run_at),

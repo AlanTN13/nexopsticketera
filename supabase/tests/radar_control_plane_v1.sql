@@ -65,6 +65,10 @@ select pg_temp.assert_true(
   (select count(*) = 2 from public.radar_control_settings where enabled and not scheduler_enabled),
   'commercial enablement must prepare both workspaces with scheduler off'
 );
+select pg_temp.assert_true(
+  (select count(*) = 2 from public.radar_control_settings where schedule_days = array[1,2,3,4,5,6]::smallint[] and schedule_hour = 7),
+  'new workspaces must be prepared Monday through Saturday in the 07:00 hour'
+);
 
 set local role authenticated;
 
