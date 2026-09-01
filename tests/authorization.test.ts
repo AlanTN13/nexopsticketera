@@ -111,4 +111,21 @@ describe("tenant isolation and roles", () => {
     ).toBe("none");
     expect(hasModuleAccess({ ...clientA, status: "disabled" }, companyA, "support", "view")).toBe(false);
   });
+
+  it("isolates Radar A/B and enforces view, operate and admin", () => {
+    const radarA = { ...companyA, modules: { ...companyA.modules, radar: { enabled: true, settings: { workspaceId: "radar-a" } } } };
+    const radarB = { ...companyB, modules: { ...companyB.modules, radar: { enabled: true, settings: { workspaceId: "radar-b" } } } };
+    const viewer = { ...viewerA, modulePermissions: [{ companyId: companyA.id, module: "radar" as const, level: "view" as const }] };
+    const operator = { ...viewerA, modulePermissions: [{ companyId: companyA.id, module: "radar" as const, level: "operate" as const }] };
+    const admin = { ...clientA, modulePermissions: [{ companyId: companyA.id, module: "radar" as const, level: "admin" as const }] };
+
+    expect(hasModuleAccess(viewer, radarA, "radar", "view")).toBe(true);
+    expect(hasModuleAccess(viewer, radarA, "radar", "operate")).toBe(false);
+    expect(hasModuleAccess(operator, radarA, "radar", "operate")).toBe(true);
+    expect(hasModuleAccess(operator, radarA, "radar", "admin")).toBe(false);
+    expect(hasModuleAccess(admin, radarA, "radar", "admin")).toBe(true);
+    expect(hasModuleAccess(admin, radarB, "radar", "view")).toBe(false);
+    expect(hasModuleAccess(platformAdmin, radarB, "radar", "admin")).toBe(true);
+    expect(hasModuleAccess(viewer, { ...radarA, modules: { ...radarA.modules, radar: { enabled: false, settings: { workspaceId: "radar-a" } } } }, "radar", "view")).toBe(false);
+  });
 });

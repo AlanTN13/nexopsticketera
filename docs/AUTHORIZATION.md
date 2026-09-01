@@ -25,8 +25,9 @@ El cliente elevado está en `src/lib/supabase-server.ts`, marcado `server-only`.
 
 1. `auth.admin.createUser`: Supabase Auth no permite a un usuario normal crear otra cuenta con contraseña sin cambiar su propia sesión.
 2. `auth.admin.updateUserById`: sincroniza email, contraseña y metadatos de una cuenta administrada.
+3. Radar Control Plane: registra el workspace interno y persiste únicamente estados/eventos recibidos por el callback server-to-server autenticado con HMAC. La autorización humana ocurre antes en la sesión, los RPC y RLS; el callback no acepta cookies ni IDs de empresa enviados por el navegador.
 
-Las inserciones/actualizaciones de `public.users` que acompañan esas operaciones usan el cliente de la sesión y RLS. `service_role` no se usa para snapshots, tickets, comentarios, historial, empresas, métricas o Storage.
+Las inserciones/actualizaciones de `public.users` que acompañan esas operaciones usan el cliente de la sesión y RLS. `service_role` no se usa para snapshots, tickets, comentarios, historial de soporte, empresas, métricas o Storage. En Radar queda acotado al puente de ejecución y nunca se expone al cliente.
 
 El rol se guarda en `app_metadata` como referencia de Auth y en `public.users` como fuente operativa protegida. Nunca se toma `user_metadata` como dato de autorización.
 

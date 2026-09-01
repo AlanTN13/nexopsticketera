@@ -6,7 +6,7 @@ export async function PlatformRadarPage({
   view,
   opportunityFilter = "all",
 }: {
-  view: Exclude<RadarView, "strategy">;
+  view: Exclude<RadarView, "strategy" | "operation">;
   opportunityFilter?: "all" | "published" | "discarded";
 }) {
   const context = await getPlatformRadarContext();

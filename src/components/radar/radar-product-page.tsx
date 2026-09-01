@@ -26,6 +26,9 @@ import { RadarShell, type RadarView } from "@/components/radar/radar-shell";
 import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
 import { updateRadarPreferencesAction } from "@/app/portal/radar/estrategia/actions";
 import { getRadarProductContext } from "@/lib/radar-context";
+import { getAppSnapshot } from "@/lib/app-store";
+import { getAuthenticatedActor } from "@/lib/auth";
+import { getPlatformRadarContext } from "@/lib/platform-radar";
 import {
   RADAR_STRATEGY,
   type RadarProductModel,
@@ -212,7 +215,7 @@ function OpportunityCard({ opportunity, compact = false }: { opportunity: RadarP
 
 function OverviewView({ model, companyName, companyLookup, basePath, strategyAvailable }: { model: RadarProductModel; companyName: string; companyLookup?: string; basePath: string; strategyAvailable: boolean }) {
   const featured = model.opportunities.slice(0, 2);
-  const needsAttention = model.health.state !== "healthy";
+  const needsAttention = model.health.state === "attention";
 
   return (
     <div className="grid gap-9">
@@ -222,6 +225,7 @@ function OverviewView({ model, companyName, companyLookup, basePath, strategyAva
           <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-montserrat)] text-3xl font-bold leading-tight tracking-[-0.03em] text-slate-950 sm:text-4xl">Oportunidades y contenido, en un solo lugar.</h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">Revisá qué encontró Radar, qué decidió publicar y qué descartó para cuidar el foco de la marca.</p>
           <div className="mt-6 flex flex-wrap gap-3">
+            <Link href={radarHref("/portal/radar/operacion", companyLookup, basePath)} className="radar-primary-action inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#4f35b5] px-4 text-sm font-bold text-white transition hover:bg-[#43299c]">Operar Radar <ChevronRight size={16} /></Link>
             <Link href={radarHref("/portal/radar/oportunidades", companyLookup, basePath)} className="radar-primary-action inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#4f35b5] px-4 text-sm font-bold text-white transition hover:bg-[#43299c]">Ver oportunidades <ChevronRight size={16} /></Link>
             {strategyAvailable ? <Link href={radarHref("/portal/radar/estrategia", companyLookup, basePath)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-950">Configurar estrategia</Link> : null}
           </div>
@@ -230,10 +234,10 @@ function OverviewView({ model, companyName, companyLookup, basePath, strategyAva
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <div className="flex items-center justify-between gap-3">
             <span className="grid size-9 place-items-center rounded-lg bg-white text-[#5b3db8] shadow-sm ring-1 ring-slate-200"><RadioTower size={17} /></span>
-            <span className={`size-2 rounded-full ${model.health.state === "healthy" ? "bg-emerald-500" : model.health.state === "limited" ? "bg-amber-500" : "bg-rose-500"}`} />
+            <span className={`size-2 rounded-full ${model.health.state === "healthy" ? "bg-emerald-500" : model.health.state === "limited" ? "bg-sky-500" : "bg-rose-500"}`} />
           </div>
-          <p className="mt-4 text-sm font-bold text-slate-900">Monitoreo activo</p>
-          <p className="mt-1 text-sm leading-6 text-slate-600">Próximo ciclo: día hábil a las 09:00.</p>
+          <p className="mt-4 text-sm font-bold text-slate-900">Control desde el Portal</p>
+          <p className="mt-1 text-sm leading-6 text-slate-600">Estado, próxima corrida y programación viven en Operación.</p>
           <p className="mt-4 border-t border-slate-200 pt-3 text-xs text-slate-500">Última actividad · {formatDateTime(model.latestActivityAt)}</p>
         </div>
       </section>
@@ -545,6 +549,32 @@ export async function RadarProductPage({
   saved?: boolean;
   companyLookup?: string;
 }) {
+  const db = await getAppSnapshot();
+  const actor = await getAuthenticatedActor(db);
+  if (actor?.role === "platform_admin" && !companyLookup) {
+    const platform = await getPlatformRadarContext();
+    return (
+      <RadarProductScreen
+        view={view}
+        opportunityFilter={opportunityFilter}
+        saved={saved}
+        context={{
+          actorName: platform.actor.name,
+          actorId: platform.actor.id,
+          companyName: "NexOps · cuenta madre",
+          companyId: "",
+          workspaceId: platform.workspace.workspaceId,
+          model: platform.model,
+          preferences: platform.preferences,
+          canManagePreferences: false,
+          exitHref: "/backoffice/queue",
+          exitLabel: "Volver al backoffice",
+          basePath: "/portal/radar",
+          strategyAvailable: false,
+        }}
+      />
+    );
+  }
   const context = await getRadarProductContext(companyLookup);
 
   return (

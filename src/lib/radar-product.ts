@@ -134,8 +134,8 @@ function resolveHealth(workspace: RadarWorkspace): RadarProductHealth {
   if (workspace.historyState === "unavailable") {
     return {
       state: "limited",
-      label: "Operativo con visibilidad parcial",
-      detail: "Las publicaciones están conectadas; falta habilitar el historial privado de decisiones.",
+      label: "Publicaciones conectadas",
+      detail: "El historial privado se completa al conectar la fuente de decisiones.",
     };
   }
 
