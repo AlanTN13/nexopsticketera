@@ -10,6 +10,10 @@ Issue técnico: `AlanTN13/nexopsticketera#56`
 
 Branch: `codex/radar-control-plane-v1`, apilada sobre el PR draft `#55`
 
+PR draft: `AlanTN13/nexopsticketera#57`
+
+Commit funcional validado: `9cde6d08548520a6a952ff1183fbacf708ee585e`
+
 ## Resultado
 
 - Radar se opera desde `/portal/radar/operacion`; no existe un nuevo cerebro editorial ni una aplicación paralela.
@@ -48,6 +52,9 @@ Branch: `codex/radar-control-plane-v1`, apilada sobre el PR draft `#55`
 - ESLint: `PASS`.
 - Build Next.js 16: `PASS`, incluida `/api/radar/runs/[runId]/events` y `/portal/radar/operacion`.
 - Navegador autenticado local: login, URL de Operación, contenido, controles, estado pausado e historial: `PASS`; sin overlay ni errores de consola.
+- GitHub Actions `verify`: `PASS`.
+- Vercel `nexopsticketera`: `PASS` — preview `https://nexopsticketera-git-co-fb7d18-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
+- Vercel `sdnexops`: `PASS` — preview `https://sdnexops-git-codex-rad-47291d-alan-fernandezs-projects-f6e1f457.vercel.app` (SSO protegido).
 
 ## Gates no ejecutados
 
