@@ -7,14 +7,24 @@ import { isRadarWorkerWorkspaceId } from "@/lib/radar-engine-contract";
 import { getPublicAppUrl } from "@/lib/public-app-url";
 import { requireRadarWorkspaceAccess } from "@/lib/radar-control-plane-auth";
 import {
+  acceptRadarPublicationDispatch,
   decideRadarRun,
   createRadarRun,
   acceptRadarDispatch,
   failRadarDispatch,
+  failRadarPublicationDispatch,
+  getRadarRunForPublication,
   reserveRadarDispatch,
+  reserveRadarPublication,
   updateRadarPreferences,
   updateRadarSchedule,
 } from "@/lib/radar-control-plane-store";
+import {
+  buildRadarPublicationBundle,
+  dispatchRadarPublication,
+  radarPublicationConnected,
+  type RadarPublicationComposition,
+} from "@/lib/radar-publication";
 import {
   isSafeHttpsUrl,
   isRadarAutonomyMode,
@@ -231,5 +241,71 @@ export async function decideRadarRunAction(formData: FormData): Promise<RadarCon
     };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "No pudimos registrar la decisión." };
+  }
+}
+
+export async function publishApprovedRadarRunAction(formData: FormData): Promise<RadarControlMutationState> {
+  const workspaceId = value(formData, "workspaceId");
+  const runId = value(formData, "runId");
+  const idempotencyKey = value(formData, "idempotencyKey");
+  if (!isRadarWorkerWorkspaceId(workspaceId) || !uuid(runId) || !uuid(idempotencyKey)) {
+    return { error: "La confirmación de publicación no es válida." };
+  }
+  const composition: RadarPublicationComposition = {
+    title: value(formData, "title"),
+    slug: value(formData, "slug"),
+    excerpt: value(formData, "excerpt"),
+    seoTitle: value(formData, "seoTitle"),
+    metaDescription: value(formData, "metaDescription"),
+    primaryKeyword: value(formData, "primaryKeyword"),
+    searchIntent: value(formData, "searchIntent"),
+    territory: value(formData, "territory"),
+    visualType: value(formData, "visualType"),
+    visualSubject: value(formData, "visualSubject"),
+    coverAlt: value(formData, "coverAlt"),
+    bodyMarkdown: value(formData, "bodyMarkdown"),
+    sourceVerified: value(formData, "sourceVerified") === "true",
+    rightsVerified: value(formData, "rightsVerified") === "true",
+    clientClaimsAuthorizedOrAbsent: value(formData, "clientClaimsAuthorizedOrAbsent") === "true",
+  };
+
+  try {
+    const { actor } = await requireRadarWorkspaceAccess(workspaceId, "admin");
+    if (!radarPublicationConnected()) throw new Error("El puente de publicación todavía no está conectado.");
+    const origin = getPublicAppUrl();
+    if (!origin) throw new Error("Falta configurar la URL pública del Portal.");
+    const run = await getRadarRunForPublication(runId);
+    if (run.workspaceId !== workspaceId) throw new Error("La nota no pertenece a este workspace.");
+    const approvedAt = new Date().toISOString();
+    const bundle = buildRadarPublicationBundle({
+      run,
+      composition,
+      approvedBy: actor.id,
+      approvedAt,
+      callbackUrl: `${origin}/api/radar/runs/${run.id}/publication`,
+    });
+    await reserveRadarPublication({
+      runId,
+      idempotencyKey,
+      compositionDigest: bundle.compositionDigest,
+      composition: composition as unknown as Record<string, unknown>,
+    });
+    try {
+      const dispatched = await dispatchRadarPublication({ runId, bundle });
+      await acceptRadarPublicationDispatch({
+        runId,
+        compositionDigest: bundle.compositionDigest,
+        pullRequestNumber: dispatched.pullRequestNumber,
+        pullRequestUrl: dispatched.pullRequestUrl,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo iniciar la publicación.";
+      await failRadarPublicationDispatch(runId, message);
+      throw error;
+    }
+    revalidateRadarOperation();
+    return { error: null, success: "Publicación confirmada. webneoxps está validando y desplegando la nota." };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No pudimos publicar la nota." };
   }
 }

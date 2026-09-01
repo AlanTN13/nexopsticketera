@@ -70,6 +70,19 @@ export type RadarRunDecision = {
   createdAt: string;
 };
 
+export type RadarPublicationJob = {
+  status: "reserved" | "dispatched" | "published" | "failed";
+  compositionDigest: string;
+  externalPrNumber: number | null;
+  externalPrUrl: string | null;
+  externalWorkflowUrl: string | null;
+  mergeSha: string | null;
+  finalUrl: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+};
+
 export type RadarRun = {
   id: string;
   workspaceId: string;
@@ -92,6 +105,7 @@ export type RadarRun = {
   updatedAt: string;
   events: RadarRunEvent[];
   decisions: RadarRunDecision[];
+  publication: RadarPublicationJob | null;
 };
 
 export type RadarControlPlaneSnapshot = {
@@ -99,6 +113,7 @@ export type RadarControlPlaneSnapshot = {
   settings: RadarControlSettings | null;
   runs: RadarRun[];
   engineConnected: boolean;
+  publicationConnected: boolean;
 };
 
 export const RADAR_STATUS_COPY: Record<RadarRunStatus, string> = {
@@ -110,7 +125,7 @@ export const RADAR_STATUS_COPY: Record<RadarRunStatus, string> = {
   review_pending: "Esperando revisión",
   postponed: "Postergada",
   rejected: "Descartada",
-  approved: "Aprobada · publicación pausada",
+  approved: "Aprobada · lista para componer",
   validating: "Validando",
   publishing: "Publicando",
   published: "Publicada",
