@@ -1,4 +1,5 @@
 import { Company, CompanyModules, UserProfile, isClientRole } from "@/lib/ticketing";
+import { hasModuleAccess } from "@/lib/authorization";
 
 export type PortalModule = "home" | "support" | "metrics" | "radar" | "content";
 
@@ -135,39 +136,67 @@ export function getRadarWorkspaceId(company: Company) {
   return company.modules.radar.settings.workspaceId ?? null;
 }
 
-export function getContentWorkspaceId(company: Company) {
-  if (!company.modules.content.enabled) return null;
-  return company.modules.content.settings.workspaceId ?? null;
-}
-
 export function resolveContentCompanyForActor(
   companies: Company[],
   actor: UserProfile,
-  internalWorkspaceId = "nexops",
+  companyLookup?: string,
 ) {
-  if (actor.role === "platform_admin" || actor.role === "team_lead") {
-    return (
-      companies.find((company) => getContentWorkspaceId(company) === internalWorkspaceId) ?? null
-    );
-  }
+  const company = isClientRole(actor.role)
+    ? companies.find((item) => item.id === actor.companyId)
+    : companyLookup
+      ? companies.find((item) => item.id === companyLookup || item.slug === companyLookup)
+      : undefined;
+  if (!company || !hasModuleAccess(actor, company, "content", "view")) return null;
+  return company;
+}
 
-  if (!actor.companyId || !isClientRole(actor.role)) return null;
-  return companies.find((company) => company.id === actor.companyId) ?? null;
+export function resolveMetricsCompanyForActor(
+  companies: Company[],
+  actor: UserProfile,
+  companyLookup?: string,
+) {
+  const company = isClientRole(actor.role)
+    ? companies.find((item) => item.id === actor.companyId)
+    : companyLookup
+      ? companies.find((item) => item.id === companyLookup || item.slug === companyLookup)
+      : companies.find((item) => hasModuleAccess(actor, item, "metrics", "view"));
+  if (!company || !hasModuleAccess(actor, company, "metrics", "view")) return null;
+  return company;
 }
 
 export function resolveRadarCompanyForActor(
   companies: Company[],
   actor: UserProfile,
-  internalWorkspaceId = "nexops",
+  companyLookup?: string,
 ) {
-  if (actor.role === "platform_admin") {
-    return (
-      companies.find((company) => getRadarWorkspaceId(company) === internalWorkspaceId) ?? null
-    );
-  }
+  const company = isClientRole(actor.role)
+    ? companies.find((item) => item.id === actor.companyId)
+    : companyLookup
+      ? companies.find((item) => item.id === companyLookup || item.slug === companyLookup)
+      : undefined;
+  if (!company || !hasModuleAccess(actor, company, "radar", "view")) return null;
+  return company;
+}
 
-  if (!actor.companyId || !isClientRole(actor.role)) return null;
-  return companies.find((company) => company.id === actor.companyId) ?? null;
+export function getVisibleCompanyModules(actor: UserProfile, company: Company): CompanyModules {
+  return {
+    support: {
+      ...company.modules.support,
+      enabled: hasModuleAccess(actor, company, "support", "view"),
+    },
+    metrics: {
+      ...company.modules.metrics,
+      enabled: hasModuleAccess(actor, company, "metrics", "view"),
+    },
+    radar: {
+      ...company.modules.radar,
+      enabled: hasModuleAccess(actor, company, "radar", "view"),
+    },
+    content: {
+      ...company.modules.content,
+      enabled: hasModuleAccess(actor, company, "content", "view"),
+    },
+  };
 }
 
 export function buildPortalNavigation({
@@ -181,12 +210,14 @@ export function buildPortalNavigation({
 }): PortalNavigationItem[] {
   return [
     { href: "/portal", label: "Inicio", active: active === "home" },
-    {
-      href: "/portal/soporte",
-      label: "Soporte",
-      active: active === "support",
-      badge: ticketCount,
-    },
+    ...(modules.support.enabled
+      ? [{
+          href: "/portal/soporte",
+          label: "Soporte",
+          active: active === "support",
+          badge: ticketCount,
+        }]
+      : []),
     ...(modules.metrics.enabled
       ? [{ href: "/portal/metricas", label: "Métricas", active: active === "metrics" }]
       : []),

@@ -317,6 +317,7 @@ export async function refreshAllMetricsCompanies() {
         primaryContact: "",
         createdAt: "",
         modules: {
+          support: { enabled: false, settings: {} },
           metrics: { enabled: true, settings: metricsSettings(module.settings) },
           radar: { enabled: false, settings: {} },
           content: { enabled: false, settings: {} },

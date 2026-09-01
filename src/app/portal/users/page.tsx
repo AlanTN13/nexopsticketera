@@ -5,7 +5,7 @@ import { UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, SidebarUserCard } from "@/components/ui";
 import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
-import { buildPortalNavigation } from "@/lib/portal-modules";
+import { buildPortalNavigation, getVisibleCompanyModules } from "@/lib/portal-modules";
 import { canAccessCompanyUsers, getUsersForCompany } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,6 @@ export default async function PortalUsersPage({ searchParams }: PortalUsersProps
   }
   const company = db.companies.find((item) => item.id === actor.companyId);
   if (!company) redirect("/portal/login?reason=company");
-
   const users = getUsersForCompany(db, actor.companyId);
   const ticketCount = db.tickets.filter((ticket) => ticket.companyId === company.id).length;
   const canManage = canAccessCompanyUsers(actor, actor.companyId);
@@ -35,7 +34,7 @@ export default async function PortalUsersPage({ searchParams }: PortalUsersProps
       title="Usuarios de tu empresa"
       description="El acceso se sigue gestionando por empresa, pero ahora en una pantalla más clara y separada del seguimiento de tickets."
       tone="light"
-      navigation={buildPortalNavigation({ active: null, modules: company.modules, ticketCount })}
+      navigation={buildPortalNavigation({ active: null, modules: getVisibleCompanyModules(actor, company), ticketCount })}
       sidebarFooter={
         <SidebarUserCard name={actor.name} detail={company.name}>
           <LogoutClientForm tone="light" />

@@ -20,7 +20,6 @@ import {
   TICKET_TYPES,
   USER_ROLES,
   areaLabels,
-  canCreateTickets,
   canManageGlobalCatalog,
   canManageOperations,
   priorityLabels,
@@ -29,6 +28,7 @@ import {
   typeLabels,
   UserProfile,
 } from "@/lib/ticketing";
+import { canManageAccessControl } from "@/lib/authorization";
 
 export { CreateUserForm } from "@/components/create-user-form";
 
@@ -100,20 +100,6 @@ export function CreateTicketForm({
   tone?: "dark" | "light";
   compact?: boolean;
 }) {
-  if (!canCreateTickets(actor.role)) {
-    return (
-      <div
-        className={`rounded-xl border border-dashed p-4 text-sm leading-6 ${
-          tone === "light"
-            ? "border-[rgba(91,72,199,0.2)] bg-[#f5f3ff] text-[#5a5d7f]"
-            : "border-[var(--border-strong)] bg-white/[0.03] text-[var(--muted)]"
-        }`}
-      >
-        Este rol puede revisar tickets, pero no crear nuevos.
-      </div>
-    );
-  }
-
   return (
     <PendingForm action={createTicketAction} className={`grid ${compact ? "gap-3.5" : "gap-4"}`}>
       <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
@@ -343,7 +329,7 @@ export function CreateCompanyForm({
   returnPath: string;
   tone?: "dark" | "light";
 }) {
-  if (!canManageGlobalCatalog(actor.role)) {
+  if (!canManageAccessControl(actor)) {
     return (
       <div
         className={`rounded-[28px] border border-dashed p-5 text-sm leading-6 ${
@@ -533,7 +519,7 @@ export function UpdateCompanyModulesForm({
   company: Company;
   returnPath: string;
 }) {
-  if (!canManageGlobalCatalog(actor.role)) {
+  if (!canManageAccessControl(actor)) {
     return (
       <div className="rounded-[20px] border border-dashed border-violet-200 bg-violet-50 p-5 text-sm leading-6 text-[#5a5d7f]">
         Este rol puede revisar los productos de la cuenta, pero no cambiar su disponibilidad.
@@ -542,6 +528,12 @@ export function UpdateCompanyModulesForm({
   }
 
   const modules = [
+    {
+      name: "supportEnabled",
+      title: "Soporte",
+      description: "Tickets, comentarios, adjuntos y seguimiento operativo.",
+      enabled: company.modules.support.enabled,
+    },
     {
       name: "metricsEnabled",
       title: "Métricas",
@@ -557,7 +549,7 @@ export function UpdateCompanyModulesForm({
     {
       name: "contentEnabled",
       title: "Contenido",
-      description: "Conexión oficial a Instagram, fuentes observadas e historial de datos.",
+      description: "Conexión oficial a Instagram, cuentas observadas e historial de datos.",
       enabled: company.modules.content.enabled,
     },
   ] as const;
@@ -597,27 +589,12 @@ export function UpdateCompanyModulesForm({
           id="radarWorkspaceId"
           name="radarWorkspaceId"
           defaultValue={company.modules.radar.settings.workspaceId ?? ""}
-          placeholder="Ej.: nexops"
+          placeholder="Ej.: marca-principal"
           pattern="[a-z0-9][a-z0-9._-]{2,80}"
           className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
         />
         <span className="text-xs leading-5 text-slate-600">
-          Es obligatorio para habilitar Radar y vincula esta empresa con un único espacio de datos.
-        </span>
-      </label>
-
-      <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="contentWorkspaceId">
-        <span className="text-xs font-semibold text-slate-700">Workspace de Contenido</span>
-        <input
-          id="contentWorkspaceId"
-          name="contentWorkspaceId"
-          defaultValue={company.modules.content.settings.workspaceId ?? ""}
-          placeholder="Ej.: nexops"
-          pattern="[a-z0-9][a-z0-9._-]{2,80}"
-          className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-        />
-        <span className="text-xs leading-5 text-slate-600">
-          Es obligatorio para habilitar Contenido. La recolección de Fase 1 queda fijada a una vez por semana.
+          Es obligatorio para habilitar Radar y vincula esta empresa con su propio espacio de datos.
         </span>
       </label>
 
@@ -631,13 +608,13 @@ export function UpdateCompanyModulesForm({
         <span className="grid gap-1">
           <span className="text-sm font-semibold text-slate-950">Sitio conectado para publicación</span>
           <span className="text-xs leading-5 text-slate-600">
-            Habilita al cliente a elegir publicación automática. Esta confirmación queda bajo control de NexOps.
+            Habilita publicación automática. Esta confirmación queda bajo control de plataforma.
           </span>
         </span>
       </label>
 
       <p className="text-xs leading-5 text-slate-600">
-        El cambio define qué productos aparecen en el Portal de esta empresa y también protege el acceso directo a cada ruta.
+        Deshabilitar un módulo conserva su configuración y permisos, pero anula todo acceso efectivo. El nivel “administrar” no permite habilitar productos ni conceder accesos.
       </p>
 
       <PendingSubmitButton

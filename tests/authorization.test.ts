@@ -6,16 +6,19 @@ import {
   canCommentOnTicket,
   canCreateCompanyTicket,
   canUpdateTicketWorkflow,
+  getEffectiveModuleAccess,
+  hasModuleAccess,
+  moduleLevelSatisfies,
 } from "@/lib/authorization";
 import { getTicketById, getTicketByReference, getVisibleCommentAttachments, getVisibleComments, getVisibleTickets } from "@/lib/queries";
-import { clientA, clientB, fixtureDb, nexopsAgent, ticketA, ticketB, viewerA } from "./fixtures";
+import { clientA, clientB, companyA, companyB, fixtureDb, nexopsAgent, platformAdmin, ticketA, ticketB, viewerA } from "./fixtures";
 
 describe("tenant isolation and roles", () => {
   it("keeps Empresa A and Empresa B isolated, including direct IDs", () => {
     expect(getVisibleTickets(fixtureDb, clientA)).toEqual([ticketA]);
     expect(getVisibleTickets(fixtureDb, clientB)).toEqual([ticketB]);
     expect(getTicketById(fixtureDb, clientA, ticketB.id)).toBeNull();
-    expect(canAccessTicket(clientA, ticketB)).toBe(false);
+    expect(canAccessTicket(clientA, ticketB, companyB)).toBe(false);
   });
 
   it("resolves visible tickets by code without using the code as authorization", () => {
@@ -23,7 +26,8 @@ describe("tenant isolation and roles", () => {
     expect(getTicketByReference(fixtureDb, clientA, "NEX-1001")).toEqual(ticketA);
     expect(getTicketByReference(fixtureDb, clientA, "nex-1002")).toBeNull();
     expect(getTicketByReference(fixtureDb, clientA, "ticket-invalido")).toBeNull();
-    expect(getTicketByReference(fixtureDb, nexopsAgent, "nex-1002")).toEqual(ticketB);
+    expect(getTicketByReference(fixtureDb, nexopsAgent, "nex-1002")).toBeNull();
+    expect(getTicketByReference(fixtureDb, platformAdmin, "nex-1002")).toEqual(ticketB);
   });
 
   it("keeps legacy UUID references compatible after authorization", () => {
@@ -61,14 +65,50 @@ describe("tenant isolation and roles", () => {
   });
 
   it("enforces ticket creation, comments, workflow and backoffice roles", () => {
-    expect(canCreateCompanyTicket(clientA, ticketA.companyId)).toBe(true);
-    expect(canCreateCompanyTicket(viewerA, ticketA.companyId)).toBe(false);
-    expect(canCommentOnTicket(viewerA, ticketA, "external")).toBe(false);
-    expect(canCommentOnTicket(clientA, ticketA, "internal")).toBe(false);
-    expect(canCommentOnTicket(nexopsAgent, ticketA, "internal")).toBe(true);
-    expect(canUpdateTicketWorkflow(clientA)).toBe(false);
-    expect(canUpdateTicketWorkflow(nexopsAgent)).toBe(true);
+    const promotedViewer = {
+      ...viewerA,
+      modulePermissions: [{ companyId: companyA.id, module: "support" as const, level: "operate" as const }],
+    };
+    expect(canCreateCompanyTicket(clientA, companyA)).toBe(true);
+    expect(canCreateCompanyTicket(viewerA, companyA)).toBe(false);
+    expect(canCreateCompanyTicket(promotedViewer, companyA)).toBe(true);
+    expect(canCommentOnTicket(viewerA, ticketA, companyA, "external")).toBe(false);
+    expect(canCommentOnTicket(promotedViewer, ticketA, companyA, "external")).toBe(true);
+    expect(canCommentOnTicket(promotedViewer, ticketA, companyA, "internal")).toBe(false);
+    expect(canCommentOnTicket(clientA, ticketA, companyA, "internal")).toBe(false);
+    expect(canCommentOnTicket(nexopsAgent, ticketA, companyA, "internal")).toBe(true);
+    expect(canUpdateTicketWorkflow(clientA, companyA)).toBe(false);
+    expect(canUpdateTicketWorkflow(nexopsAgent, companyA)).toBe(true);
     expect(canAccessBackoffice(clientA)).toBe(false);
     expect(canAccessBackoffice(nexopsAgent)).toBe(true);
+  });
+
+  it("enforces the complete level hierarchy", () => {
+    const levels = ["none", "view", "operate", "admin"] as const;
+    const required = ["view", "operate", "admin"] as const;
+    const expected = {
+      none: [false, false, false],
+      view: [true, false, false],
+      operate: [true, true, false],
+      admin: [true, true, true],
+    } as const;
+
+    for (const level of levels) {
+      required.forEach((minimum, index) => {
+        expect(moduleLevelSatisfies(level, minimum)).toBe(expected[level][index]);
+      });
+    }
+  });
+
+  it("requires active user, tenant, enabled module and explicit permission", () => {
+    expect(getEffectiveModuleAccess(clientA, companyA, "support")).toBe("admin");
+    expect(getEffectiveModuleAccess(clientA, companyB, "support")).toBe("none");
+    expect(getEffectiveModuleAccess(nexopsAgent, companyA, "support")).toBe("operate");
+    expect(getEffectiveModuleAccess(nexopsAgent, companyB, "support")).toBe("none");
+    expect(getEffectiveModuleAccess(platformAdmin, companyA, "support")).toBe("admin");
+    expect(
+      getEffectiveModuleAccess(platformAdmin, { ...companyA, modules: { ...companyA.modules, support: { enabled: false, settings: {} } } }, "support"),
+    ).toBe("none");
+    expect(hasModuleAccess({ ...clientA, status: "disabled" }, companyA, "support", "view")).toBe(false);
   });
 });

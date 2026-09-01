@@ -13,15 +13,13 @@ import {
   isClientRole,
 } from "@/lib/ticketing";
 import { parseTicketReference } from "@/lib/routing";
+import { hasModuleAccess } from "@/lib/authorization";
 
 export function getVisibleTickets(db: TicketDatabase, actor: UserProfile) {
-  if (isClientRole(actor.role)) {
-    return actor.companyId
-      ? db.tickets.filter((ticket) => ticket.companyId === actor.companyId)
-      : [];
-  }
-
-  return db.tickets;
+  return db.tickets.filter((ticket) => {
+    const company = db.companies.find((item) => item.id === ticket.companyId);
+    return company ? hasModuleAccess(actor, company, "support", "view") : false;
+  });
 }
 
 export function getVisibleComments(

@@ -7,7 +7,8 @@ import { TicketTable } from "@/components/tables";
 import { AppShell, EmptyState, IndicatorBar, InlineNotice, NavButton, SectionCard, SidebarUserCard } from "@/components/ui";
 import { getAuthenticatedClientActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
-import { buildPortalNavigation } from "@/lib/portal-modules";
+import { buildPortalNavigation, getVisibleCompanyModules } from "@/lib/portal-modules";
+import { hasModuleAccess } from "@/lib/authorization";
 import { buildPortalStats, filterTickets, sortTickets } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
   if (!actor) redirect("/portal/login?reason=session");
   const company = db.companies.find((item) => item.id === actor.companyId);
   if (!company) redirect("/portal/login?reason=company");
+  if (!hasModuleAccess(actor, company, "support", "view")) redirect("/portal");
 
   const companyTickets = actor.companyId ? db.tickets.filter((ticket) => ticket.companyId === actor.companyId) : [];
   const tickets = sortTickets(filterTickets(companyTickets, filters));
@@ -29,9 +31,9 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
 
   return (
     <AppShell eyebrow="Portal NexOps · Soporte" title="Soporte" description="Seguí las solicitudes de tu empresa y encontrá rápido qué requiere atención." tone="light"
-      navigation={buildPortalNavigation({ active: "support", modules: company.modules, ticketCount: stats.total })}
+      navigation={buildPortalNavigation({ active: "support", modules: getVisibleCompanyModules(actor, company), ticketCount: stats.total })}
       sidebarFooter={<SidebarUserCard name={actor.name} detail={company.name}><LogoutClientForm tone="light" /></SidebarUserCard>}
-      actions={<><div className="hidden md:block"><PortalTicketModal title="Nuevo ticket" description="Contanos qué pasa y cómo afecta tu trabajo."><CreateTicketForm actor={actor} tone="light" compact /></PortalTicketModal></div><div className="md:hidden"><NavButton href="/portal/tickets/new" label="Nuevo ticket" tone="light" /></div></>}
+      actions={hasModuleAccess(actor, company, "support", "operate") ? <><div className="hidden md:block"><PortalTicketModal title="Nuevo ticket" description="Contanos qué pasa y cómo afecta tu trabajo."><CreateTicketForm actor={actor} tone="light" compact /></PortalTicketModal></div><div className="md:hidden"><NavButton href="/portal/tickets/new" label="Nuevo ticket" tone="light" /></div></> : undefined}
     >
       {filters.success ? <InlineNotice tone="success">{filters.success}</InlineNotice> : null}
       {filters.error ? <InlineNotice tone="error">{filters.error}</InlineNotice> : null}

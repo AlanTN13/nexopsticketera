@@ -15,6 +15,7 @@ describe("privileged role assignment", () => {
 
   it("keeps client role assignment scoped to authorized managers", () => {
     expect(canAssignUserRole(teamLead, companyA.id, "client_operator")).toBe(true);
+    expect(canAssignUserRole(teamLead, companyB.id, "client_operator")).toBe(false);
     expect(canAssignUserRole(clientA, companyA.id, "client_viewer")).toBe(true);
     expect(canAssignUserRole(clientA, companyB.id, "client_viewer")).toBe(false);
     expect(canAssignUserRole(clientA, companyA.id, "agent")).toBe(false);

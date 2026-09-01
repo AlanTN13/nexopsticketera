@@ -18,11 +18,11 @@ describe("security architecture", () => {
     const serverClient = read("src/lib/supabase-server.ts");
     expect(serverClient).toContain('import "server-only"');
     expect(serverClient).toContain("SUPABASE_SERVICE_ROLE_KEY");
-    expect(read("src/lib/app-store.ts").match(/getSupabaseAdminClient\(\)/g)).toHaveLength(2);
+    expect(read("src/lib/app-store.ts").match(/getSupabaseAdminClient\(\)/g)).toHaveLength(3);
     const radarPreferencesStore = read("src/lib/radar-preferences-store.ts");
     expect(radarPreferencesStore).toContain('import "server-only"');
-    expect(radarPreferencesStore.match(/getSupabaseAdminClient\(\)/g)).toHaveLength(1);
-    expect(radarPreferencesStore).toContain("canManageRadarPreferences(input.actor.role)");
+    expect(radarPreferencesStore).not.toContain("getSupabaseAdminClient()");
+    expect(radarPreferencesStore).toContain('client.rpc("update_radar_preferences"');
   });
 
   it("hardens RLS, grants, private functions and Storage", () => {
@@ -47,6 +47,21 @@ describe("security architecture", () => {
     expect(read("src/lib/app-store.ts")).toContain('client.rpc(\n    "create_ticket_comment_with_attachments"');
     expect(read("src/lib/app-store.ts")).toContain("remove(uploadedPaths)");
     expect(migration).not.toMatch(/service_role/i);
+  });
+
+  it("revalidates attachment access before issuing a short-lived download URL", () => {
+    const store = read("src/lib/app-store.ts");
+    const downloadRoute = read("src/app/api/ticket-attachments/[attachmentId]/route.ts");
+    expect(store).toContain("/api/ticket-attachments/");
+    expect(store).not.toContain("60 * 60");
+    expect(downloadRoute).toContain('.from("ticket_attachments")');
+    expect(downloadRoute).toContain("createSignedUrl(attachment.storage_path, 30)");
+  });
+
+  it("bootstraps the first company admin through the audited permission RPC", () => {
+    const store = read("src/lib/app-store.ts");
+    expect(store).toContain('change_reason: "Bootstrap del administrador inicial"');
+    expect(store).toContain('level: module === "support" ? "admin" : "none"');
   });
 
   it("enforces active profiles and platform-admin-only internal role grants", () => {

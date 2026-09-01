@@ -58,5 +58,5 @@ export async function updateRadarPreferencesAction(
 
   revalidatePath("/portal/radar");
   revalidatePath("/portal/radar/estrategia");
-  redirect("/portal/radar/estrategia?saved=1");
+  redirect(`/portal/radar/estrategia?saved=1&company=${encodeURIComponent(getString(formData, "companyId"))}`);
 }

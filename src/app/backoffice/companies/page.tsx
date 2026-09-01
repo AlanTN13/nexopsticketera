@@ -36,7 +36,6 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
         { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
         { href: withActor("/backoffice/companies", actor.id), label: "Empresas", active: true, badge: db.companies.length },
         { href: withActor("/backoffice/users", actor.id), label: "Usuarios" },
-        ...(actor.role === "platform_admin" ? [{ href: "/portal/radar", label: "Radar" }] : []),
       ]}
       actions={
         <>

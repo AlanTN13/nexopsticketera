@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { CreateUserForm, LogoutClientForm } from "@/components/forms";
+import { AccessMatrixForm } from "@/components/access-matrix-form";
 import { UserTable } from "@/components/tables";
 import { AppShell, NavButton, SectionCard } from "@/components/ui";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
@@ -30,7 +31,6 @@ export default async function BackofficeUsersPage() {
         { href: withActor("/backoffice/queue", actor.id), label: "Tickets" },
         { href: withActor("/backoffice/companies", actor.id), label: "Empresas" },
         { href: withActor("/backoffice/users", actor.id), label: "Usuarios", active: true, badge: internalUsers.length },
-        ...(actor.role === "platform_admin" ? [{ href: "/portal/radar", label: "Radar" }] : []),
       ]}
       actions={
         <>
@@ -47,6 +47,37 @@ export default async function BackofficeUsersPage() {
           <CreateUserForm actor={actor} companyId={null} returnPath="/backoffice/users" tone="light" />
         </SectionCard>
       </div>
+
+      <SectionCard
+        title="Empresas y módulos por integrante"
+        description="Asigná primero la empresa y después el nivel por módulo. Un permiso sin empresa o con el producto deshabilitado nunca es efectivo."
+        tone="light"
+      >
+        <div className="grid gap-5">
+          {internalUsers.filter((user) => user.role !== "platform_admin").map((user) => (
+            <div key={user.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-4">
+                <p className="font-semibold text-slate-950">{user.name}</p>
+                <p className="text-sm text-slate-600">{user.title} · {user.email}</p>
+              </div>
+              <div className="grid gap-4 xl:grid-cols-2">
+                {db.companies.map((company) => (
+                  <div key={company.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="mb-3 text-sm font-semibold text-slate-950">{company.name}</p>
+                    <AccessMatrixForm
+                      actor={actor}
+                      user={user}
+                      company={company}
+                      internalAssignment
+                      returnPath="/backoffice/users"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
     </AppShell>
   );
 }

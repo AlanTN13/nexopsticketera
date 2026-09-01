@@ -9,15 +9,16 @@ import { getRadarWorkspaceId, resolveRadarCompanyForActor } from "@/lib/portal-m
 import { buildRadarProductModel } from "@/lib/radar-product";
 import { loadRadarWorkspace } from "@/lib/radar-workspace";
 import { isInternalRole } from "@/lib/ticketing";
-import { canManageRadarPreferences, parseRadarPreferences } from "@/lib/radar-preferences";
+import { parseRadarPreferences } from "@/lib/radar-preferences";
+import { hasModuleAccess } from "@/lib/authorization";
 
-export const getRadarProductContext = cache(async () => {
+export const getRadarProductContext = cache(async (companyLookup?: string) => {
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedActor(db);
   if (!actor) redirect("/portal/login?reason=session");
 
   const internalActor = isInternalRole(actor.role);
-  const company = resolveRadarCompanyForActor(db.companies, actor);
+  const company = resolveRadarCompanyForActor(db.companies, actor, companyLookup);
   if (!company) {
     redirect(internalActor ? "/backoffice/queue" : "/portal/login?reason=company");
   }
@@ -39,8 +40,8 @@ export const getRadarProductContext = cache(async () => {
     workspace,
     model: buildRadarProductModel(workspace),
     preferences: parseRadarPreferences(company.modules.radar.settings),
-    canManagePreferences: canManageRadarPreferences(actor.role),
-    exitHref: internalActor ? "/backoffice/queue" : "/portal",
+    canManagePreferences: hasModuleAccess(actor, company, "radar", "admin"),
+    exitHref: internalActor ? `/backoffice/companies/${company.slug}` : "/portal",
     exitLabel: internalActor ? "Volver al backoffice" : "Volver al Portal",
   };
 });

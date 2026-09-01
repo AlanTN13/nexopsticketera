@@ -22,6 +22,12 @@ const NAVIGATION = [
   { view: "strategy" as const, label: "Estrategia", href: "/portal/radar/estrategia", icon: Settings2 },
 ];
 
+function withRadarCompany(href: string, companyLookup?: string) {
+  if (!companyLookup) return href;
+  const separator = href.includes("?") ? "&" : "?";
+  return `${href}${separator}company=${encodeURIComponent(companyLookup)}`;
+}
+
 function RadarMark() {
   return (
     <span className="grid size-10 place-items-center rounded-xl bg-[#4f35b5] text-white shadow-sm">
@@ -53,6 +59,7 @@ export function RadarShell({
   health,
   exitHref,
   exitLabel,
+  companyLookup,
   children,
 }: {
   active: RadarView;
@@ -62,6 +69,7 @@ export function RadarShell({
   health: RadarProductHealth;
   exitHref: string;
   exitLabel: string;
+  companyLookup?: string;
   children: React.ReactNode;
 }) {
   const initials = actorName
@@ -96,7 +104,7 @@ export function RadarShell({
               return (
                 <Link
                   key={item.view}
-                  href={item.href}
+                  href={withRadarCompany(item.href, companyLookup)}
                   aria-current={selected ? "page" : undefined}
                   className={`flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-sm font-medium transition ${
                     selected
@@ -150,7 +158,7 @@ export function RadarShell({
                 const Icon = item.icon;
                 const selected = item.view === active;
                 return (
-                  <Link key={item.view} href={item.href} aria-current={selected ? "page" : undefined} className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${selected ? "bg-[#eeeafe] text-[#43299c]" : "text-slate-500"}`}>
+                  <Link key={item.view} href={withRadarCompany(item.href, companyLookup)} aria-current={selected ? "page" : undefined} className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${selected ? "bg-[#eeeafe] text-[#43299c]" : "text-slate-500"}`}>
                     <Icon size={14} aria-hidden="true" />
                     {item.label}
                   </Link>

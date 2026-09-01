@@ -2,13 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPortalNavigation,
-  getContentWorkspaceId,
   getMetricsProfile,
   getRadarWorkspaceId,
   resolveContentCompanyForActor,
+  resolveMetricsCompanyForActor,
   resolveRadarCompanyForActor,
 } from "@/lib/portal-modules";
 import { Company, UserProfile } from "@/lib/ticketing";
+
+const baseModules = {
+  support: { enabled: true, settings: {} },
+  content: { enabled: false, settings: {} },
+} as const;
 
 function company(overrides: Partial<Company> = {}): Company {
   return {
@@ -20,6 +25,7 @@ function company(overrides: Partial<Company> = {}): Company {
     status: "active",
     primaryContact: "Alan",
     modules: {
+      ...baseModules,
       metrics: { enabled: true, settings: {} },
       radar: { enabled: false, settings: {} },
       content: { enabled: false, settings: {} },
@@ -36,6 +42,7 @@ describe("portal module configuration", () => {
       getMetricsProfile(
         company({
           modules: {
+            ...baseModules,
             metrics: { enabled: false, settings: {} },
             radar: { enabled: false, settings: {} },
             content: { enabled: false, settings: {} },
@@ -53,10 +60,31 @@ describe("portal module configuration", () => {
     expect(profile?.accountName).toBe("Nueva Empresa");
   });
 
+  it("resolves Metrics for an internal user only inside an assigned company", () => {
+    const companyA = company({ id: "company-a", slug: "company-a" });
+    const companyB = company({ id: "company-b", slug: "company-b" });
+    const agent: UserProfile = {
+      id: "metrics-agent",
+      companyId: null,
+      name: "Metrics Agent",
+      email: "metrics-agent@example.test",
+      role: "agent",
+      status: "active",
+      title: "",
+      avatar: "",
+      assignedCompanyIds: [companyA.id],
+      modulePermissions: [{ companyId: companyA.id, module: "metrics", level: "view" }],
+    };
+
+    expect(resolveMetricsCompanyForActor([companyA, companyB], agent, companyA.id)).toBe(companyA);
+    expect(resolveMetricsCompanyForActor([companyA, companyB], agent, companyB.id)).toBeNull();
+  });
+
   it("prefers company-specific reportería settings over legacy defaults", () => {
     const profile = getMetricsProfile(
       company({
         modules: {
+          ...baseModules,
           metrics: {
             enabled: true,
             settings: { accountName: "GT Ads", objective: "LEADS" },
@@ -75,6 +103,7 @@ describe("portal module configuration", () => {
     const profile = getMetricsProfile(
       company({
         modules: {
+          ...baseModules,
           metrics: {
             enabled: true,
             settings: {
@@ -96,6 +125,7 @@ describe("portal module configuration", () => {
     const navigation = buildPortalNavigation({
       active: "home",
       modules: {
+        ...baseModules,
         metrics: { enabled: false, settings: {} },
         radar: { enabled: true, settings: {} },
         content: { enabled: false, settings: {} },
@@ -109,6 +139,7 @@ describe("portal module configuration", () => {
     const navigation = buildPortalNavigation({
       active: "home",
       modules: {
+        ...baseModules,
         metrics: { enabled: false, settings: {} },
         radar: { enabled: false, settings: {} },
         content: { enabled: false, settings: {} },
@@ -120,14 +151,14 @@ describe("portal module configuration", () => {
 
   it("renders Contenido only when its entitlement is active", () => {
     const modules = {
+      support: { enabled: true, settings: {} },
       metrics: { enabled: false, settings: {} },
       radar: { enabled: false, settings: {} },
-      content: { enabled: true, settings: { workspaceId: "nexops", syncFrequency: "weekly" as const } },
+      content: { enabled: true, settings: {} },
     };
     expect(buildPortalNavigation({ active: "content", modules }).map((item) => item.label)).toEqual([
       "Inicio", "Soporte", "Contenido",
     ]);
-    expect(getContentWorkspaceId(company({ modules }))).toBe("nexops");
   });
 
   it("requires a company-specific workspace before Radar can load data", () => {
@@ -135,6 +166,7 @@ describe("portal module configuration", () => {
       getRadarWorkspaceId(
         company({
           modules: {
+            ...baseModules,
             metrics: { enabled: false, settings: {} },
             radar: { enabled: true, settings: {} },
             content: { enabled: false, settings: {} },
@@ -147,6 +179,7 @@ describe("portal module configuration", () => {
       getRadarWorkspaceId(
         company({
           modules: {
+            ...baseModules,
             metrics: { enabled: false, settings: {} },
             radar: { enabled: true, settings: { workspaceId: "radar-global-trip" } },
             content: { enabled: false, settings: {} },
@@ -156,11 +189,12 @@ describe("portal module configuration", () => {
     ).toBe("radar-global-trip");
   });
 
-  it("lets the platform admin open the NexOps Radar without becoming a client user", () => {
+  it("requires an explicit company when an internal user opens Radar", () => {
     const nexops = company({
       id: "nexops",
       name: "Sysnexops",
       modules: {
+        ...baseModules,
         metrics: { enabled: false, settings: {} },
         radar: { enabled: true, settings: { workspaceId: "nexops" } },
         content: { enabled: false, settings: {} },
@@ -177,13 +211,15 @@ describe("portal module configuration", () => {
       avatar: "",
     };
 
-    expect(resolveRadarCompanyForActor([company(), nexops], admin)).toBe(nexops);
+    expect(resolveRadarCompanyForActor([company(), nexops], admin)).toBeNull();
+    expect(resolveRadarCompanyForActor([company(), nexops], admin, "nexops")).toBe(nexops);
     expect(admin.companyId).toBeNull();
   });
 
   it("does not expose the NexOps Radar to other internal roles", () => {
     const nexops = company({
       modules: {
+        ...baseModules,
         metrics: { enabled: false, settings: {} },
         radar: { enabled: true, settings: { workspaceId: "nexops" } },
         content: { enabled: false, settings: {} },
@@ -203,21 +239,31 @@ describe("portal module configuration", () => {
     expect(resolveRadarCompanyForActor([nexops], agent)).toBeNull();
   });
 
-  it("resolves the NexOps Contenido workspace for platform admins and team leads only", () => {
+  it("requires an explicit assigned company for internal Contenido access", () => {
     const nexops = company({
       id: "nexops",
       modules: {
+        support: { enabled: true, settings: {} },
         metrics: { enabled: false, settings: {} },
         radar: { enabled: false, settings: {} },
-        content: { enabled: true, settings: { workspaceId: "nexops", syncFrequency: "weekly" } },
+        content: { enabled: true, settings: {} },
       },
     });
     const base: UserProfile = {
       id: "internal", companyId: null, name: "NexOps", email: "info@nexopstech.com",
       role: "platform_admin", status: "active", title: "", avatar: "",
     };
-    expect(resolveContentCompanyForActor([nexops], base)).toBe(nexops);
-    expect(resolveContentCompanyForActor([nexops], { ...base, role: "team_lead" })).toBe(nexops);
-    expect(resolveContentCompanyForActor([nexops], { ...base, role: "agent" })).toBeNull();
+    expect(resolveContentCompanyForActor([nexops], base)).toBeNull();
+    expect(resolveContentCompanyForActor([nexops], base, nexops.id)).toBe(nexops);
+
+    const agent: UserProfile = {
+      ...base,
+      id: "content-agent",
+      role: "agent",
+      assignedCompanyIds: [nexops.id],
+      modulePermissions: [{ companyId: nexops.id, module: "content", level: "view" }],
+    };
+    expect(resolveContentCompanyForActor([nexops], agent, nexops.id)).toBe(nexops);
+    expect(resolveContentCompanyForActor([nexops], { ...agent, modulePermissions: [] }, nexops.id)).toBeNull();
   });
 });
