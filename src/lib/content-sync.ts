@@ -33,6 +33,7 @@ function safeError(error: unknown) {
 
 async function recordSyncEvent(input: {
   runId: string;
+  leaseToken: string;
   workspaceId: string;
   companyId: string;
   accountId?: string;
@@ -44,10 +45,11 @@ async function recordSyncEvent(input: {
   eventKey: string;
 }) {
   const admin = getSupabaseAdminClient();
-  await admin.from("content_sync_events").upsert({
+  const { error } = await admin.from("content_sync_events").upsert({
     workspace_id: input.workspaceId,
     company_id: input.companyId,
     run_id: input.runId,
+    lease_token: input.leaseToken,
     account_id: input.accountId ?? null,
     level: input.level,
     code: input.code,
@@ -56,6 +58,7 @@ async function recordSyncEvent(input: {
     retryable: input.retryable ?? false,
     event_key: input.eventKey,
   }, { onConflict: "run_id,account_id,event_key", ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
 }
 
 async function persistMedia(input: {
@@ -63,6 +66,7 @@ async function persistMedia(input: {
   companyId: string;
   accountId: string;
   runId: string;
+  leaseToken: string;
   media: InstagramMedia;
   token: string;
   own: boolean;
@@ -70,53 +74,15 @@ async function persistMedia(input: {
   observedAt: string;
 }) {
   const admin = getSupabaseAdminClient();
-  const { data: existing, error: existingError } = await admin.from("content_instagram_media")
-    .select("id").eq("workspace_id", input.workspaceId).eq("instagram_media_id", input.media.id).maybeSingle();
-  if (existingError) throw new Error(existingError.message);
-
-  const values = {
-    workspace_id: input.workspaceId,
-    company_id: input.companyId,
-    account_id: input.accountId,
-    instagram_media_id: input.media.id,
-    caption: input.media.caption ?? null,
-    media_type: input.media.media_type ?? null,
-    media_product_type: input.media.media_product_type ?? null,
-    permalink: input.media.permalink ?? null,
-    media_url: input.media.media_url ?? null,
-    thumbnail_url: input.media.thumbnail_url ?? null,
-    published_at: input.media.timestamp ?? null,
-    last_observed_at: input.observedAt,
-    raw_payload: input.media,
-    updated_at: input.observedAt,
-  };
-
-  let mediaId: string;
-  let created: boolean;
-  if (existing) {
-    const { data, error } = await admin.from("content_instagram_media").update(values)
-      .eq("id", existing.id).eq("company_id", input.companyId).select("id").single();
-    if (error) throw new Error(error.message);
-    mediaId = String(data.id);
-    created = false;
-  } else {
-    const { data, error } = await admin.from("content_instagram_media").insert({
-      ...values,
-      first_observed_at: input.observedAt,
-    }).select("id").single();
-    if (error) throw new Error(error.message);
-    mediaId = String(data.id);
-    created = true;
-  }
-
   let insights: Record<string, number | null> = {};
   if (input.own) {
     try {
-      insights = await fetchInstagramMediaInsights(input.media.id, input.token);
+      insights = await fetchInstagramMediaInsights(input.media.id, input.token, input.media);
     } catch (error) {
       const detail = safeError(error);
       await recordSyncEvent({
         runId: input.runId,
+        leaseToken: input.leaseToken,
         workspaceId: input.workspaceId,
         companyId: input.companyId,
         accountId: input.accountId,
@@ -140,27 +106,21 @@ async function persistMedia(input: {
     total_interactions: insights.total_interactions ?? null,
   };
   const metricsHash = dataHash(metrics);
-  const { data: latest, error: latestError } = await admin.from("content_media_metric_snapshots")
-    .select("metrics_hash").eq("company_id", input.companyId).eq("media_id", mediaId)
-    .order("observed_at", { ascending: false }).limit(1).maybeSingle();
-  if (latestError) throw new Error(latestError.message);
-  let snapshotCreated = false;
-  if (!latest || latest.metrics_hash !== metricsHash) {
-    const { error } = await admin.from("content_media_metric_snapshots").insert({
-      workspace_id: input.workspaceId,
-      company_id: input.companyId,
-      media_id: mediaId,
-      run_id: input.runId,
-      adapter_version: input.adapterVersion,
-      observed_at: input.observedAt,
-      ...metrics,
-      metrics_hash: metricsHash,
-      raw_metrics: metrics,
-    });
-    if (error) throw new Error(error.message);
-    snapshotCreated = true;
-  }
-  return { created, snapshotCreated };
+  const { data, error } = await admin.rpc("persist_content_media_observation", {
+    target_run_id: input.runId,
+    target_lease_token: input.leaseToken,
+    target_company_id: input.companyId,
+    target_workspace_id: input.workspaceId,
+    target_account_id: input.accountId,
+    target_adapter_version: input.adapterVersion,
+    target_observed_at: input.observedAt,
+    target_media: input.media,
+    target_metrics: metrics,
+    target_metrics_hash: metricsHash,
+  });
+  if (error) throw new Error(error.message);
+  const result = Array.isArray(data) ? data[0] : data;
+  return { created: Boolean(result?.created), snapshotCreated: Boolean(result?.snapshot_created) };
 }
 
 async function persistAccountSnapshot(input: {
@@ -169,37 +129,21 @@ async function persistAccountSnapshot(input: {
   account: { id: string; kind: "own" | "competitor" | "reference"; username: string };
   profile: InstagramProfileSnapshot;
   runId: string;
+  leaseToken: string;
   adapterVersion: string;
   observedAt: string;
   token: string;
 }) {
   const admin = getSupabaseAdminClient();
-  const { error: accountError } = await admin.from("content_instagram_accounts").update({
-    instagram_account_id: input.profile.id ?? input.profile.ig_id ?? null,
-    username: input.profile.username.toLowerCase(),
-    display_name: input.profile.name ?? input.profile.username,
-    availability_status: "available",
-    last_access_at: input.observedAt,
-    last_sync_at: input.observedAt,
-    last_error: null,
-    updated_at: input.observedAt,
-  }).eq("id", input.account.id).eq("company_id", input.companyId).eq("workspace_id", input.workspaceId);
-  if (accountError) throw new Error(accountError.message);
-
-  const { error: snapshotError } = await admin.from("content_account_snapshots").insert({
-    workspace_id: input.workspaceId,
-    company_id: input.companyId,
-    account_id: input.account.id,
-    run_id: input.runId,
-    adapter_version: input.adapterVersion,
-    observed_at: input.observedAt,
-    biography: input.profile.biography ?? null,
-    website: input.profile.website ?? null,
-    profile_picture_url: input.profile.profile_picture_url ?? null,
-    followers_count: input.profile.followers_count ?? null,
-    follows_count: input.profile.follows_count ?? null,
-    media_count: input.profile.media_count ?? null,
-    raw_payload: input.profile,
+  const { error: snapshotError } = await admin.rpc("persist_content_account_observation", {
+    target_run_id: input.runId,
+    target_lease_token: input.leaseToken,
+    target_company_id: input.companyId,
+    target_workspace_id: input.workspaceId,
+    target_account_id: input.account.id,
+    target_adapter_version: input.adapterVersion,
+    target_observed_at: input.observedAt,
+    target_profile: input.profile,
   });
   if (snapshotError) throw new Error(snapshotError.message);
 
@@ -212,6 +156,7 @@ async function persistAccountSnapshot(input: {
       companyId: input.companyId,
       accountId: input.account.id,
       runId: input.runId,
+      leaseToken: input.leaseToken,
       media,
       token: input.token,
       own: input.account.kind === "own",
@@ -255,12 +200,14 @@ export async function refreshContentWorkspace(input: {
   }
 
   const runId = String(claimed.run_id);
+  const leaseToken = String(claimed.lease_token);
   const { data: accounts, error: accountsError } = await admin.from("content_instagram_accounts")
     .select("id, account_kind, username").eq("workspace_id", input.workspaceId).eq("company_id", input.companyId)
     .eq("active", true).is("retired_at", null).order("account_kind");
   if (accountsError) throw new Error(accountsError.message);
 
   let accountsSucceeded = 0;
+  let accountsAttempted = 0;
   let publicationsNew = 0;
   let publicationsKnown = 0;
   let snapshotsCreated = 0;
@@ -269,14 +216,17 @@ export async function refreshContentWorkspace(input: {
   const observedAt = new Date().toISOString();
 
   for (const account of accounts ?? []) {
-    await admin.from("content_sync_run_accounts").upsert({
+    accountsAttempted += 1;
+    const { error: runAccountError } = await admin.from("content_sync_run_accounts").upsert({
       run_id: runId,
       account_id: account.id,
       workspace_id: input.workspaceId,
       company_id: input.companyId,
+      lease_token: leaseToken,
       status: "pending",
       started_at: new Date().toISOString(),
     }, { onConflict: "run_id,account_id" });
+    if (runAccountError) throw new Error(runAccountError.message);
     try {
       const profile = account.account_kind === "own"
         ? await fetchOwnInstagramProfile(String(connection.instagram_user_id), token)
@@ -287,6 +237,7 @@ export async function refreshContentWorkspace(input: {
         account: { id: String(account.id), kind: account.account_kind, username: String(account.username) },
         profile,
         runId,
+        leaseToken,
         adapterVersion,
         observedAt,
         token,
@@ -295,27 +246,37 @@ export async function refreshContentWorkspace(input: {
       publicationsNew += persisted.publicationsNew;
       publicationsKnown += persisted.publicationsKnown;
       snapshotsCreated += persisted.snapshotsCreated;
-      await admin.from("content_sync_run_accounts").update({ status: "completed", finished_at: new Date().toISOString() })
-        .eq("run_id", runId).eq("account_id", account.id);
+      const { error: completeError } = await admin.from("content_sync_run_accounts").update({ status: "completed", finished_at: new Date().toISOString() })
+        .eq("run_id", runId).eq("account_id", account.id).eq("lease_token", leaseToken);
+      if (completeError) throw new Error(completeError.message);
     } catch (error) {
       const detail = safeError(error);
       errorCount += 1;
       lastError = detail.message;
-      const status = detail.code === "unsupported" ? "unsupported" : "failed";
-      await admin.from("content_instagram_accounts").update({
-        availability_status: status === "unsupported" ? "unsupported" : "error",
-        last_access_at: observedAt,
-        last_error: detail.message,
-        updated_at: observedAt,
-      }).eq("id", account.id).eq("company_id", input.companyId);
-      await admin.from("content_sync_run_accounts").update({
-        status,
+      const availabilityStatus = detail.code === "unsupported"
+        ? "unsupported"
+        : detail.code === "not_found" ? "not_found" : "error";
+      const runAccountStatus = availabilityStatus === "error" ? "failed" : availabilityStatus;
+      const { error: accountFailureError } = await admin.rpc("record_content_account_failure", {
+        target_run_id: runId,
+        target_lease_token: leaseToken,
+        target_company_id: input.companyId,
+        target_workspace_id: input.workspaceId,
+        target_account_id: account.id,
+        target_status: availabilityStatus,
+        target_error: detail.message,
+      });
+      if (accountFailureError) throw new Error(accountFailureError.message);
+      const { error: runFailureError } = await admin.from("content_sync_run_accounts").update({
+        status: runAccountStatus,
         finished_at: new Date().toISOString(),
         error_code: detail.code,
         retryable: detail.retryable,
-      }).eq("run_id", runId).eq("account_id", account.id);
+      }).eq("run_id", runId).eq("account_id", account.id).eq("lease_token", leaseToken);
+      if (runFailureError) throw new Error(runFailureError.message);
       await recordSyncEvent({
         runId,
+        leaseToken,
         workspaceId: input.workspaceId,
         companyId: input.companyId,
         accountId: String(account.id),
@@ -326,42 +287,40 @@ export async function refreshContentWorkspace(input: {
         retryable: detail.retryable,
         eventKey: "account-sync",
       });
+      if (detail.code === "reconnect_required") {
+        const { error: reconnectError } = await admin.from("content_instagram_connections").update({
+          status: "reconnect_required",
+          last_error: detail.message,
+          updated_at: new Date().toISOString(),
+        }).eq("id", connection.id).eq("company_id", input.companyId).eq("workspace_id", input.workspaceId);
+        if (reconnectError) throw new Error(reconnectError.message);
+        break;
+      }
     }
   }
 
-  const nextSyncAt = new Date(Date.now() + 7 * 24 * 60 * 60_000).toISOString();
   const status = errorCount === 0 ? "completed" : accountsSucceeded > 0 ? "partial" : "failed";
-  const finishedAt = new Date().toISOString();
-  const { error: finishError } = await admin.from("content_sync_runs").update({
-    status,
-    finished_at: finishedAt,
-    accounts_attempted: accounts?.length ?? 0,
-    accounts_succeeded: accountsSucceeded,
-    publications_new: publicationsNew,
-    publications_known: publicationsKnown,
-    snapshots_created: snapshotsCreated,
-    error_count: errorCount,
-    last_error: lastError,
-  }).eq("id", runId).eq("company_id", input.companyId).eq("workspace_id", input.workspaceId);
+  const { error: finishError } = await admin.rpc("finish_content_sync", {
+    target_run_id: runId,
+    target_lease_token: leaseToken,
+    target_connection_id: connection.id,
+    target_status: status,
+    target_accounts_attempted: accountsAttempted,
+    target_accounts_succeeded: accountsSucceeded,
+    target_publications_new: publicationsNew,
+    target_publications_known: publicationsKnown,
+    target_snapshots_created: snapshotsCreated,
+    target_error_count: errorCount,
+    target_last_error: lastError,
+  });
   if (finishError) throw new Error(finishError.message);
-
-  await Promise.all([
-    admin.from("content_instagram_connections").update({
-      last_sync_at: finishedAt,
-      next_sync_at: nextSyncAt,
-      last_error: status === "failed" ? lastError : null,
-      updated_at: finishedAt,
-    }).eq("id", connection.id).eq("company_id", input.companyId),
-    admin.from("content_workspaces").update({ next_sync_at: nextSyncAt, updated_at: finishedAt })
-      .eq("id", input.workspaceId).eq("company_id", input.companyId),
-  ]);
 
   return { acquired: true, runId, retryAfterSeconds: 0, status, accountsSucceeded, errorCount, publicationsNew, publicationsKnown, snapshotsCreated };
 }
 
-export async function refreshCurrentContentWorkspace(requestKey: string = randomUUID()) {
-  const context = await getContentPortalContext();
-  if (!context.canManage) throw new Error("Tu rol puede consultar Contenido, pero no actualizar sus fuentes.");
+export async function refreshCurrentContentWorkspace(requestKey: string = randomUUID(), companyLookup?: string) {
+  const context = await getContentPortalContext(companyLookup);
+  if (!context.canOperate) throw new Error("Tu rol puede consultar Contenido, pero no actualizar sus fuentes.");
   return refreshContentWorkspace({
     companyId: context.company.id,
     workspaceId: context.workspace.id,
@@ -375,19 +334,21 @@ export async function refreshScheduledContentWorkspaces() {
   const admin = getSupabaseAdminClient();
   const now = new Date().toISOString();
   const { data: workspaces, error } = await admin.from("content_workspaces")
-    .select("id, company_id").eq("scheduled_enabled", true).or(`next_sync_at.is.null,next_sync_at.lte.${now}`);
+    .select("id, company_id").eq("scheduled_enabled", true).or(`next_sync_at.is.null,next_sync_at.lte.${now}`).limit(10);
   if (error) throw new Error(error.message);
   const weekKey = now.slice(0, 10);
-  return Promise.all((workspaces ?? []).map(async (workspace) => {
+  const results = [];
+  for (const workspace of workspaces ?? []) {
     try {
-      return await refreshContentWorkspace({
+      results.push(await refreshContentWorkspace({
         companyId: String(workspace.company_id),
         workspaceId: String(workspace.id),
         trigger: "scheduled",
         requestKey: `scheduled:${weekKey}:${workspace.id}`,
-      });
+      }));
     } catch (syncError) {
-      return { acquired: false, runId: null, retryAfterSeconds: 0, error: safeError(syncError).message };
+      results.push({ acquired: false, runId: null, retryAfterSeconds: 0, error: safeError(syncError).message });
     }
-  }));
+  }
+  return results;
 }

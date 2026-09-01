@@ -42,7 +42,8 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
   const visibleModuleCount =
     Number(supportVisible) +
     Number(hasModuleAccess(actor, company, "metrics", "view")) +
-    Number(hasModuleAccess(actor, company, "radar", "view"));
+    Number(hasModuleAccess(actor, company, "radar", "view")) +
+    Number(hasModuleAccess(actor, company, "content", "view"));
 
   return (
     <AppShell
@@ -125,6 +126,21 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
             <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
               <span className="rounded-full bg-fuchsia-50 px-3 py-1.5 text-fuchsia-800">Oportunidades</span>
               <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-indigo-800">Autonomía</span>
+            </div>
+          </PortalHomeCard>
+        ) : null}
+
+        {hasModuleAccess(actor, company, "content", "view") ? (
+          <PortalHomeCard
+            href="/portal/contenido"
+            eyebrow="Contenido"
+            title="Fuentes e historial editorial"
+            description="Conectá Instagram oficialmente, administrá las cuentas observadas y controlá cada recolección desde tu workspace."
+            meta="Datos oficiales · Fase 1"
+          >
+            <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
+              <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-indigo-800">Instagram</span>
+              <span className="rounded-full bg-sky-50 px-3 py-1.5 text-sky-800">Historial</span>
             </div>
           </PortalHomeCard>
         ) : null}

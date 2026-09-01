@@ -8,9 +8,9 @@ import { getContentPortalContext } from "@/lib/content-store";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContentAccountsPage({ searchParams }: { searchParams: Promise<{ success?: string }> }) {
+export default async function ContentAccountsPage({ searchParams }: { searchParams: Promise<{ success?: string; company?: string }> }) {
   const params = await searchParams;
-  const context = await getContentPortalContext();
+  const context = await getContentPortalContext(params.company);
   const observed = context.accounts.filter((account) => account.kind !== "own");
   const counts = {
     competitor: observed.filter((account) => account.kind === "competitor" && account.active).length,
@@ -23,6 +23,7 @@ export default async function ContentAccountsPage({ searchParams }: { searchPara
         <SectionCard title="Agregar cuenta" description={`Competidores ${counts.competitor}/5 · Referencias ${counts.reference}/3`} tone="light">
           {context.canManage ? (
             <PendingForm action={addObservedAccountAction} className="grid gap-3">
+              <input type="hidden" name="company" value={context.company.id} />
               <label className="grid gap-1.5 text-xs font-bold text-slate-700">Tipo
                 <select name="kind" className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900">
                   <option value="competitor">Competidor</option>
@@ -47,15 +48,19 @@ export default async function ContentAccountsPage({ searchParams }: { searchPara
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2"><p className="truncate font-bold text-slate-950">@{account.username}</p><ContentStatus status={account.availabilityStatus} /></div>
                   <p className="mt-1 text-xs text-slate-500">{account.kind === "own" ? "Cuenta propia" : account.kind === "competitor" ? "Competidor" : "Referencia"}{account.lastSyncAt ? ` · última recolección ${new Date(account.lastSyncAt).toLocaleString("es-AR")}` : " · todavía sin recolectar"}</p>
+                  {account.note ? <p className="mt-1 text-xs text-slate-600">{account.note}</p> : null}
+                  {account.lastAccessAt ? <p className="mt-1 text-[11px] text-slate-400">Último acceso: {new Date(account.lastAccessAt).toLocaleString("es-AR")}</p> : null}
                   {account.lastError ? <p className="mt-1 text-xs text-rose-700">{account.lastError}</p> : null}
                 </div>
                 {context.canManage && account.kind !== "own" ? (
                   <div className="flex gap-2">
                     <PendingForm action={setObservedAccountActiveAction}>
+                      <input type="hidden" name="company" value={context.company.id} />
                       <input type="hidden" name="accountId" value={account.id} /><input type="hidden" name="active" value={account.active ? "false" : "true"} />
                       <PendingSubmitButton aria-label={account.active ? "Pausar cuenta" : "Reactivar cuenta"} idleLabel={account.active ? "Pausar" : "Reactivar"} pendingLabel="Guardando…" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50" />
                     </PendingForm>
                     <PendingForm action={retireObservedAccountAction}>
+                      <input type="hidden" name="company" value={context.company.id} />
                       <input type="hidden" name="accountId" value={account.id} />
                       <PendingSubmitButton aria-label="Retirar cuenta" idleLabel="Retirar" pendingLabel="Retirando…" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-rose-200 px-3 text-xs font-bold text-rose-700 hover:bg-rose-50" />
                     </PendingForm>

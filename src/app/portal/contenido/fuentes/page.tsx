@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2, KeyRound, ShieldCheck } from "lucide-react";
 
-import { selectMetaAccountAction } from "@/app/portal/contenido/actions";
+import { selectMetaAccountAction, setContentConnectorEnabledAction } from "@/app/portal/contenido/actions";
 import { ContentShell, ContentStatus } from "@/components/content/content-shell";
 import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
 import { InlineNotice, SectionCard } from "@/components/ui";
@@ -13,10 +13,10 @@ export const dynamic = "force-dynamic";
 export default async function ContentSourcesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; company?: string }>;
 }) {
   const params = await searchParams;
-  const context = await getContentPortalContext();
+  const context = await getContentPortalContext(params.company);
   const connection = context.connection;
   return (
     <ContentShell context={context} active="sources" title="Fuentes oficiales" description="Conectá la cuenta propia y verificá exactamente qué acceso usa NexOps para recolectar datos.">
@@ -38,13 +38,20 @@ export default async function ContentSourcesPage({
             </div>
             {context.canManage ? (
               context.metaConfigured ? (
-                <Link href="/api/meta/instagram/connect" className="mt-4 inline-flex min-h-10 items-center rounded-lg bg-indigo-700 px-4 text-sm font-bold text-white hover:bg-indigo-800">
+                <Link href={`/api/meta/instagram/connect?company=${encodeURIComponent(context.company.id)}`} className="mt-4 inline-flex min-h-10 items-center rounded-lg bg-indigo-700 px-4 text-sm font-bold text-white hover:bg-indigo-800">
                   {connection?.status === "connected" ? "Reconectar con Meta" : "Conectar con Meta"}
                 </Link>
               ) : (
                 <button disabled className="mt-4 min-h-10 cursor-not-allowed rounded-lg bg-slate-200 px-4 text-sm font-bold text-slate-500">Conectar con Meta</button>
               )
             ) : <p className="mt-4 text-xs text-slate-500">Solo un administrador puede cambiar esta conexión.</p>}
+            {context.canManage && connection ? (
+              <PendingForm action={setContentConnectorEnabledAction} className="mt-3">
+                <input type="hidden" name="company" value={context.company.id} />
+                <input type="hidden" name="enabled" value={connection.enabled ? "false" : "true"} />
+                <PendingSubmitButton idleLabel={connection.enabled ? "Pausar recolección" : "Reactivar recolección"} pendingLabel="Guardando…" className="min-h-9 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700 hover:bg-white" />
+              </PendingForm>
+            ) : null}
           </div>
 
           {connection?.status === "selection_required" && context.canManage ? (
@@ -52,6 +59,7 @@ export default async function ContentSourcesPage({
               <p className="text-sm font-bold text-slate-950">Elegí la cuenta profesional</p>
               {connection.selectionOptions.map((option) => (
                 <PendingForm key={option.instagramUserId} action={selectMetaAccountAction} className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <input type="hidden" name="company" value={context.company.id} />
                   <input type="hidden" name="instagramUserId" value={option.instagramUserId} />
                   <div><p className="text-sm font-bold text-slate-900">@{option.instagramUsername ?? option.instagramUserId}</p><p className="text-xs text-slate-600">{option.pageName}</p></div>
                   <PendingSubmitButton idleLabel="Usar esta" pendingLabel="Conectando…" className="rounded-lg bg-amber-700 px-3 py-2 text-xs font-bold text-white" />

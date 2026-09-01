@@ -6,8 +6,9 @@ import { getContentPortalContext } from "@/lib/content-store";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContentDataPage() {
-  const context = await getContentPortalContext();
+export default async function ContentDataPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+  const params = await searchParams;
+  const context = await getContentPortalContext(params.company);
   const accountById = new Map(context.accounts.map((account) => [account.id, account]));
   const latestByAccount = new Map<string, (typeof context.latestSnapshots)[number]>();
   context.latestSnapshots.forEach((snapshot) => {
@@ -26,7 +27,7 @@ export default async function ContentDataPage() {
       </SectionCard>
 
       <SectionCard title="Publicaciones registradas" description="Identidad estable y primera/última observación de cada publicación." tone="light">
-        <div className="grid gap-2">{context.recentMedia.map((media) => <article key={media.id} className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:items-center"><div><p className="text-xs font-bold text-slate-950">@{accountById.get(media.accountId)?.username ?? "cuenta"}</p><p className="text-[11px] text-slate-500">{media.mediaType ?? "PUBLICACIÓN"}</p></div><p className="line-clamp-2 text-sm leading-5 text-slate-600">{media.caption || "Sin texto"}</p>{media.permalink ? <a href={media.permalink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold text-indigo-700">Abrir <ExternalLink size={12} /></a> : null}</article>)}{!context.recentMedia.length ? <p className="py-10 text-center text-sm text-slate-500">La primera recolección completará este inventario.</p> : null}</div>
+        <div className="grid gap-2">{context.recentMedia.map((media) => <article key={media.id} className="grid gap-3 rounded-xl border border-slate-200 p-3 lg:grid-cols-[150px_minmax(0,1fr)_minmax(280px,auto)] lg:items-center"><div><p className="text-xs font-bold text-slate-950">@{accountById.get(media.accountId)?.username ?? "cuenta"}</p><p className="text-[11px] text-slate-500">{media.mediaType ?? "PUBLICACIÓN"}</p>{media.permalink ? <a href={media.permalink} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-indigo-700">Abrir <ExternalLink size={12} /></a> : null}</div><p className="line-clamp-2 text-sm leading-5 text-slate-600">{media.caption || "Sin texto"}</p><div className="grid grid-cols-4 gap-1.5 text-center"><div className="rounded-lg bg-slate-50 p-2"><p className="font-black text-slate-950">{media.metrics?.likeCount ?? "—"}</p><p className="text-[9px] text-slate-500">Me gusta</p></div><div className="rounded-lg bg-slate-50 p-2"><p className="font-black text-slate-950">{media.metrics?.commentsCount ?? "—"}</p><p className="text-[9px] text-slate-500">Comentarios</p></div><div className="rounded-lg bg-slate-50 p-2"><p className="font-black text-slate-950">{media.metrics?.reach ?? "—"}</p><p className="text-[9px] text-slate-500">Alcance</p></div><div className="rounded-lg bg-slate-50 p-2"><p className="font-black text-slate-950">{media.metrics?.views ?? "—"}</p><p className="text-[9px] text-slate-500">Vistas</p></div></div></article>)}{!context.recentMedia.length ? <p className="py-10 text-center text-sm text-slate-500">La primera recolección completará este inventario.</p> : null}</div>
       </SectionCard>
     </ContentShell>
   );

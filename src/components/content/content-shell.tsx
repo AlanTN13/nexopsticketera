@@ -4,7 +4,7 @@ import { Database, History, Instagram, PlugZap, UsersRound } from "lucide-react"
 import { LogoutClientForm } from "@/components/forms";
 import { AppShell, SidebarUserCard } from "@/components/ui";
 import type { ContentPortalContext } from "@/lib/content-store";
-import { buildPortalNavigation } from "@/lib/portal-modules";
+import { buildPortalNavigation, getVisibleCompanyModules } from "@/lib/portal-modules";
 
 export type ContentView = "sources" | "accounts" | "data" | "history";
 
@@ -28,13 +28,16 @@ export function ContentShell({
   description: string;
   children: React.ReactNode;
 }) {
+  const companySuffix = `?company=${encodeURIComponent(context.company.id)}`;
   return (
     <AppShell
       eyebrow={`NexOps Contenido · ${context.company.name}`}
       title={title}
       description={description}
       tone="light"
-      navigation={buildPortalNavigation({ active: "content", modules: context.company.modules })}
+      navigation={buildPortalNavigation({ active: "content", modules: getVisibleCompanyModules(context.actor, context.company) }).map((item) =>
+        item.href.startsWith("/portal/contenido") ? { ...item, href: `${item.href}${companySuffix}` } : item,
+      )}
       sidebarFooter={
         <SidebarUserCard name={context.actor.name} detail={context.company.name}>
           <LogoutClientForm tone="light" />
@@ -51,7 +54,7 @@ export function ContentShell({
           {tabs.map(({ id, href, label, icon: Icon }) => (
             <Link
               key={id}
-              href={href}
+              href={`${href}${companySuffix}`}
               aria-current={id === active ? "page" : undefined}
               className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3.5 text-sm font-semibold transition ${
                 id === active ? "bg-white text-indigo-950 shadow-sm" : "text-indigo-100 hover:bg-white/10 hover:text-white"
