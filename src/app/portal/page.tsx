@@ -106,9 +106,14 @@ export default async function PortalHome({ searchParams }: PortalHomeProps) {
             meta="Fuente: reportería NexOps"
           >
             <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
-              <span className="rounded-full bg-violet-50 px-3 py-1.5 text-violet-800">Meta Ads</span>
+              {metricsProfile.metaAdsEnabled !== false ? (
+                <span className="rounded-full bg-violet-50 px-3 py-1.5 text-violet-800">Meta Ads</span>
+              ) : null}
               {metricsProfile.mailchimpName ? (
                 <span className="rounded-full bg-sky-50 px-3 py-1.5 text-sky-800">Emailing</span>
+              ) : null}
+              {metricsProfile.kommoEmbedUrl ? (
+                <span className="rounded-full bg-orange-50 px-3 py-1.5 text-orange-800">Kommo</span>
               ) : null}
             </div>
           </PortalHomeCard>

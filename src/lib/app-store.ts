@@ -132,6 +132,7 @@ export type UpdateCompanyModulesInput = {
   actorId: string;
   companyId: string;
   modules: CompanyModuleAvailability;
+  metaAdsEnabled: boolean;
   radarWorkspaceId: string | null;
   radarSiteIntegrated: boolean;
   kommoEmbedUrl: string | null;
@@ -359,6 +360,10 @@ function optionalSetting(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function optionalBooleanSetting(value: unknown) {
+  return typeof value === "boolean" ? value : undefined;
+}
+
 function mapCompanyModules(rows: CompanyModuleRow[]) {
   const byCompanyId = new Map<string, CompanyModules>();
 
@@ -373,6 +378,7 @@ function mapCompanyModules(rows: CompanyModuleRow[]) {
       modules.metrics = {
         enabled: row.enabled,
         settings: {
+          metaAdsEnabled: optionalBooleanSetting(settings.metaAdsEnabled),
           accountName: optionalSetting(settings.accountName),
           mailchimpName: optionalSetting(settings.mailchimpName),
           clientsSheetUrl: optionalSetting(settings.clientsSheetUrl),
@@ -1271,6 +1277,7 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
     module_updates: Object.entries(input.modules).map(([module, enabled]) => ({
       module,
       enabled,
+      ...(module === "metrics" ? { metaAdsEnabled: input.metaAdsEnabled } : {}),
     })),
     radar_workspace_id: input.radarWorkspaceId,
     radar_site_integrated: input.radarSiteIntegrated,
@@ -1290,6 +1297,10 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
       metrics: {
         ...company.modules.metrics,
         enabled: input.modules.metrics,
+        settings: {
+          ...company.modules.metrics.settings,
+          metaAdsEnabled: input.metaAdsEnabled,
+        },
       },
       radar: {
         ...company.modules.radar,

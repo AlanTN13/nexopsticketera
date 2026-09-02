@@ -52,7 +52,10 @@ export default async function PortalMetricsPage({
     createdAt: company.createdAt,
     updatedAt: data.loadedAt ?? company.createdAt,
   };
-  const hasPerformanceData = data.metaRows.length > 0 || data.mailchimpRows.length > 0;
+  const hasPerformanceData =
+    (profile.metaAdsEnabled !== false && data.metaRows.length > 0) ||
+    (Boolean(client.mailchimpName) && data.mailchimpRows.length > 0);
+  const hasManagedSources = profile.metaAdsEnabled !== false || Boolean(client.mailchimpName);
 
   return (
     <AppShell
@@ -76,11 +79,13 @@ export default async function PortalMetricsPage({
         </SidebarUserCard>
       }
     >
-      {hasModuleAccess(actor, company, "metrics", "operate") ? (
-        <MetricsSyncControl sync={data.sync} action={refreshMetricsAction.bind(null, company.id)} />
-      ) : (
-        <InlineNotice tone="info">Tu nivel permite consultar Métricas, pero no actualizar sus fuentes.</InlineNotice>
-      )}
+      {hasManagedSources ? (
+        hasModuleAccess(actor, company, "metrics", "operate") ? (
+          <MetricsSyncControl sync={data.sync} action={refreshMetricsAction.bind(null, company.id)} />
+        ) : (
+          <InlineNotice tone="info">Tu nivel permite consultar Métricas, pero no actualizar sus fuentes.</InlineNotice>
+        )
+      ) : null}
 
       {updated === "1" ? (
         <InlineNotice tone={partial === "1" ? "info" : "success"}>
@@ -102,16 +107,18 @@ export default async function PortalMetricsPage({
         </InlineNotice>
       ) : null}
 
-      {!hasPerformanceData ? (
+      {!hasPerformanceData && profile.metaAdsEnabled !== false ? (
         <InlineNotice tone="info">
           El dashboard ya está habilitado. Los indicadores se completan cuando quede vinculada la exportación de Meta Ads.
         </InlineNotice>
       ) : null}
 
       <MetricsWorkspace
+        key={company.id}
         client={client}
         metaRows={data.metaRows}
         mailchimpRows={data.mailchimpRows}
+        metaAdsEnabled={profile.metaAdsEnabled !== false}
         kommoEmbedUrl={profile.kommoEmbedUrl}
       />
 

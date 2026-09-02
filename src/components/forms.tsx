@@ -583,6 +583,21 @@ export function UpdateCompanyModulesForm({
         ))}
       </div>
 
+      <label className="flex cursor-pointer items-start gap-3 rounded-[18px] border border-slate-200 bg-white p-4 transition hover:border-violet-300 hover:bg-violet-50/40">
+        <input
+          type="checkbox"
+          name="metaAdsEnabled"
+          defaultChecked={company.modules.metrics.settings.metaAdsEnabled !== false}
+          className="mt-1 size-4 accent-violet-700"
+        />
+        <span className="grid gap-1">
+          <span className="text-sm font-semibold text-slate-950">Mostrar canal Meta Ads</span>
+          <span className="text-xs leading-5 text-slate-600">
+            Desactivá esta opción cuando la empresa no forme parte de la reportería de Meta Ads.
+          </span>
+        </span>
+      </label>
+
       <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="kommoEmbedUrl">
         <span className="text-xs font-semibold text-slate-700">Reporte embebido de Kommo</span>
         <input

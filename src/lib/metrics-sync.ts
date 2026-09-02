@@ -69,7 +69,13 @@ export function getConfiguredMetricsSources(profile: MetricsCompanyProfile): Sou
   const candidates: Array<[MetricsSourceType, string | undefined, string]> = [
     ["clients", profile.clientsSheetUrl, "clientes y cuentas"],
     ["strategy", profile.strategySheetUrl, "bitácora y estrategia"],
-    ["meta", profile.metaSheetUrl ?? process.env.PORTAL_METRICS_META_SHEET_URL, "Meta Ads"],
+    ...(profile.metaAdsEnabled === false
+      ? []
+      : [[
+          "meta",
+          profile.metaSheetUrl ?? process.env.PORTAL_METRICS_META_SHEET_URL,
+          "Meta Ads",
+        ] as [MetricsSourceType, string | undefined, string]]),
     [
       "mailchimp",
       profile.mailchimpSheetUrl ?? process.env.PORTAL_METRICS_MAILCHIMP_SHEET_URL,

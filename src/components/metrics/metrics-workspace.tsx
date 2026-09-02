@@ -11,14 +11,13 @@ import {
   filterByDateRange,
   getDateRangeLabel,
 } from "@/features/metrics/date-range";
+import { getInitialMetricsChannel, type MetricsChannel as Channel } from "@/lib/metrics-channels";
 import type {
   Client,
   DateRangeFilter,
   MailchimpCampaignRow,
   SheetRow,
 } from "@/features/metrics/types";
-
-type Channel = "meta" | "emailing" | "kommo";
 
 const ClientDashboard = dynamic(() =>
   import("@/components/metrics/client-dashboard").then((module) => module.ClientDashboard),
@@ -33,14 +32,22 @@ export function MetricsWorkspace({
   client,
   metaRows,
   mailchimpRows,
+  metaAdsEnabled,
   kommoEmbedUrl,
 }: {
   client: Client;
   metaRows: SheetRow[];
   mailchimpRows: MailchimpCampaignRow[];
+  metaAdsEnabled: boolean;
   kommoEmbedUrl?: string;
 }) {
-  const [channel, setChannel] = useState<Channel>("meta");
+  const [channel, setChannel] = useState<Channel | null>(() =>
+    getInitialMetricsChannel({
+      metaAdsEnabled,
+      emailingEnabled: Boolean(client.mailchimpName),
+      kommoEnabled: Boolean(kommoEmbedUrl),
+    }),
+  );
   const [dateRange, setDateRange] = useState<DateRangeFilter>(() => createDateRange("30d"));
   const filteredMetaRows = useMemo(
     () => filterByDateRange(metaRows, dateRange, (row) => row.day),
@@ -67,14 +74,16 @@ export function MetricsWorkspace({
           </div>
           <div className="flex flex-col gap-3 xl:items-end">
             <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-1" aria-label="Canal de reportería">
-              <button
-                type="button"
-                onClick={() => setChannel("meta")}
-                aria-pressed={channel === "meta"}
-                className={`min-h-10 rounded-lg px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${channel === "meta" ? "bg-[#4330a6] text-white shadow-sm" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
-              >
-                Meta Ads
-              </button>
+              {metaAdsEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => setChannel("meta")}
+                  aria-pressed={channel === "meta"}
+                  className={`min-h-10 rounded-lg px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${channel === "meta" ? "bg-[#4330a6] text-white shadow-sm" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
+                >
+                  Meta Ads
+                </button>
+              ) : null}
               {client.mailchimpName ? (
                 <button
                   type="button"
@@ -96,13 +105,13 @@ export function MetricsWorkspace({
                 </button>
               ) : null}
             </div>
-            {channel !== "kommo" ? (
+            {channel && channel !== "kommo" ? (
               <MetricsDateFilter value={dateRange} onChange={setDateRange} />
-            ) : (
+            ) : channel === "kommo" ? (
               <p className="text-xs font-medium text-slate-500">
                 El período se controla dentro del reporte de Kommo.
               </p>
-            )}
+            ) : null}
             {!kommoEmbedUrl ? (
               <p className="max-w-md rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
                 Kommo no está disponible para esta empresa porque todavía no tiene un reporte configurado.
@@ -112,22 +121,31 @@ export function MetricsWorkspace({
         </div>
       </div>
 
-      {channel === "meta" ? (
+      {channel === "meta" && metaAdsEnabled ? (
         <ClientDashboard
           client={client}
           rows={filteredMetaRows}
           hasSourceData={metaRows.length > 0}
           dateRangeLabel={dateRangeLabel}
         />
-      ) : channel === "emailing" ? (
+      ) : channel === "emailing" && client.mailchimpName ? (
         <ClientEmailingDashboard
           client={client}
           rows={filteredMailchimpRows}
           hasSourceData={clientMailchimpRows.length > 0}
           dateRangeLabel={dateRangeLabel}
         />
-      ) : (
+      ) : channel === "kommo" ? (
         <KommoEmbed companyName={client.name} url={kommoEmbedUrl} />
+      ) : (
+        <div className="grid min-h-72 place-items-center bg-white px-6 py-12 text-center">
+          <div className="max-w-md">
+            <h3 className="text-base font-semibold text-slate-950">No hay canales de reportería disponibles</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              NexOps todavía no configuró una fuente de métricas para esta empresa.
+            </p>
+          </div>
+        </div>
       )}
     </section>
   );
