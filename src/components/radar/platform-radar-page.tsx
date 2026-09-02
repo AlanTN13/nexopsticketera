@@ -1,5 +1,7 @@
 import { RadarProductScreen } from "@/components/radar/radar-product-page";
 import type { RadarView } from "@/components/radar/radar-shell";
+import { loadRadarControlPlane } from "@/lib/radar-control-plane-store";
+import { mergeRadarPendingRuns } from "@/lib/radar-product";
 import { getPlatformRadarContext } from "@/lib/platform-radar";
 
 export async function PlatformRadarPage({
@@ -7,9 +9,10 @@ export async function PlatformRadarPage({
   opportunityFilter = "all",
 }: {
   view: Exclude<RadarView, "strategy" | "operation">;
-  opportunityFilter?: "all" | "published" | "discarded";
+  opportunityFilter?: "all" | "pending" | "published" | "discarded";
 }) {
   const context = await getPlatformRadarContext();
+  const controlPlane = await loadRadarControlPlane(context.workspace.workspaceId);
   return (
     <RadarProductScreen
       view={view}
@@ -20,7 +23,7 @@ export async function PlatformRadarPage({
         companyName: "NexOps · cuenta madre",
         companyId: "",
         workspaceId: context.workspace.workspaceId,
-        model: context.model,
+        model: mergeRadarPendingRuns(context.model, controlPlane.runs),
         preferences: context.preferences,
         canManagePreferences: false,
         exitHref: "/backoffice/queue",

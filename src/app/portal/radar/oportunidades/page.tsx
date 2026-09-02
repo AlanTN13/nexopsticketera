@@ -8,6 +8,6 @@ type OpportunitiesPageProps = {
 
 export default async function RadarOpportunitiesPage({ searchParams }: OpportunitiesPageProps) {
   const { estado, company } = await searchParams;
-  const filter = estado === "published" || estado === "discarded" ? estado : "all";
+  const filter = estado === "pending" || estado === "published" || estado === "discarded" ? estado : "all";
   return <RadarProductPage view="opportunities" opportunityFilter={filter} companyLookup={company} />;
 }
