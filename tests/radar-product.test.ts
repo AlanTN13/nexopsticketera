@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildRadarProductModel } from "@/lib/radar-product";
+import { buildRadarProductModel, mergeRadarPendingRuns } from "@/lib/radar-product";
+import type { RadarRun } from "@/lib/radar-control-plane";
 import type { RadarWorkspace } from "@/lib/radar-workspace";
 
 function workspace(overrides: Partial<RadarWorkspace> = {}): RadarWorkspace {
@@ -113,5 +114,38 @@ describe("Radar product projection", () => {
   it("surfaces source failures as an intervention state", () => {
     const model = buildRadarProductModel(workspace({ publicationsState: "error" }));
     expect(model.health).toMatchObject({ state: "attention", label: "Requiere atención" });
+  });
+
+  it("puts review-pending control-plane runs at the top of opportunities", () => {
+    const model = buildRadarProductModel(workspace());
+    const run = {
+      id: "587cc266-c3bf-450b-8032-599a4a4cb334",
+      status: "review_pending",
+      updatedAt: "2026-09-02T00:35:04.626Z",
+      candidate: {
+        title: "De asistentes a agentes",
+        topic: "IA aplicada",
+        sourceName: "OpenAI",
+        sourceUrl: "https://openai.com/index/how-enterprises-put-ai-to-work/",
+        score: 94,
+        businessReasons: ["Marca un cambio operativo relevante."],
+        draft: {
+          headline: "De asistentes a agentes: cómo cambia el trabajo",
+          deck: "La IA empresarial está pasando de responder consultas a ejecutar procesos.",
+          bodyMarkdown: "Contenido de prueba suficientemente completo.",
+        },
+      },
+    } as RadarRun;
+
+    const merged = mergeRadarPendingRuns(model, [run]);
+
+    expect(merged.opportunities[0]).toMatchObject({
+      id: run.id,
+      status: "pending",
+      title: run.candidate?.draft?.headline,
+      score: 94,
+      finalUrl: null,
+    });
+    expect(merged.opportunities).toHaveLength(2);
   });
 });

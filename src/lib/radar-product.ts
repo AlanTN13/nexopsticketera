@@ -5,8 +5,9 @@ import type {
   RadarSourceState,
   RadarWorkspace,
 } from "@/lib/radar-workspace";
+import type { RadarRun } from "@/lib/radar-control-plane";
 
-export type RadarProductStatus = "published" | "discarded";
+export type RadarProductStatus = "pending" | "published" | "discarded";
 
 export type RadarProductOpportunity = {
   id: string;
@@ -186,5 +187,45 @@ export function buildRadarProductModel(workspace: RadarWorkspace): RadarProductM
       { label: "Publicaciones", state: workspace.publicationsState },
       { label: "Historial de decisiones", state: workspace.historyState },
     ],
+  };
+}
+
+export function mergeRadarPendingRuns(model: RadarProductModel, runs: RadarRun[]): RadarProductModel {
+  const pending = runs.flatMap((run): RadarProductOpportunity[] => {
+    if (run.status !== "review_pending" || !run.candidate) return [];
+    const candidate = run.candidate;
+    return [{
+      id: run.id,
+      status: "pending",
+      title: candidate.draft?.headline ?? candidate.title,
+      topic: candidate.topic,
+      category: candidate.topic,
+      summary: candidate.draft?.deck ?? candidate.businessReasons[0],
+      sourceName: candidate.sourceName,
+      sourceUrl: candidate.sourceUrl,
+      score: candidate.score,
+      occurredAt: run.updatedAt,
+      explanation: candidate.businessReasons[0] ?? null,
+      imageUrl: null,
+      finalUrl: null,
+      reasons: candidate.businessReasons.slice(0, 4).map((reason, index) => ({
+        dimension: (["business", "timeliness", "source", "novelty"] as const)[index] ?? "business",
+        label: reason,
+        score: candidate.score,
+      })),
+    }];
+  });
+
+  if (!pending.length) return model;
+
+  const opportunities = [...pending, ...model.opportunities]
+    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+  const scores = opportunities.map((opportunity) => opportunity.score);
+
+  return {
+    ...model,
+    opportunities,
+    averageScore: Math.round(scores.reduce((total, score) => total + score, 0) / scores.length),
+    latestActivityAt: opportunities[0]?.occurredAt ?? model.latestActivityAt,
   };
 }

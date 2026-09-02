@@ -29,7 +29,9 @@ import { getRadarProductContext } from "@/lib/radar-context";
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedActor } from "@/lib/auth";
 import { getPlatformRadarContext } from "@/lib/platform-radar";
+import { loadRadarControlPlane } from "@/lib/radar-control-plane-store";
 import {
+  mergeRadarPendingRuns,
   RADAR_STRATEGY,
   type RadarProductModel,
   type RadarProductOpportunity,
@@ -116,7 +118,9 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 function StateTag({ status }: { status: RadarProductOpportunity["status"] }) {
-  return status === "published" ? (
+  return status === "pending" ? (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800"><CalendarClock size={12} /> Pendiente de revisión</span>
+  ) : status === "published" ? (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700"><Check size={12} /> Publicada</span>
   ) : (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600"><X size={12} /> Descartada</span>
@@ -164,7 +168,7 @@ function MetricCard({
   );
 }
 
-function OpportunityCard({ opportunity, compact = false }: { opportunity: RadarProductOpportunity; compact?: boolean }) {
+function OpportunityCard({ opportunity, compact = false, reviewHref }: { opportunity: RadarProductOpportunity; compact?: boolean; reviewHref?: string }) {
   return (
     <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:border-[#b9a9ef] hover:shadow-[0_16px_40px_rgba(55,35,120,0.08)]">
       {opportunity.imageUrl && !compact ? (
@@ -184,7 +188,7 @@ function OpportunityCard({ opportunity, compact = false }: { opportunity: RadarP
         <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{opportunity.summary}</p>
         {opportunity.explanation ? (
           <div className={`mt-5 rounded-xl border p-4 ${opportunity.status === "published" ? "border-emerald-200 bg-emerald-50/70" : "border-slate-200 bg-slate-50"}`}>
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Por qué avanzó</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{opportunity.status === "pending" ? "Por qué Radar la propone" : "Por qué avanzó"}</p>
             <p className="mt-2 text-sm leading-6 text-slate-700">{opportunity.explanation}</p>
           </div>
         ) : null}
@@ -205,6 +209,7 @@ function OpportunityCard({ opportunity, compact = false }: { opportunity: RadarP
           <span>{formatDate(opportunity.occurredAt)} · {opportunity.sourceName}</span>
           <div className="flex items-center gap-3">
             <a href={opportunity.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-slate-700 hover:text-slate-950">Fuente <ExternalLink size={12} /></a>
+            {opportunity.status === "pending" && reviewHref ? <Link href={reviewHref} className="inline-flex items-center gap-1 font-semibold text-[#5b3db8] hover:text-[#43299c]">Revisar ahora <ChevronRight size={13} /></Link> : null}
             {opportunity.finalUrl ? <a href={opportunity.finalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#5b3db8] hover:text-[#43299c]">Ver publicación <ArrowUpRight size={13} /></a> : null}
           </div>
         </footer>
@@ -272,21 +277,22 @@ function OverviewView({ model, companyName, companyLookup, basePath, strategyAva
   );
 }
 
-function OpportunitiesView({ model, filter, companyLookup, basePath }: { model: RadarProductModel; filter: "all" | "published" | "discarded"; companyLookup?: string; basePath: string }) {
+function OpportunitiesView({ model, filter, companyLookup, basePath }: { model: RadarProductModel; filter: "all" | "pending" | "published" | "discarded"; companyLookup?: string; basePath: string }) {
   const opportunities = filter === "all" ? model.opportunities : model.opportunities.filter((item) => item.status === filter);
   const filters = [
     { value: "all", label: "Todas" },
+    { value: "pending", label: "Por revisar" },
     { value: "published", label: "Publicadas" },
     { value: "discarded", label: "Descartadas" },
   ] as const;
 
   return (
     <div className="grid gap-7">
-      <ViewHeader eyebrow="Oportunidades" title="Ideas que merecieron una decisión" description="Radar explica qué encontró, qué valor detectó y por qué decidió publicar o proteger el foco de la marca." meta={`${model.opportunities.length} decisiones`} />
+      <ViewHeader eyebrow="Oportunidades" title="Ideas detectadas por Radar" description="Revisá lo nuevo y entendé qué valor encontró Radar antes de aprobar, publicar o descartar." meta={`${model.opportunities.length} oportunidades`} />
       <div className="flex flex-wrap gap-2" aria-label="Filtrar oportunidades">
         {filters.map((item) => <Link key={item.value} href={radarHref(item.value === "all" ? "/portal/radar/oportunidades" : `/portal/radar/oportunidades?estado=${item.value}`, companyLookup, basePath)} aria-current={filter === item.value ? "page" : undefined} className={`rounded-full border px-3.5 py-2 text-xs font-bold transition ${filter === item.value ? "border-[#cfc3f4] bg-[#eeeafe] text-[#43299c]" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-950"}`}>{item.label}</Link>)}
       </div>
-      {opportunities.length ? <section className="grid gap-5 xl:grid-cols-2">{opportunities.map((opportunity) => <OpportunityCard key={opportunity.id} opportunity={opportunity} />)}</section> : <EmptyState title="No hay oportunidades en este estado" detail="Radar actualizará esta vista automáticamente cuando registre una decisión nueva." />}
+      {opportunities.length ? <section className="grid gap-5 xl:grid-cols-2">{opportunities.map((opportunity) => <OpportunityCard key={opportunity.id} opportunity={opportunity} reviewHref={radarHref("/portal/radar/operacion", companyLookup, basePath)} />)}</section> : <EmptyState title="No hay oportunidades en este estado" detail="Radar actualizará esta vista automáticamente cuando encuentre una oportunidad nueva." />}
     </div>
   );
 }
@@ -512,7 +518,7 @@ export function RadarProductScreen({
   context,
 }: {
   view: RadarView;
-  opportunityFilter?: "all" | "published" | "discarded";
+  opportunityFilter?: "all" | "pending" | "published" | "discarded";
   saved?: boolean;
   context: RadarProductScreenContext;
 }) {
@@ -545,7 +551,7 @@ export async function RadarProductPage({
   companyLookup,
 }: {
   view: RadarView;
-  opportunityFilter?: "all" | "published" | "discarded";
+  opportunityFilter?: "all" | "pending" | "published" | "discarded";
   saved?: boolean;
   companyLookup?: string;
 }) {
@@ -553,6 +559,7 @@ export async function RadarProductPage({
   const actor = await getAuthenticatedActor(db);
   if (actor?.role === "platform_admin" && !companyLookup) {
     const platform = await getPlatformRadarContext();
+    const controlPlane = await loadRadarControlPlane(platform.workspace.workspaceId);
     return (
       <RadarProductScreen
         view={view}
@@ -564,7 +571,7 @@ export async function RadarProductPage({
           companyName: "NexOps · cuenta madre",
           companyId: "",
           workspaceId: platform.workspace.workspaceId,
-          model: platform.model,
+          model: mergeRadarPendingRuns(platform.model, controlPlane.runs),
           preferences: platform.preferences,
           canManagePreferences: false,
           exitHref: "/backoffice/queue",
@@ -576,6 +583,7 @@ export async function RadarProductPage({
     );
   }
   const context = await getRadarProductContext(companyLookup);
+  const controlPlane = await loadRadarControlPlane(context.workspace.workspaceId);
 
   return (
     <RadarProductScreen
@@ -588,7 +596,7 @@ export async function RadarProductPage({
         companyName: context.company.name,
         companyId: context.company.id,
         workspaceId: context.workspace.workspaceId,
-        model: context.model,
+        model: mergeRadarPendingRuns(context.model, controlPlane.runs),
         preferences: context.preferences,
         canManagePreferences: context.canManagePreferences,
         exitHref: context.exitHref,
