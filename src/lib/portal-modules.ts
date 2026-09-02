@@ -6,6 +6,7 @@ export type PortalModule = "home" | "support" | "metrics" | "radar";
 
 export type MetricsCompanyProfile = {
   enabled?: boolean;
+  metaAdsEnabled?: boolean;
   accountName: string;
   mailchimpName?: string;
   objective?: "CONVERSACIONES" | "LEADS" | "COMPRAS";
@@ -123,6 +124,7 @@ export function getMetricsProfile(
   return {
     ...profile,
     enabled: true,
+    metaAdsEnabled: settings.metaAdsEnabled ?? profile.metaAdsEnabled ?? true,
     accountName: settings.accountName ?? profile.accountName,
     mailchimpName: settings.mailchimpName ?? profile.mailchimpName,
     objective: settings.objective ?? profile.objective,

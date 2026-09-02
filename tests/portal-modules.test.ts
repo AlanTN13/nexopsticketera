@@ -95,6 +95,22 @@ describe("portal module configuration", () => {
     expect(profile?.objective).toBe("LEADS");
   });
 
+  it("keeps Meta Ads enabled by default and allows a company-specific opt-out", () => {
+    expect(getMetricsProfile(company())?.metaAdsEnabled).toBe(true);
+
+    const profile = getMetricsProfile(
+      company({
+        modules: {
+          ...baseModules,
+          metrics: { enabled: true, settings: { metaAdsEnabled: false } },
+          radar: { enabled: false, settings: {} },
+        },
+      }),
+    );
+
+    expect(profile?.metaAdsEnabled).toBe(false);
+  });
+
   it("keeps each company's Sheet sources in its server-side module settings", () => {
     const profile = getMetricsProfile(
       company({

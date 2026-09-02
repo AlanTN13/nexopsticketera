@@ -79,7 +79,7 @@ export function parseMetricsSnapshots(
   const strategyEntries = strategy?.content
     ? parseMetricsStrategySource(strategy.content, profile.accountName, profile.accountName)
     : [];
-  const metaRows = meta?.content
+  const metaRows = profile.metaAdsEnabled !== false && meta?.content
     ? parseSheetCSV(meta.content).filter((row) => sameAccount(row.accountName, profile.accountName))
     : [];
   const mailchimpRows = mailchimp?.content
@@ -92,10 +92,16 @@ export function parseMetricsSnapshots(
 
   addSnapshotWarning(warnings, clients, "No se pudo actualizar la cuenta.");
   addSnapshotWarning(warnings, strategy, "No se pudo actualizar la estrategia.");
-  addSnapshotWarning(warnings, meta, "No se pudo actualizar Meta Ads.");
+  if (profile.metaAdsEnabled !== false) {
+    addSnapshotWarning(warnings, meta, "No se pudo actualizar Meta Ads.");
+  }
   addSnapshotWarning(warnings, mailchimp, "No se pudo actualizar Emailing.");
 
-  if (!profile.metaSheetUrl && !process.env.PORTAL_METRICS_META_SHEET_URL) {
+  if (
+    profile.metaAdsEnabled !== false &&
+    !profile.metaSheetUrl &&
+    !process.env.PORTAL_METRICS_META_SHEET_URL
+  ) {
     warnings.push("La fuente de Meta Ads todavía no está configurada en este entorno.");
   }
 

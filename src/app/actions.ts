@@ -339,6 +339,7 @@ export async function updateCompanyModulesAction(formData: FormData): Promise<Mu
         radar: formData.has("radarEnabled"),
         content: formData.has("contentEnabled"),
       },
+      metaAdsEnabled: formData.has("metaAdsEnabled"),
       radarWorkspaceId: getString(formData, "radarWorkspaceId") || null,
       radarSiteIntegrated: formData.has("radarSiteIntegrated"),
       kommoEmbedUrl: getString(formData, "kommoEmbedUrl"),

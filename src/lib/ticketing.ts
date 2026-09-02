@@ -49,6 +49,7 @@ export type ModuleAccessLevel = (typeof MODULE_ACCESS_LEVELS)[number];
 export type PortalModuleSettings = {
   support: Record<string, never>;
   metrics: {
+    metaAdsEnabled?: boolean;
     accountName?: string;
     mailchimpName?: string;
     objective?: "CONVERSACIONES" | "LEADS" | "COMPRAS";
