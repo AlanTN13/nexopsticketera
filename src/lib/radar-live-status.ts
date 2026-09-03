@@ -69,7 +69,7 @@ export function getRadarLiveView(
     return {
       mode: "working",
       phaseLabel: status === "publishing" ? "Publicación supervisada" : "Controles finales",
-      title: "Nexus Guardián está verificando la salida.",
+      title: "Nexus Editor está verificando la salida.",
       description: "La nota ya está preparada. Radar valida el circuito productivo sin habilitar nuevas órdenes ni publicación automática.",
       actionLabel: null,
       stages,
@@ -80,10 +80,14 @@ export function getRadarLiveView(
     return {
       mode: "working",
       phaseLabel: eventTypes.includes("queue_accepted") && status !== "running" ? "Misión en cola editorial" : "Investigación en curso",
-      title: requestKind === "manual_note" ? "Los Nexus están leyendo tu fuente." : "Los Nexus están buscando una oportunidad.",
+      title: eventTypes.includes("queue_accepted") && status !== "running"
+        ? "La misión ya está en manos de los Nexus."
+        : requestKind === "manual_note"
+          ? "Los Nexus están leyendo tu fuente."
+          : "Los Nexus están buscando una oportunidad.",
       description: eventTypes.includes("queue_accepted") && status !== "running"
-        ? "La misión fue aceptada por el circuito privado. El Nexus Scout toma el turno y Radar te avisa apenas vuelve con evidencia."
-        : "Radar contrasta fuentes, filtra duplicados y prepara una devolución verificable. Esta vista se actualiza sola.",
+        ? "La misión fue aceptada por el circuito privado. Nexus Scout toma el turno apenas queda disponible. Podés salir: el trabajo queda guardado y Radar te avisa cuando vuelve."
+        : "Radar contrasta fuentes, filtra duplicados y prepara una devolución verificable. Esta vista se actualiza sola y podés salir sin perder el trabajo.",
       actionLabel: null,
       stages,
     };
