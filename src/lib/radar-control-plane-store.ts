@@ -19,6 +19,7 @@ import { buildRadarQueueRequest, radarEngineConnected } from "@/lib/radar-engine
 import { radarPayloadDigest } from "@/lib/radar-engine-contract";
 import { parseRadarPreferences } from "@/lib/radar-preferences";
 import { radarPublicationConnected } from "@/lib/radar-publication";
+import { findPublishedRadarSource } from "@/lib/radar-workspace";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
 
 type UnknownRow = Record<string, unknown>;
@@ -522,13 +523,24 @@ export async function recordRadarEngineEvent(input: {
   }
   const candidate = input.candidate === undefined ? undefined : parseRadarCandidate(input.candidate);
   if (input.candidate !== undefined && !candidate) throw new Error("El candidato del motor no es seguro.");
+  const publishedSource = candidate && input.requestKind === "opportunity_search" &&
+      ["suggested", "review_pending"].includes(input.status)
+    ? await findPublishedRadarSource(input.workspaceId, candidate.sourceUrl)
+    : null;
+  const recordedStatus = publishedSource ? "no_publication" : input.status;
+  const recordedMessage = publishedSource
+    ? "Radar descartó la oportunidad porque la fuente ya estaba publicada."
+    : input.publicMessage;
+  const recordedReason = publishedSource
+    ? `Fuente ya publicada: ${publishedSource.url}`
+    : input.resultReason;
   const { data: duplicate, error } = await client.rpc("record_radar_worker_result", {
     target_run_id: input.runId,
     expected_status: currentStatus,
-    requested_status: input.status,
-    requested_public_message: input.publicMessage.slice(0, 500),
-    requested_candidate: candidate ?? null,
-    requested_result_reason: input.resultReason?.slice(0, 1200) ?? null,
+    requested_status: recordedStatus,
+    requested_public_message: recordedMessage.slice(0, 500),
+    requested_candidate: publishedSource ? null : candidate ?? null,
+    requested_result_reason: recordedReason?.slice(0, 1200) ?? null,
     requested_external_run_id: input.externalRunId?.slice(0, 120) ?? null,
     requested_external_run_url: input.externalRunUrl ?? null,
     requested_delivery_id: input.deliveryId,

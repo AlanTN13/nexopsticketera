@@ -103,6 +103,21 @@ function safeUrl(value: unknown) {
   }
 }
 
+function comparableUrl(value: string) {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_.+|fbclid|gclid)$/i.test(key)) url.searchParams.delete(key);
+    }
+    url.searchParams.sort();
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function safeScore(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100
     ? value
@@ -314,6 +329,24 @@ async function readPublications(fetchImpl: FetchLike, workspaceId: string, url: 
       .filter((item): item is RadarPublication => Boolean(item))
       .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt)),
   };
+}
+
+export async function findPublishedRadarSource(
+  workspaceId: string,
+  sourceUrl: string,
+  fetchImpl: FetchLike = fetch,
+): Promise<RadarPublication | null> {
+  const config = workspaceConfiguration(workspaceId, true);
+  const target = comparableUrl(sourceUrl);
+  if (!config || !target) return null;
+
+  try {
+    const { publications } = await readPublications(fetchImpl, workspaceId, config.publicationsUrl);
+    return publications.find((publication) => comparableUrl(publication.sourceUrl) === target) ?? null;
+  } catch {
+    // The callback remains available if the public manifest is temporarily unavailable.
+    return null;
+  }
 }
 
 async function githubApi(
