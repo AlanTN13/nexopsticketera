@@ -10,6 +10,7 @@ import {
   acceptRadarPublicationDispatch,
   decideRadarRun,
   createRadarRun,
+  cancelStalledRadarRun,
   acceptRadarDispatch,
   failRadarDispatch,
   failRadarPublicationDispatch,
@@ -151,6 +152,22 @@ export async function createManualRadarNoteAction(formData: FormData): Promise<R
     return { error: null, success: "Nota recibida. Radar la envió a revisión sin publicarla." };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "No pudimos dar de alta la nota." };
+  }
+}
+
+export async function releaseStalledRadarRunAction(formData: FormData): Promise<RadarControlMutationState> {
+  const workspaceId = value(formData, "workspaceId");
+  const runId = value(formData, "runId");
+  if (!isRadarWorkerWorkspaceId(workspaceId) || !uuid(runId)) {
+    return { error: "La misión de Radar no es válida." };
+  }
+  try {
+    await requireRadarWorkspaceAccess(workspaceId, "operate");
+    await cancelStalledRadarRun({ runId, workspaceId });
+    revalidateRadarOperation();
+    return { error: null, success: "Panel liberado. Ya podés iniciar una nueva misión." };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No pudimos liberar el panel." };
   }
 }
 

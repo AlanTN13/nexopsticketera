@@ -85,7 +85,7 @@ describe("Radar Control Plane V1", () => {
   });
 
   it("authorizes every server action before mutation and does not trust a client company id", () => {
-    expect(actions.match(/requireRadarWorkspaceAccess\(workspaceId, "operate"\)/g)).toHaveLength(3);
+    expect(actions.match(/requireRadarWorkspaceAccess\(workspaceId, "operate"\)/g)).toHaveLength(4);
     expect(actions.match(/requireRadarWorkspaceAccess\(workspaceId, "admin"\)/g)).toHaveLength(3);
     expect(actions).not.toContain('formData, "companyId"');
     expect(actions).not.toContain("getSupabaseAdminClient");

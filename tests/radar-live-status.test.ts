@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getRadarLiveView } from "@/lib/radar-live-status";
+import { getRadarLiveView, isRadarRunStalled, RADAR_STALL_TIMEOUT_MS } from "@/lib/radar-live-status";
 
 describe("Radar live operation status", () => {
   it("shows the real queue stage after the worker accepted the mission", () => {
@@ -28,5 +28,18 @@ describe("Radar live operation status", () => {
 
     expect(view.title).toContain("leyendo tu fuente");
     expect(view.stages[2].role).toContain("fuente indicada");
+  });
+});
+
+describe("isRadarRunStalled", () => {
+  const now = Date.parse("2026-09-03T21:00:00.000Z");
+
+  it("detecta una misión operativa sin señales durante el límite", () => {
+    expect(isRadarRunStalled("dispatching", new Date(now - RADAR_STALL_TIMEOUT_MS).toISOString(), now)).toBe(true);
+  });
+
+  it("no marca resultados listos ni misiones todavía dentro del tiempo normal", () => {
+    expect(isRadarRunStalled("dispatching", new Date(now - RADAR_STALL_TIMEOUT_MS + 1).toISOString(), now)).toBe(false);
+    expect(isRadarRunStalled("review_pending", new Date(now - RADAR_STALL_TIMEOUT_MS * 3).toISOString(), now)).toBe(false);
   });
 });
