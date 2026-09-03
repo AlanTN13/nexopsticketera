@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { loadRadarWorkspace, projectRadarDecision } from "@/lib/radar-workspace";
+import { findPublishedRadarSource, loadRadarWorkspace, projectRadarDecision } from "@/lib/radar-workspace";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -66,6 +66,27 @@ describe("Radar workspace data access", () => {
       outcome: "PUBLICATION",
     });
     expect(JSON.stringify(workspace)).not.toMatch(/token|secret|prompt/i);
+  });
+
+  it("finds an already-published source despite tracking parameters and trailing slashes", async () => {
+    vi.stubEnv("RADAR_PUBLICATIONS_URL", "https://radar.example/publications.json");
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify(publicationManifest()), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    const publication = await findPublishedRadarSource(
+      "nexops",
+      "https://example.org/source/?utm_source=radar#section",
+      fetchMock as typeof fetch,
+    );
+
+    expect(publication).toMatchObject({
+      title: "Radar productivo",
+      url: "https://www.nexopstech.com/noticias/radar-real",
+    });
   });
 
   it("rejects malformed or secret-bearing private history records", () => {
