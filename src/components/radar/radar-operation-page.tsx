@@ -22,6 +22,7 @@ import {
 import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
 import { RadarShell } from "@/components/radar/radar-shell";
 import { RadarPublicationComposer } from "@/components/radar/radar-publication-composer";
+import { RadarLiveOperation } from "@/components/radar/radar-live-operation";
 import { getRadarProductContext } from "@/lib/radar-context";
 import { getPlatformRadarContext } from "@/lib/platform-radar";
 import {
@@ -53,7 +54,7 @@ function RunCard({ run, workspaceId, canOperate, canAdmin, publicationConnected 
   const reviewPending = run.status === "review_pending" && run.candidate;
   const readyToCompose = run.status === "approved" && run.candidate?.draft;
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+    <article id={`run-${run.id}`} className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-bold text-[#4f35b5]">{RADAR_STATUS_COPY[run.status]}</span>
@@ -173,7 +174,16 @@ function ControlPlane({ snapshot, workspaceId, canOperate, canAdmin }: { snapsho
             </article>
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-2">
+          {activeRun ? (
+            <RadarLiveOperation
+              runId={activeRun.id}
+              status={activeRun.status}
+              requestKind={activeRun.requestKind}
+              createdAt={activeRun.createdAt}
+              updatedAt={activeRun.updatedAt}
+              events={activeRun.events}
+            />
+          ) : <section className="grid gap-5 xl:grid-cols-2">
             <article id="nueva-nota" className="rounded-2xl border border-[#d9cff7] bg-[#faf8ff] p-5 sm:p-7">
               <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#5b3db8] shadow-sm ring-1 ring-[#e2daf9]"><FilePlus2 size={18} /></span><div><h2 className="text-lg font-bold text-slate-950">Nueva nota</h2><p className="mt-1 text-sm leading-6 text-slate-600">Pegá una fuente, agregá contexto si querés y mandala a revisión sin esperar la próxima corrida.</p></div></div>
               <PendingForm action={createManualRadarNoteAction} className="mt-5 grid gap-4">
@@ -193,7 +203,7 @@ function ControlPlane({ snapshot, workspaceId, canOperate, canAdmin }: { snapsho
               </PendingForm>
             </article>
 
-          </section>
+          </section>}
 
           <section><div className="mb-4 flex items-end justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#6749c7]">Historial operativo</p><h2 className="mt-2 text-2xl font-bold text-slate-950">Corridas y decisiones</h2></div><span className="text-xs text-slate-500">{snapshot.runs.length} registradas</span></div>{snapshot.runs.length ? <div className="grid gap-4">{snapshot.runs.map((run) => <RunCard key={run.id} run={run} workspaceId={workspaceId} canOperate={canOperate} canAdmin={canAdmin} publicationConnected={snapshot.publicationConnected} />)}</div> : <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">Todavía no hay corridas iniciadas desde el Portal.</div>}</section>
         </>
