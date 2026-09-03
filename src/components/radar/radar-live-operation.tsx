@@ -41,7 +41,7 @@ function elapsedLabel(from: string, now: number | null) {
   return `${hours} h ${minutes % 60} min`;
 }
 
-function ElapsedClock({ createdAt }: { createdAt: string }) {
+function ElapsedClock({ from, label }: { from: string; label: string }) {
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ function ElapsedClock({ createdAt }: { createdAt: string }) {
     };
   }, []);
 
-  return <span className="inline-flex items-center gap-1.5"><Clock3 size={13} /> En curso hace {elapsedLabel(createdAt, now)}</span>;
+  return <span className="inline-flex items-center gap-1.5"><Clock3 size={13} /> {label} {elapsedLabel(from, now)}</span>;
 }
 
 export function RadarLiveOperation({ runId, status, requestKind, createdAt, updatedAt, events }: RadarLiveOperationProps) {
@@ -134,7 +134,7 @@ export function RadarLiveOperation({ runId, status, requestKind, createdAt, upda
           <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Última señal real</p><p className="mt-1 text-xs leading-5 text-slate-300">{latestEvent?.message ?? "Radar está registrando la primera señal."} <span className="text-slate-500">· {dateTimeFormatter.format(new Date(latestEvent?.createdAt ?? updatedAt))}</span></p></div>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold text-slate-500">
-          <ElapsedClock createdAt={createdAt} />
+          <ElapsedClock from={view.mode === "working" ? createdAt : updatedAt} label={view.mode === "working" ? "En curso hace" : "Resultado recibido hace"} />
           <button type="button" onClick={refreshNow} disabled={isRefreshing} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 text-slate-300 transition hover:bg-white/10 disabled:opacity-50"><RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Actualizando…" : refreshesAutomatically ? "Actualiza solo" : "Actualizar"}</button>
         </div>
       </div>

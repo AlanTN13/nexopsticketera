@@ -17,6 +17,7 @@ import {
 } from "@/lib/radar-control-plane";
 import { buildRadarQueueRequest, radarEngineConnected } from "@/lib/radar-engine-client";
 import { radarPayloadDigest } from "@/lib/radar-engine-contract";
+import { RADAR_STALL_TIMEOUT_MS } from "@/lib/radar-live-status";
 import { parseRadarPreferences } from "@/lib/radar-preferences";
 import { radarPublicationConnected } from "@/lib/radar-publication";
 import { findPublishedRadarSource } from "@/lib/radar-workspace";
@@ -404,6 +405,41 @@ export async function failRadarDispatch(runId: string, message?: string) {
     run_id: runId,
     event_type: "dispatch_failed",
     public_message: "No pudimos ingresar la solicitud en la cola. NexOps ya tiene el detalle técnico.",
+  });
+  if (eventError) throw new Error(eventError.message);
+}
+
+export async function cancelStalledRadarRun(input: { runId: string; workspaceId: string }) {
+  const client = getSupabaseAdminClient();
+  const { data: row, error: readError } = await client.from("radar_runs")
+    .select("id,workspace_id,status,updated_at")
+    .eq("id", input.runId)
+    .maybeSingle();
+  if (readError || !row || row.workspace_id !== input.workspaceId || !isRadarRunStatus(String(row.status))) {
+    throw new Error("Corrida de Radar inexistente.");
+  }
+  const status = String(row.status) as RadarRunStatus;
+  if (!["queued", "dispatching", "running"].includes(status)) {
+    throw new Error("La misión ya cambió de estado. Actualizá el panel para verla.");
+  }
+  const updatedAt = Date.parse(String(row.updated_at));
+  if (!Number.isFinite(updatedAt) || Date.now() - updatedAt < RADAR_STALL_TIMEOUT_MS) {
+    throw new Error("Radar todavía está dentro del tiempo normal de respuesta.");
+  }
+  const now = new Date().toISOString();
+  const { data, error } = await client.from("radar_runs").update({
+    status: "canceled",
+    error_code: "WORKER_TIMEOUT",
+    error_message: "El trabajador editorial no devolvió una señal dentro del tiempo operativo.",
+    completed_at: now,
+    updated_at: now,
+  }).eq("id", input.runId).eq("workspace_id", input.workspaceId).eq("status", status).select("id").maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("La misión cambió mientras intentábamos liberar el panel.");
+  const { error: eventError } = await client.from("radar_run_events").insert({
+    run_id: input.runId,
+    event_type: "worker_timeout_released",
+    public_message: "Radar liberó el panel porque el trabajador no respondió a tiempo. Ya podés reintentar.",
   });
   if (eventError) throw new Error(eventError.message);
 }

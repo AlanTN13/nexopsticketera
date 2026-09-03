@@ -1,5 +1,15 @@
 import type { RadarRequestKind, RadarRunStatus } from "@/lib/radar-control-plane";
 
+const STALLED_RUN_STATUSES = new Set<RadarRunStatus>(["queued", "dispatching", "running"]);
+
+export const RADAR_STALL_TIMEOUT_MS = 15 * 60 * 1_000;
+
+export function isRadarRunStalled(status: RadarRunStatus, updatedAt: string, now = Date.now()) {
+  if (!STALLED_RUN_STATUSES.has(status)) return false;
+  const lastSignalAt = Date.parse(updatedAt);
+  return Number.isFinite(lastSignalAt) && now - lastSignalAt >= RADAR_STALL_TIMEOUT_MS;
+}
+
 export type RadarLiveStage = {
   name: string;
   role: string;

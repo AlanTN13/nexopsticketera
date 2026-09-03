@@ -15,6 +15,7 @@ import {
 import {
   createManualRadarNoteAction,
   decideRadarRunAction,
+  releaseStalledRadarRunAction,
   requestRadarRunAction,
   updateRadarPreferencesAction,
   updateRadarScheduleAction,
@@ -23,6 +24,7 @@ import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
 import { RadarShell } from "@/components/radar/radar-shell";
 import { RadarPublicationComposer } from "@/components/radar/radar-publication-composer";
 import { RadarLiveOperation } from "@/components/radar/radar-live-operation";
+import { isRadarRunStalled } from "@/lib/radar-live-status";
 import { getRadarProductContext } from "@/lib/radar-context";
 import { getPlatformRadarContext } from "@/lib/platform-radar";
 import {
@@ -140,15 +142,27 @@ function EditorialPreferences({ settings, workspaceId, canAdmin }: { settings: N
 function ControlPlane({ snapshot, workspaceId, canOperate, canAdmin }: { snapshot: RadarControlPlaneSnapshot; workspaceId: string; canOperate: boolean; canAdmin: boolean }) {
   const settings = snapshot.settings;
   const activeRun = snapshot.runs.find((run) => ["queued", "dispatching", "running", "review_pending", "approved", "validating", "publishing"].includes(run.status));
+  const workerStalled = activeRun ? isRadarRunStalled(activeRun.status, activeRun.updatedAt) : false;
+  const workerReady = snapshot.engineConnected;
+  const headerState = activeRun?.status === "review_pending"
+    ? "Tu decisión"
+    : activeRun?.status === "approved"
+      ? "Lista para publicar"
+      : activeRun
+        ? "Ejecutando"
+        : settings?.enabled && workerReady
+          ? "Panel activo"
+          : settings?.enabled
+            ? "Trabajador pendiente"
+            : "Pausado";
   const lastRun = snapshot.runs[0] ?? null;
   const defaultMode = settings?.autonomyMode === "suggest" ? "suggest" : "review";
-  const workerReady = snapshot.engineConnected;
 
   return (
     <div className="grid gap-7">
       <header className="flex flex-col justify-between gap-5 border-b border-slate-200 pb-7 lg:flex-row lg:items-end">
         <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#6749c7]">Operación</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-slate-950 sm:text-4xl">Goberná Radar desde acá.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">Iniciá búsquedas, definí el modo de trabajo y seguí cada resultado sin exponer el cerebro editorial.</p></div>
-        <span className={`w-fit rounded-full border px-3 py-1.5 text-xs font-bold ${activeRun ? "border-sky-200 bg-sky-50 text-sky-700" : settings?.enabled && workerReady ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{activeRun ? "Ejecutando" : settings?.enabled && workerReady ? "Panel activo" : settings?.enabled ? "Trabajador pendiente" : "Pausado"}</span>
+        <span className={`w-fit rounded-full border px-3 py-1.5 text-xs font-bold ${activeRun ? "border-sky-200 bg-sky-50 text-sky-700" : settings?.enabled && workerReady ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{headerState}</span>
       </header>
 
       {snapshot.availability !== "ready" || !settings ? (
@@ -175,14 +189,26 @@ function ControlPlane({ snapshot, workspaceId, canOperate, canAdmin }: { snapsho
           </section>
 
           {activeRun ? (
-            <RadarLiveOperation
-              runId={activeRun.id}
-              status={activeRun.status}
-              requestKind={activeRun.requestKind}
-              createdAt={activeRun.createdAt}
-              updatedAt={activeRun.updatedAt}
-              events={activeRun.events}
-            />
+            <div className="grid gap-4">
+              <RadarLiveOperation
+                runId={activeRun.id}
+                status={activeRun.status}
+                requestKind={activeRun.requestKind}
+                createdAt={activeRun.createdAt}
+                updatedAt={activeRun.updatedAt}
+                events={activeRun.events}
+              />
+              {workerStalled ? (
+                <section className="flex flex-col gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div><h2 className="font-bold text-amber-950">Esta misión dejó de responder</h2><p className="mt-1 text-sm leading-6 text-amber-800">No vamos a dejarte el panel bloqueado. Podés cerrar esta misión y volver a intentarlo sin publicar nada.</p></div>
+                  <PendingForm action={releaseStalledRadarRunAction}>
+                    <input type="hidden" name="workspaceId" value={workspaceId} />
+                    <input type="hidden" name="runId" value={activeRun.id} />
+                    <PendingSubmitButton disabled={!canOperate} idleLabel="Liberar panel" pendingLabel="Liberando…" className="min-h-10 whitespace-nowrap rounded-lg bg-amber-900 px-4 text-xs font-bold text-white disabled:bg-slate-300" />
+                  </PendingForm>
+                </section>
+              ) : null}
+            </div>
           ) : <section className="grid gap-5 xl:grid-cols-2">
             <article id="nueva-nota" className="rounded-2xl border border-[#d9cff7] bg-[#faf8ff] p-5 sm:p-7">
               <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#5b3db8] shadow-sm ring-1 ring-[#e2daf9]"><FilePlus2 size={18} /></span><div><h2 className="text-lg font-bold text-slate-950">Nueva nota</h2><p className="mt-1 text-sm leading-6 text-slate-600">Pegá una fuente, agregá contexto si querés y mandala a revisión sin esperar la próxima corrida.</p></div></div>
