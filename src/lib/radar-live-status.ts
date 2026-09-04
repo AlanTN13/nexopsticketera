@@ -13,6 +13,7 @@ export function isRadarRunStalled(status: RadarRunStatus, updatedAt: string, now
 export type RadarLiveStage = {
   name: string;
   role: string;
+  imageSrc: string;
   state: "done" | "active" | "waiting";
 };
 
@@ -26,10 +27,26 @@ export type RadarLiveView = {
 };
 
 const STAGES = [
-  { name: "Nexus Enlace", role: "Recibe la misión y protege el contexto." },
-  { name: "Nexus Coordinador", role: "Reserva el trabajo y confirma la cola." },
-  { name: "Nexus Scout", role: "Busca fuentes, contrasta y evita duplicados." },
-  { name: "Nexus Editor", role: "Prepara la nota y la deja lista para decidir." },
+  {
+    name: "Nexy Core",
+    role: "Recibe la misión y protege el contexto.",
+    imageSrc: "/radar/nexys/nexy-core.png",
+  },
+  {
+    name: "Nexy Flow",
+    role: "Reserva el trabajo y confirma la cola.",
+    imageSrc: "/radar/nexys/nexy-flow.png",
+  },
+  {
+    name: "Nexy AI",
+    role: "Busca fuentes, contrasta y evita duplicados.",
+    imageSrc: "/radar/nexys/nexy-ai.png",
+  },
+  {
+    name: "Nexy Growth",
+    role: "Prepara la nota y la deja lista para decidir.",
+    imageSrc: "/radar/nexys/nexy-growth.png",
+  },
 ] as const;
 
 function stageIndex(status: RadarRunStatus, eventTypes: string[]) {
@@ -57,7 +74,7 @@ export function getRadarLiveView(
     return {
       mode: "action",
       phaseLabel: "Resultado listo",
-      title: "Los Nexus volvieron con una propuesta.",
+      title: "Los Nexys volvieron con una propuesta.",
       description: "La investigación terminó. La nota quedó abajo, esperando tu decisión antes de avanzar.",
       actionLabel: "Revisar propuesta",
       stages: stages.map((stage) => ({ ...stage, state: "done" })),
@@ -79,7 +96,7 @@ export function getRadarLiveView(
     return {
       mode: "working",
       phaseLabel: status === "publishing" ? "Publicación supervisada" : "Controles finales",
-      title: "Nexus Editor está verificando la salida.",
+      title: "Nexy Growth está verificando la salida.",
       description: "La nota ya está preparada. Radar valida el circuito productivo sin habilitar nuevas órdenes ni publicación automática.",
       actionLabel: null,
       stages,
@@ -91,12 +108,12 @@ export function getRadarLiveView(
       mode: "working",
       phaseLabel: eventTypes.includes("queue_accepted") && status !== "running" ? "Misión en cola editorial" : "Investigación en curso",
       title: eventTypes.includes("queue_accepted") && status !== "running"
-        ? "La misión ya está en manos de los Nexus."
+        ? "La misión ya está en manos de los Nexys."
         : requestKind === "manual_note"
-          ? "Los Nexus están leyendo tu fuente."
-          : "Los Nexus están buscando una oportunidad.",
+          ? "Los Nexys están leyendo tu fuente."
+          : "Los Nexys están buscando una oportunidad.",
       description: eventTypes.includes("queue_accepted") && status !== "running"
-        ? "La misión fue aceptada por el circuito privado. Nexus Scout toma el turno apenas queda disponible. Podés salir: el trabajo queda guardado y Radar te avisa cuando vuelve."
+        ? "La misión fue aceptada por el circuito privado. Nexy AI toma el turno apenas queda disponible. Podés salir: el trabajo queda guardado y Radar te avisa cuando vuelve."
         : "Radar contrasta fuentes, filtra duplicados y prepara una devolución verificable. Esta vista se actualiza sola y podés salir sin perder el trabajo.",
       actionLabel: null,
       stages,
@@ -107,7 +124,7 @@ export function getRadarLiveView(
     return {
       mode: "working",
       phaseLabel: "Abriendo el circuito",
-      title: "Nexus Coordinador está reservando la misión.",
+      title: "Nexy Flow está reservando la misión.",
       description: "La orden ya salió del Portal. Radar está confirmando su lugar en la cola editorial privada.",
       actionLabel: null,
       stages,
@@ -117,7 +134,7 @@ export function getRadarLiveView(
   return {
     mode: "working",
     phaseLabel: "Misión recibida",
-    title: "Nexus Enlace tomó la orden.",
+    title: "Nexy Core tomó la orden.",
     description: "Radar registró la solicitud y está preparando el circuito de trabajo. No necesitás actualizar la página.",
     actionLabel: null,
     stages,

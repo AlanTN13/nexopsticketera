@@ -12,7 +12,15 @@ describe("Radar live operation status", () => {
 
     expect(view.mode).toBe("working");
     expect(view.phaseLabel).toBe("Misión en cola editorial");
+    expect(view.title).toContain("Nexys");
+    expect(view.stages.map((stage) => stage.name)).toEqual([
+      "Nexy Core",
+      "Nexy Flow",
+      "Nexy AI",
+      "Nexy Growth",
+    ]);
     expect(view.stages.map((stage) => stage.state)).toEqual(["done", "done", "active", "waiting"]);
+    expect(view.stages[2].imageSrc).toBe("/radar/nexys/nexy-ai.png");
   });
 
   it("stops presenting research as active when the note is ready to review", () => {

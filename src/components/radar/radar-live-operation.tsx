@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Check,
@@ -8,7 +9,6 @@ import {
   Clock3,
   Radio,
   RefreshCw,
-  Sparkles,
 } from "lucide-react";
 
 import styles from "@/components/radar/radar-live-operation.module.css";
@@ -63,6 +63,7 @@ export function RadarLiveOperation({ runId, status, requestKind, createdAt, upda
   const view = getRadarLiveView(status, requestKind, eventTypes);
   const latestEvent = events.at(-1) ?? null;
   const refreshesAutomatically = view.mode === "working";
+  const featuredNexy = view.stages.find((stage) => stage.state === "active") ?? view.stages.at(-1)!;
 
   useEffect(() => {
     if (!refreshesAutomatically) return;
@@ -93,12 +94,23 @@ export function RadarLiveOperation({ runId, status, requestKind, createdAt, upda
 
       <div className="relative grid gap-8 px-5 py-7 sm:px-7 lg:grid-cols-[minmax(17rem,0.8fr)_minmax(0,1.2fr)] lg:items-center lg:gap-12 lg:py-10">
         <div className="grid place-items-center">
-          <div className={styles.radar} aria-hidden="true">
-            {view.mode === "working" ? <div className={styles.sweep} /> : null}
-            <span className={`${styles.blip} ${styles.blipOne}`} />
-            <span className={`${styles.blip} ${styles.blipTwo}`} />
-            <span className={`${styles.blip} ${styles.blipThree}`} />
-            <div className={styles.core}><Sparkles size={24} className="text-violet-100" /></div>
+          <div className={`${styles.nexyConsole} ${view.mode === "working" ? styles.nexyConsoleWorking : ""}`}>
+            <Image
+              src={featuredNexy.imageSrc}
+              alt={`${featuredNexy.name}, Nexy activo en esta misión`}
+              fill
+              priority
+              sizes="(max-width: 1024px) 19rem, 24vw"
+              className={styles.nexyImage}
+            />
+            <div className={styles.nexyShade} aria-hidden="true" />
+            <span className={`${styles.signal} ${styles.signalOne}`} aria-hidden="true" />
+            <span className={`${styles.signal} ${styles.signalTwo}`} aria-hidden="true" />
+            <span className={`${styles.signal} ${styles.signalThree}`} aria-hidden="true" />
+            <div className={styles.nexyIdentity}>
+              <span className={styles.liveDot} aria-hidden="true" />
+              <span>{featuredNexy.name}</span>
+            </div>
           </div>
           <div className="relative -mt-5 rounded-full border border-white/10 bg-slate-950/90 px-4 py-2 text-center shadow-xl backdrop-blur">
             <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">Fase actual</p>
@@ -115,8 +127,11 @@ export function RadarLiveOperation({ runId, status, requestKind, createdAt, upda
             {view.stages.map((stage, index) => (
               <li key={stage.name} className={`rounded-xl border p-3.5 ${stage.state === "active" ? "border-violet-400/45 bg-violet-400/12" : stage.state === "done" ? "border-emerald-300/20 bg-emerald-300/8" : "border-white/8 bg-white/[0.025]"}`}>
                 <div className="flex items-center gap-3">
-                  <span className={`grid size-8 shrink-0 place-items-center rounded-lg text-xs font-bold ${stage.state === "active" ? "bg-violet-400 text-white shadow-[0_0_24px_rgba(139,92,246,0.45)]" : stage.state === "done" ? "bg-emerald-300/15 text-emerald-200" : "bg-white/5 text-slate-600"}`}>
-                    {stage.state === "done" ? <Check size={15} /> : stage.state === "active" ? <CircleDot size={15} /> : index + 1}
+                  <span className={`relative grid size-10 shrink-0 overflow-hidden rounded-xl border ${stage.state === "active" ? "border-violet-300/60 shadow-[0_0_24px_rgba(139,92,246,0.38)]" : stage.state === "done" ? "border-emerald-300/30" : "border-white/10 opacity-45"}`}>
+                    <Image src={stage.imageSrc} alt="" fill sizes="40px" className="object-cover" />
+                    <span className={`absolute bottom-0.5 right-0.5 grid size-4 place-items-center rounded-full text-[8px] font-bold ${stage.state === "active" ? "bg-violet-400 text-white" : stage.state === "done" ? "bg-emerald-300 text-emerald-950" : "bg-slate-800 text-slate-400"}`}>
+                      {stage.state === "done" ? <Check size={9} /> : stage.state === "active" ? <CircleDot size={9} /> : index + 1}
+                    </span>
                   </span>
                   <div><strong className={`block text-xs ${stage.state === "waiting" ? "text-slate-500" : "text-slate-100"}`}>{stage.name}</strong><span className={`mt-0.5 block text-[10px] leading-4 ${stage.state === "waiting" ? "text-slate-600" : "text-slate-400"}`}>{stage.role}</span></div>
                 </div>
