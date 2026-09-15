@@ -7,7 +7,7 @@ Integración preparada para validar Buscar ahora en sdnexops Preview. API y publ
 Dirección implementó motor API, captura de configuración/corpus, límites, seguimiento, integración y gates globales. Especialista publication_preview implementó PNG/paquete/preview/sitio; especialista durable_state implementó migración/tests SQL y realizó revisión independiente de worker/persistencia. Paralelismo con superficies separadas; Dirección integró ambos contratos. Nivel A1: extensión del backend y Supabase existentes, sin servicios nuevos.
 
 ## Challenge y correcciones
-Se cerraron carreras de worker sin reserva propia, callbacks de intento anterior y fallos de despacho de publicación. Reservas monetarias persistentes no se pierden con checkpoints. Fuente manual debe aparecer en evidencia consultada; claims y verificación pública se guardan. NO_PUBLICATION, REJECT y FAILED conservan significado distinto. Reintentos de publicación no repiten investigación; conservan composición exacta y bloquean merge pendiente de verificar.
+Se cerraron carreras de worker sin reserva propia, callbacks de intento anterior y fallos de despacho de publicación. Reservas monetarias persistentes no se pierden con checkpoints. Fuente manual debe aparecer en evidencia consultada; claims y verificación pública se guardan. NO_PUBLICATION, REJECT y FAILED conservan significado distinto. Revisión final cerró pérdida de URLs y contador web ante JSON inválido/respuesta incompleta: checkpoint de metadatos seguros previo al parser; dos regresiones nuevas PASS. Reintentos de publicación no repiten investigación; conservan composición exacta y bloquean merge pendiente de verificar.
 
 ## Evidencia
 - Base Portal main 8b6e7d5; web main 760e328.
@@ -18,8 +18,15 @@ Se cerraron carreras de worker sin reserva propia, callbacks de intento anterior
 - Reserva acumulada inicial0USD/0runs. #4canceled/#5dispatching verificadas sin cambios.
 - Secret OPENAI_API_KEY inyectado por usuario en Vercel sdnexops Preview rama codex/radar-api-mvp mediante tarea de configuración. Dirección no leyó/copió el secreto.
 
+## PR y previews integrados
+- Portal PR [nexopsticketera#75](https://github.com/AlanTN13/nexopsticketera/pull/75), implementación 7023f75 y corrección del harness CJS 6b0a6b9. CI verify SUCCESS (run35006074663), Vercel sdnexops SUCCESS.
+- [Portal Preview](https://sdnexops-git-codex-rad-53fbac-alan-fernandezs-projects-f6e1f457.vercel.app/backoffice/radar/operacion).
+- Sitio PR [webneoxps#74](https://github.com/AlanTN13/webneoxps/pull/74), commit0c4f42c; CI validate SUCCESS y publisher SKIPPED. [Sitio Preview](https://deploy-preview-74--webnexops.netlify.app/radar/preview) usa el despliegue automático Netlify existente de la misma PR. El corpus público devuelve schema1/nexops/18 notas; el preview Vercel está protegido y devuelve login, por eso no se usa como corpus server-side.
+- Smoke real de navegador local Chrome: opener → web compilada → artículo con PNG y dos fuentes → confirmación de versión exacta PASS. Proveedor simulado, sin consumo API. Smoke autenticado remoto aún pendiente.
+- PostgreSQL tests usan las migraciones reales sobre PGlite; no equivalen a una prueba multisesión de concurrencia. Los locks/condiciones fueron revisados por separado.
+
 ## Gates y límites
-Preview y CI remotos, smoke autenticado y costo real se agregan al validar. USD5 total autorizado, USD1.50 conservadores reservados/run, máximo3 corridas iniciales. Objetivo normal <=USD0.20 pendiente de medición. Aplicación no tiene autopublicación; RADAR_PUBLICATION_ENABLED=false. Publicar o reconciliar histórico requiere gate posterior del encargo. Rollback operativo: deshabilitar API, conservar tablas/estados/paquetes, no activar fallback Work.
+Smoke autenticado y costo real se agregan al validar. USD5 total autorizado, USD1.50 conservadores reservados/run, máximo3 corridas iniciales. Objetivo normal <=USD0.20 pendiente de medición. Aplicación no tiene autopublicación; RADAR_PUBLICATION_ENABLED=false. Publicar o reconciliar histórico requiere gate posterior del encargo. Rollback operativo: deshabilitar API, conservar tablas/estados/paquetes, no activar fallback Work.
 
 ## KNOWLEDGE DELTA PROPUESTO
 - Radar API MVP ya tiene implementación integrada y migración aditiva; aún no equivale a una nota real ni a producción publicada.

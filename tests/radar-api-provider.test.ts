@@ -59,6 +59,23 @@ describe("Radar API editorial contract", () => {
   it("aborted deadline prevents API consumption", async () => {
     const signal = AbortSignal.abort(); const test = await run([writer()], { signal }); await expect(test.result).rejects.toThrow(); expect(test.fetchImpl).not.toHaveBeenCalled();
   });
+  it.each(["completed", "incomplete"])("preserves safe evidence and usage when %s response has invalid editorial JSON", async status => {
+    const checkpoints: RadarApiCheckpoint[] = [];
+    const broken = response(null);
+    broken.status = status;
+    broken.output[1].content![0].text = "invalid-json-private-text";
+    await expect(executeRadarEditorial({
+      context: { preferences: {}, corpus: [], requestKind: "opportunity_search", requestPayload: {}, requestedAt: "2026-09-15", model: "gpt-5-mini" },
+      apiKey: "test-only", signal: new AbortController().signal,
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify(broken))) as typeof fetch,
+      checkpoint: async value => { checkpoints.push(structuredClone(value)); }, assertActive: async () => {},
+    })).rejects.toThrow(status === "completed" ? "inválido" : "no completó");
+    const saved = checkpoints.at(-1)!;
+    expect(saved.sources).toEqual([source]);
+    expect(saved.usage).toMatchObject({ calls: 1, webSearchCalls: 1, inputTokens: 100, outputTokens: 200 });
+    expect(saved.usage.estimatedUsd).toBeGreaterThan(0.01);
+    expect(JSON.stringify(checkpoints)).not.toContain("invalid-json-private-text");
+  });
   it("retains all consulted URLs, not just inline primary citations; excludes reasoning", () => {
     const parsed = parseRadarApiResponse(response({ outcome: "NO_PUBLICATION" }, [source, { name: "Otra", url: "https://other.example/news", evidence: "otra" }])); expect(parsed.sources).toHaveLength(2);
     expect(() => parseRadarApiResponse({ status: "incomplete" })).toThrow("no completó");
