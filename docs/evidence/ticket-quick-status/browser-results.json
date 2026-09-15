@@ -1,0 +1,17 @@
+{
+  "tests": [
+    "Only assigned-company tickets editable",
+    "Inline On Hold persists without navigation",
+    "Bulk updates visible selection and clears selection",
+    "Search clears previous selection and only selects visible rows",
+    "No-results after state change retains confirmation",
+    "Company workspace has filters and editable selection",
+    "RPC denial shows error and preserves persisted status",
+    "Mobile controls remain clickable without opening detail",
+    "Detail offers On Hold and returns to filtered list",
+    "Company detail returns to the company with filters preserved",
+    "Client retains read-only workflow and can filter On Hold"
+  ],
+  "clientErrors": [],
+  "environment": "Local compiled Next.js application, fixture Auth/PostgREST gateway, real PostgreSQL migrations in PGlite; no production data"
+}

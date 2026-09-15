@@ -1,3 +1,6 @@
+import { TicketFilters } from "@/components/ticket-filters";
+import { ticketStatusOptions, TICKET_AREAS, TICKET_PRIORITIES, areaLabels, priorityLabels } from "@/lib/ticketing";
+import { filterTickets } from "@/lib/queries";
 import { redirect } from "next/navigation";
 
 import { CreateUserForm, LogoutClientForm, UpdateCompanyForm, UpdateCompanyModulesForm, UpdateUserForm } from "@/components/forms";
@@ -15,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 type CompanyDetailProps = {
   params: Promise<{ companyId: string }>;
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ query?: string; status?: string; area?: string; priority?: string; error?: string; success?: string }>;
 };
 
 export default async function BackofficeCompanyDetail({
@@ -23,7 +26,8 @@ export default async function BackofficeCompanyDetail({
   searchParams,
 }: CompanyDetailProps) {
   const { companyId: companyLookup } = await params;
-  const { error, success } = await searchParams;
+  const filters = await searchParams;
+  const { error, success } = filters;
   const db = await getAppSnapshot();
   const actor = await getAuthenticatedInternalActor(db);
 
@@ -53,6 +57,12 @@ export default async function BackofficeCompanyDetail({
   }
 
   const companyTickets = sortTickets(getTicketsForCompany(db, company.id));
+  const filteredTickets = filterTickets(companyTickets, filters);
+  const listParams = new URLSearchParams();
+  (["query", "status", "area", "priority"] as const).forEach((name) => {
+    if (filters[name]) listParams.set(name, filters[name]);
+  });
+  const returnPath = `/backoffice/companies/${company.slug}${listParams.size ? `?${listParams}` : ""}`;
   const companyUsers = getClientUsersForCompany(db, company.id);
   const openTickets = companyTickets.filter((ticket) => ticket.status !== "closed");
   const criticalTickets = companyTickets.filter((ticket) => ticket.priority === "critical");
@@ -145,11 +155,13 @@ export default async function BackofficeCompanyDetail({
       </SectionCard>
 
       <SectionCard title="Tickets de la empresa" description="Cola específica de esta cuenta, sin perder consistencia con la tabla global." tone="light">
-        {companyTickets.length > 0 ? (
-          <TicketTable db={db} tickets={companyTickets} basePath="/backoffice" tone="light" />
-        ) : (
-          <EmptyState title="Esta empresa todavía no tiene tickets" detail="Cuando el cliente cree su primera incidencia o mejora, va a aparecer acá." tone="light" />
-        )}
+        <TicketFilters basePath={`/backoffice/companies/${company.slug}`} query={filters.query} filters={[
+          { name: "status", label: "Todos los estados", value: filters.status, options: ticketStatusOptions },
+          { name: "priority", label: "Todas las prioridades", value: filters.priority, options: TICKET_PRIORITIES.map((value) => ({ value, label: priorityLabels[value] })) },
+          { name: "area", label: "Todas las áreas", value: filters.area, options: TICKET_AREAS.map((value) => ({ value, label: areaLabels[value] })) },
+        ]} />
+        <TicketTable actor={actor} db={db} tickets={filteredTickets} basePath="/backoffice" tone="light" showCompany={false} returnPath={returnPath} />
+        {filteredTickets.length === 0 ? <EmptyState title="No hay tickets para mostrar" detail="Probá cambiar los filtros o la búsqueda." tone="light" /> : null}
       </SectionCard>
 
       <SectionCard title="Usuarios cliente" description="Directorio de accesos de la cuenta. La edición detallada queda abajo de la tabla." tone="light">

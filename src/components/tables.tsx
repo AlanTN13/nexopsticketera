@@ -1,3 +1,5 @@
+import { TicketInlineStatus, TicketSelection, TicketStatusProvider } from "@/components/ticket-status-controls";
+import { canUpdateTicketWorkflow } from "@/lib/authorization";
 import Link from "next/link";
 
 import { AreaPill, PriorityPill, RolePill, StatusPill, TimelineDate } from "@/components/ui";
@@ -14,6 +16,7 @@ export function TicketTable({
   actionLabel = "Gestionar",
   clientView = false,
   returnPath,
+  actor,
 }: {
   db: TicketDatabase;
   tickets: TicketRecord[];
@@ -23,7 +26,14 @@ export function TicketTable({
   actionLabel?: string;
   clientView?: boolean;
   returnPath?: string;
+  actor?: UserProfile;
 }) {
+  const editableIds = actor ? tickets.filter((ticket) => {
+    const company = getCompany(db, ticket.companyId);
+    return company && canUpdateTicketWorkflow(actor, company);
+  }).map((ticket) => ticket.id) : [];
+  const editable = new Set(editableIds);
+  const canSelect = editableIds.length > 0;
   const headClass =
     tone === "light"
       ? "bg-[#f9fafb] text-[#6b7280]"
@@ -34,6 +44,7 @@ export function TicketTable({
       : "bg-transparent text-slate-100 transition hover:bg-white/[0.03]";
 
   return (
+    <TicketStatusProvider editableIds={editableIds}>
     <div
       className={`overflow-hidden rounded-xl ${
         tone === "light"
@@ -45,6 +56,7 @@ export function TicketTable({
         <table className={`min-w-full text-left text-sm ${tone === "light" ? "divide-y divide-[rgba(17,24,39,0.06)]" : "divide-y divide-[var(--border)]"}`}>
           <thead className={headClass}>
             <tr>
+              {canSelect ? <th className="px-3 py-2.5"><span className="sr-only">Seleccionar</span></th> : null}
               <th className="px-3 py-2.5 text-xs font-semibold">Ticket</th>
               {showCompany ? (
                 <th className="px-3 py-2.5 text-xs font-semibold">Empresa</th>
@@ -71,6 +83,7 @@ export function TicketTable({
 
               return (
                 <tr key={ticket.id} className={`${rowClass} relative group`}>
+                  {canSelect ? <td className="relative z-10 px-3 py-2.5 align-top">{editable.has(ticket.id) ? <TicketSelection id={ticket.id} code={ticket.code} /> : null}</td> : null}
                   <td className="px-3 py-2.5 align-top">
                     <Link href={detailHref} aria-label={`Abrir ${ticket.code}: ${ticket.title}`} className="block transition after:absolute after:inset-0 focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-violet-600 group-hover:text-[#4330a6]">
                       <div className="flex items-center gap-2">
@@ -87,7 +100,7 @@ export function TicketTable({
                     </td>
                   ) : null}
                   <td className="px-3 py-2.5 align-top">
-                    <StatusPill status={ticket.status} />
+                    {editable.has(ticket.id) ? <TicketInlineStatus id={ticket.id} code={ticket.code} status={ticket.status} /> : <StatusPill status={ticket.status} />}
                   </td>
                   <td className="px-3 py-2.5 align-top">
                     <PriorityPill priority={ticket.priority} />
@@ -135,6 +148,7 @@ export function TicketTable({
             : rawDetailHref;
           return (
             <article key={ticket.id} className="relative grid gap-2 px-3 py-3 transition hover:bg-slate-50">
+              {editable.has(ticket.id) ? <label className="relative z-10 flex min-h-10 w-fit items-center gap-2 text-xs text-slate-700"><TicketSelection id={ticket.id} code={ticket.code} />Seleccionar {ticket.code}</label> : null}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <Link href={detailHref} aria-label={`Abrir ${ticket.code}: ${ticket.title}`} className="font-semibold text-slate-950 after:absolute after:inset-0 focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-violet-600">
@@ -142,7 +156,7 @@ export function TicketTable({
                   </Link>
                   <p className="mt-0.5 truncate text-sm text-slate-700">{ticket.title}</p>
                 </div>
-                <StatusPill status={ticket.status} />
+                {editable.has(ticket.id) ? <TicketInlineStatus id={ticket.id} code={ticket.code} status={ticket.status} /> : <StatusPill status={ticket.status} />}
               </div>
               {showCompany ? <p className="truncate text-xs text-slate-600">{company?.name ?? "NexOps"}</p> : null}
               <div className="flex flex-wrap items-center gap-2">
@@ -160,6 +174,7 @@ export function TicketTable({
         })}
       </div>
     </div>
+    </TicketStatusProvider>
   );
 }
 

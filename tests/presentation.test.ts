@@ -88,6 +88,7 @@ describe("ticket presentation", () => {
     expect(filters).toContain("currentParams.append(filter.name, value)");
     expect(filters).toContain("remainingValues.forEach");
     expect(queue).toContain("returnPath={returnPath}");
-    expect(ticket).toContain("queueReturnPath");
+    expect(ticket).toContain("ticketListReturnPath(returnTo, company?.slug)");
+    expect(ticket).toContain("ticketsHref: listReturnPath");
   });
 });
