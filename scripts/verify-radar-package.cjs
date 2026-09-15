@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Local cross-repository CommonJS loader harness. */
 /* Cross-repository, local-only integration fixture. No API calls, publication or deploy. */
 const fs = require('node:fs');
 const path = require('node:path');
