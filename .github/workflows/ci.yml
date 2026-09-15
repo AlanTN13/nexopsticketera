@@ -40,6 +40,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Radar database regression
+        run: npm run test:radar-db
+
       - name: Build
         run: npm run build
 

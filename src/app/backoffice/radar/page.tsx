@@ -1,3 +1,4 @@
+export const maxDuration = 300;
 import { PlatformRadarPage } from "@/components/radar/platform-radar-page";
 
 export const dynamic = "force-dynamic";

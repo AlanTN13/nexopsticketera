@@ -12,7 +12,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit --incremental false",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:radar-db": "node supabase/tests/run-radar-api-local.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.3",
@@ -23,9 +24,11 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "3.10.1",
-    "resend": "6.17.2"
+    "resend": "6.17.2",
+    "sharp": "0.35.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/papaparse": "5.5.2",

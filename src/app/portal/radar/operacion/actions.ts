@@ -67,11 +67,12 @@ export async function requestRadarRunAction(formData: FormData): Promise<RadarCo
     await requireRadarWorkspaceAccess(workspaceId, "operate");
     const origin = getPublicAppUrl();
     if (!origin) throw new Error("Falta configurar la URL pública del Portal.");
+    if (!radarEngineConnected()) throw new Error("El piloto API espera su configuración segura y límite de uso.");
     const run = await createRadarRun({ workspaceId, idempotencyKey, mode: mode as "suggest" | "review" });
     const reserved = await reserveRadarDispatch(run.id);
     if (!reserved) {
       revalidateRadarOperation();
-      return { error: null, success: "La solicitud ya estaba registrada en la cola editorial." };
+      return { error: null, success: "La solicitud ya estaba registrada en Radar." };
     }
     try {
       const queued = await dispatchRadarRun({
@@ -89,7 +90,7 @@ export async function requestRadarRunAction(formData: FormData): Promise<RadarCo
         externalRunUrl: queued.externalRunUrl,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo contactar la cola editorial.";
+      const message = error instanceof Error ? error.message : "No se pudo iniciar la investigación API.";
       await failRadarDispatch(run.id, message);
       throw error;
     }
@@ -115,6 +116,7 @@ export async function createManualRadarNoteAction(formData: FormData): Promise<R
     const origin = getPublicAppUrl();
     if (!origin) throw new Error("Falta configurar la URL pública del Portal.");
     const manualNote = { title, sourceUrl, instructions };
+    if (!radarEngineConnected()) throw new Error("El piloto API espera su configuración segura y límite de uso.");
     const run = await createRadarRun({
       workspaceId,
       idempotencyKey,
@@ -125,7 +127,7 @@ export async function createManualRadarNoteAction(formData: FormData): Promise<R
     const reserved = await reserveRadarDispatch(run.id);
     if (!reserved) {
       revalidateRadarOperation();
-      return { error: null, success: "La nota ya estaba registrada en la cola editorial." };
+      return { error: null, success: "La nota ya estaba registrada en Radar." };
     }
     try {
       const queued = await dispatchRadarRun({
@@ -144,7 +146,7 @@ export async function createManualRadarNoteAction(formData: FormData): Promise<R
         externalRunUrl: queued.externalRunUrl,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo contactar la cola editorial.";
+      const message = error instanceof Error ? error.message : "No se pudo iniciar la investigación API.";
       await failRadarDispatch(run.id, message);
       throw error;
     }
@@ -294,30 +296,35 @@ export async function publishApprovedRadarRunAction(formData: FormData): Promise
     const run = await getRadarRunForPublication(runId);
     if (run.workspaceId !== workspaceId) throw new Error("La nota no pertenece a este workspace.");
     const approvedAt = new Date().toISOString();
-    const bundle = buildRadarPublicationBundle({
+    const bundle = await buildRadarPublicationBundle({
       run,
       composition,
       approvedBy: actor.id,
       approvedAt,
+      previewToken: value(formData, "previewToken"),
       callbackUrl: `${origin}/api/radar/runs/${run.id}/publication`,
     });
-    await reserveRadarPublication({
+    if (run.publication?.externalPrNumber === 73) throw new Error("La publicación histórica requiere revalidación editorial antes de reintentar.");
+    if (run.publication?.mergeSha) throw new Error("La publicación ya tiene un merge y requiere verificación; no se repetirá.");
+    const job = await reserveRadarPublication({
       runId,
       idempotencyKey,
       compositionDigest: bundle.compositionDigest,
       composition: composition as unknown as Record<string, unknown>,
     });
+    if (job.status !== "reserved") { revalidateRadarOperation(); return { error: null, success: "Este intento ya fue registrado. No se repitió la publicación." }; }
     try {
-      const dispatched = await dispatchRadarPublication({ runId, bundle });
+      const dispatched = await dispatchRadarPublication({ runId, bundle, publicationAttempt: job.attempt ?? 1 });
       await acceptRadarPublicationDispatch({
         runId,
         compositionDigest: bundle.compositionDigest,
+        attempt: job.attempt ?? 1,
         pullRequestNumber: dispatched.pullRequestNumber,
         pullRequestUrl: dispatched.pullRequestUrl,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo iniciar la publicación.";
-      await failRadarPublicationDispatch(runId, message);
+      await failRadarPublicationDispatch(runId, message, job.attempt ?? 1);
       throw error;
     }
     revalidateRadarOperation();

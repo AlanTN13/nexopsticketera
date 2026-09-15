@@ -1,3 +1,4 @@
+export const maxDuration = 300;
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedActor } from "@/lib/auth";
 import { PlatformRadarOperationPage, RadarOperationPage } from "@/components/radar/radar-operation-page";

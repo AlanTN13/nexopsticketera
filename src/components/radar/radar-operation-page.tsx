@@ -54,7 +54,7 @@ function formatDateTime(value: string | null) {
 
 function RunCard({ run, workspaceId, canOperate, canAdmin, publicationConnected }: { run: RadarRun; workspaceId: string; canOperate: boolean; canAdmin: boolean; publicationConnected: boolean }) {
   const reviewPending = run.status === "review_pending" && run.candidate;
-  const readyToCompose = run.status === "approved" && run.candidate?.draft;
+  const readyToCompose = (["review_pending", "approved", "postponed"].includes(run.status) || (run.status === "failed" && run.publication?.status === "failed")) && run.candidate?.draft;
   return (
     <article id={`run-${run.id}`} className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -78,7 +78,8 @@ function RunCard({ run, workspaceId, canOperate, canAdmin, publicationConnected 
           <h3 className="mt-3 text-lg font-bold text-slate-950">{run.candidate.title}</h3>
           <p className="mt-2 text-sm text-slate-600">{run.candidate.topic}</p>
           <ul className="mt-4 grid gap-2">{run.candidate.businessReasons.map((reason) => <li className="flex gap-2 text-sm leading-6 text-slate-700" key={reason}><CheckCircle2 className="mt-1 shrink-0 text-emerald-600" size={14} /> {reason}</li>)}</ul>
-          <a className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#4f35b5]" href={run.candidate.sourceUrl} target="_blank" rel="noreferrer">{run.candidate.sourceName} <ExternalLink size={12} /></a>
+          <ul className="mt-4 grid gap-2">{(run.candidate.sources?.length ? run.candidate.sources : [{ name: run.candidate.sourceName, url: run.candidate.sourceUrl }]).map((source, index) => <li key={`${source.url}-${index}`}><a className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4f35b5]" href={source.url} target="_blank" rel="noreferrer">{source.name} <ExternalLink size={12} /></a></li>)}</ul>
+          {run.candidate.qa && <p className="mt-3 text-xs text-slate-600"><strong>QA {run.candidate.qa.verdict}:</strong> {run.candidate.qa.reason}</p>}
           {run.candidate.draft ? <div className="mt-5 border-t border-slate-200 pt-5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Borrador textual</p><h4 className="mt-3 text-xl font-bold text-slate-950">{run.candidate.draft.headline}</h4><p className="mt-2 text-sm font-medium leading-6 text-slate-700">{run.candidate.draft.deck}</p><pre className="mt-4 max-h-[32rem] overflow-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-white p-4 font-sans text-sm leading-6 text-slate-700">{run.candidate.draft.bodyMarkdown}</pre></div> : null}
         </div>
       ) : run.resultReason ? <p className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">{run.resultReason}</p> : null}
@@ -105,7 +106,7 @@ function RunCard({ run, workspaceId, canOperate, canAdmin, publicationConnected 
         </div>
       ) : null}
 
-      {readyToCompose && run.candidate ? <RadarPublicationComposer runId={run.id} workspaceId={workspaceId} candidate={run.candidate} canPublish={canAdmin} publicationConnected={publicationConnected} /> : null}
+      {readyToCompose && run.candidate ? <RadarPublicationComposer runId={run.id} workspaceId={workspaceId} candidate={run.candidate} canPublish={canAdmin && (run.status === "approved" || (run.status === "failed" && run.publication?.status === "failed"))} publicationConnected={publicationConnected} /> : null}
 
       {run.publication ? <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"><div className="flex flex-wrap items-center justify-between gap-3"><strong>{run.publication.status === "published" ? "Publicación verificada" : run.publication.status === "failed" ? "Publicación detenida" : "Publicación en curso"}</strong>{run.publication.externalPrUrl ? <a className="inline-flex items-center gap-1 text-xs font-bold text-[#4f35b5]" href={run.publication.externalPrUrl} target="_blank" rel="noreferrer">Ver validación <ExternalLink size={12} /></a> : null}</div>{run.publication.finalUrl ? <a className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-emerald-700" href={run.publication.finalUrl} target="_blank" rel="noreferrer">Abrir nota publicada <ExternalLink size={12} /></a> : null}{run.publication.errorMessage ? <p className="mt-3 text-xs text-rose-700">{run.publication.errorMessage}</p> : null}</div> : null}
 
@@ -156,7 +157,6 @@ function ControlPlane({ snapshot, workspaceId, canOperate, canAdmin }: { snapsho
             ? "Trabajador pendiente"
             : "Pausado";
   const lastRun = snapshot.runs[0] ?? null;
-  const defaultMode = settings?.autonomyMode === "suggest" ? "suggest" : "review";
 
   return (
     <div className="grid gap-7">
@@ -224,7 +224,7 @@ function ControlPlane({ snapshot, workspaceId, canOperate, canAdmin }: { snapsho
               <PendingForm action={requestRadarRunAction} className="mt-5 grid gap-4">
                 <input type="hidden" name="workspaceId" value={workspaceId} />
                 <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
-                <fieldset disabled={!canOperate || Boolean(activeRun) || !workerReady} className="grid gap-3 disabled:opacity-60"><legend className="mb-2 text-xs font-bold text-slate-600">Modo de esta corrida</legend><label className="flex items-start gap-3 rounded-xl border border-slate-200 p-4"><input type="radio" name="mode" value="suggest" defaultChecked={defaultMode === "suggest"} /><span><strong className="block text-sm text-slate-900">Sólo sugerir</strong><small className="mt-1 block text-xs text-slate-500">Muestra la oportunidad y no avanza.</small></span></label><label className="flex items-start gap-3 rounded-xl border border-slate-200 p-4"><input type="radio" name="mode" value="review" defaultChecked={defaultMode === "review"} /><span><strong className="block text-sm text-slate-900">Enviar a revisión</strong><small className="mt-1 block text-xs text-slate-500">Espera aprobación, descarte o postergación.</small></span></label></fieldset>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><input type="hidden" name="mode" value="review" /><strong className="block text-sm text-slate-900">Enviar a revisión</strong><p className="mt-1 text-xs text-slate-500">La búsqueda prepara como máximo una nota y espera aprobación humana después de la vista previa.</p></div>
                 <PendingSubmitButton disabled={!canOperate || Boolean(activeRun) || !workerReady} idleLabel={activeRun ? "Radar ya está trabajando" : workerReady ? "Buscar oportunidades ahora" : "Trabajador editorial pendiente"} pendingLabel="Enviando solicitud…" className="min-h-11 rounded-xl bg-[#4f35b5] px-4 text-sm font-bold text-white disabled:bg-slate-300" />
               </PendingForm>
             </article>
