@@ -26,6 +26,7 @@
     "resend": "6.17.2"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/papaparse": "5.5.2",

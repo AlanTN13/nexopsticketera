@@ -4,7 +4,7 @@ import {
   TicketDatabase,
   TicketHistoryEntry,
   TicketRecord,
-  TicketStatus,
+  OPEN_TICKET_STATUSES,
   UserProfile,
   areaLabels,
   canManageGlobalCatalog,
@@ -119,7 +119,7 @@ export function getTicketsForCompany(db: TicketDatabase, companyId: string | nul
 }
 
 export function buildPortalStats(tickets: TicketRecord[]) {
-  const openStatuses: TicketStatus[] = ["new", "analysis", "in_progress", "waiting_for_client"];
+  const openStatuses = OPEN_TICKET_STATUSES;
   return {
     total: tickets.length,
     open: tickets.filter((ticket) => openStatuses.includes(ticket.status)).length,

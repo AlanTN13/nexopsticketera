@@ -14,6 +14,7 @@ export const TICKET_STATUSES = [
   "analysis",
   "in_progress",
   "waiting_for_client",
+  "on_hold",
   "resolved",
   "closed",
 ] as const;
@@ -213,6 +214,7 @@ export const statusLabels: Record<TicketStatus, string> = {
   analysis: "En análisis",
   in_progress: "En progreso",
   waiting_for_client: "Esperando al cliente",
+  on_hold: "On Hold",
   resolved: "Resuelto",
   closed: "Cerrado",
 };
@@ -314,6 +316,8 @@ export function getTicketNextStep(ticket: TicketRecord) {
         : "NexOps debe asignar un responsable.";
     case "waiting_for_client":
       return "El cliente debe responder o aportar información.";
+    case "on_hold":
+      return "En pausa hasta que NexOps retome la gestión.";
     case "resolved":
       return "El cliente debe confirmar si quedó resuelto.";
     case "closed":
@@ -325,6 +329,7 @@ export function translateHistoryMessage(message: string) {
   const replacements: Array<[RegExp, string]> = [
     [/\bin_progress\b/g, "En progreso"],
     [/\bwaiting_for_client\b/g, "Esperando al cliente"],
+    [/\bon_hold\b/g, "On Hold"],
     [/\banalysis\b/g, "En análisis"],
     [/\bresolved\b/g, "Resuelto"],
     [/\bclosed\b/g, "Cerrado"],
@@ -340,3 +345,10 @@ export function translateHistoryMessage(message: string) {
     message,
   );
 }
+
+export const OPEN_TICKET_STATUSES: TicketStatus[] = TICKET_STATUSES.filter(
+  (status) => status !== "resolved" && status !== "closed",
+);
+export const ticketStatusOptions = TICKET_STATUSES.map((value) => ({
+  value, label: statusLabels[value],
+}));

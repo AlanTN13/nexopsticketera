@@ -1,3 +1,4 @@
+import { ticketStatusOptions } from "@/lib/ticketing";
 import { redirect } from "next/navigation";
 
 import { CreateTicketForm, LogoutClientForm } from "@/components/forms";
@@ -40,11 +41,11 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
       <IndicatorBar items={[{ label: "Abiertos", value: stats.open }, { label: "En progreso", value: companyTickets.filter((ticket) => ticket.status === "in_progress").length }, { label: "Nivel crítico", value: stats.critical }, { label: "Resueltos", value: companyTickets.filter((ticket) => ["resolved", "closed"].includes(ticket.status)).length }]} />
       <SectionCard title="Listado de tickets" description="Estado, responsable, última actualización y próximo paso en una sola vista." tone="light">
         <TicketFilters basePath="/portal/soporte" query={filters.query} filters={[
-          { name: "status", label: "Todos los estados", value: filters.status, options: [{ value: "new", label: "Nuevo" }, { value: "analysis", label: "En análisis" }, { value: "in_progress", label: "En progreso" }, { value: "waiting_for_client", label: "Esperando al cliente" }, { value: "resolved", label: "Resuelto" }, { value: "closed", label: "Cerrado" }] },
+          { name: "status", label: "Todos los estados", value: filters.status, options: ticketStatusOptions },
           { name: "priority", label: "Todos los niveles", value: filters.priority, options: [{ value: "low", label: "Baja" }, { value: "medium", label: "Media" }, { value: "high", label: "Alta" }, { value: "critical", label: "Crítica" }] },
           { name: "area", label: "Todas las áreas", value: filters.area, options: [{ value: "automation", label: "Automatizaciones" }, { value: "custom_system", label: "Sistema personalizado" }, { value: "website", label: "Sitios web" }, { value: "ai_agent", label: "Agentes IA" }, { value: "crm", label: "CRM" }, { value: "erp", label: "ERP" }] },
         ]} />
-        {tickets.length > 0 ? <TicketTable db={db} tickets={tickets} basePath="/portal" tone="light" showCompany={false} actionLabel="Abrir" clientView /> : <EmptyState title={companyTickets.length === 0 ? "Todavía no hay tickets" : "No hay resultados"} detail={hasFilters ? "Probá quitar algún filtro o buscar con otras palabras." : "Creá el primer ticket para comenzar el seguimiento."} tone="light" />}
+        {tickets.length > 0 ? <TicketTable actor={actor} db={db} tickets={tickets} basePath="/portal" tone="light" showCompany={false} actionLabel="Abrir" clientView /> : <EmptyState title={companyTickets.length === 0 ? "Todavía no hay tickets" : "No hay resultados"} detail={hasFilters ? "Probá quitar algún filtro o buscar con otras palabras." : "Creá el primer ticket para comenzar el seguimiento."} tone="light" />}
       </SectionCard>
     </AppShell>
   );

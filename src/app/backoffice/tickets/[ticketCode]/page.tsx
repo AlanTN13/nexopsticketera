@@ -4,7 +4,7 @@ import { AppShell, EmptyState, NavButton, PriorityPill, SectionCard, StatusPill,
 import { getAppSnapshot, getEligibleSupportAssigneeIds, getVisibleTicketReference } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
 import { getInternalUsers, getTicketById, getTicketHistory, getUser, getVisibleComments } from "@/lib/queries";
-import { ticketDetailPath } from "@/lib/routing";
+import { ticketDetailPath, ticketListReturnPath } from "@/lib/routing";
 import { formatRelativeDate, getTicketNextStep, translateHistoryMessage } from "@/lib/ticketing";
 import { CommentAttachments } from "@/components/comment-attachments";
 import { TicketContextLinks } from "@/components/ticket-context-links";
@@ -40,17 +40,14 @@ export default async function BackofficeTicketDetail({ params, searchParams }: P
     ? await getEligibleSupportAssigneeIds(company.id)
     : new Set<string>();
   const internalUsers = getInternalUsers(db).filter((user) => eligibleAssigneeIds.has(user.id));
-  const queueReturnPath =
-    returnTo && (returnTo === "/backoffice/queue" || returnTo.startsWith("/backoffice/queue?"))
-      ? returnTo
-      : "/backoffice/queue";
+  const listReturnPath = ticketListReturnPath(returnTo, company?.slug);
   const actionReturnPath = returnTo
-    ? `${canonicalPath}?returnTo=${encodeURIComponent(queueReturnPath)}`
+    ? `${canonicalPath}?returnTo=${encodeURIComponent(listReturnPath)}`
     : canonicalPath;
 
   return <AppShell eyebrow="Backoffice · Ticket" title={`${ticket.code} · ${ticket.title}`} description="Gestión operativa y conversación del caso." tone="light"
-    navigation={buildBackofficeNavigation({ actor, active: "tickets", ticketsHref: queueReturnPath })}
-    actions={<><NavButton href={queueReturnPath} label="Volver a tickets" muted tone="light" /><LogoutClientForm tone="light" /></>}
+    navigation={buildBackofficeNavigation({ actor, active: "tickets", ticketsHref: listReturnPath })}
+    actions={<><NavButton href={listReturnPath} label="Volver a tickets" muted tone="light" /><LogoutClientForm tone="light" /></>}
   >
     <section className="rounded-xl border border-slate-200 bg-white px-4 py-3"><div className="flex flex-wrap items-center gap-2"><StatusPill status={ticket.status} /><PriorityPill priority={ticket.priority} /></div><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-5"><Meta label="Empresa" value={company?.name ?? "Sin empresa"} /><Meta label="Solicitante" value={creator?.name ?? "Sin identificar"} /><Meta label="Responsable" value={assignee?.name ?? "Sin asignar"} /><Meta label="Actualizado" value={formatRelativeDate(ticket.updatedAt)} /><Meta label="Próximo paso" value={getTicketNextStep(ticket)} /></dl></section>
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">

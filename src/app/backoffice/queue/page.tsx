@@ -1,3 +1,4 @@
+import { OPEN_TICKET_STATUSES, ticketStatusOptions } from "@/lib/ticketing";
 import { redirect } from "next/navigation";
 
 import { LogoutClientForm } from "@/components/forms";
@@ -16,7 +17,7 @@ type Props = { searchParams: Promise<{ query?: string; status?: FilterValue; are
 
 export default async function BackofficeQueuePage({ searchParams }: Props) {
   const filters = await searchParams;
-  const defaultStatuses = ["new", "analysis", "in_progress", "waiting_for_client"];
+  const defaultStatuses = OPEN_TICKET_STATUSES;
   const effectiveFilters = {
     ...filters,
     status: filters.status === undefined ? defaultStatuses : filters.status,
@@ -44,13 +45,14 @@ export default async function BackofficeQueuePage({ searchParams }: Props) {
     <IndicatorBar items={[{ label: "Activos", value: stats.activeTickets }, { label: "Alta o crítica", value: stats.highPriority }, { label: "Esperando cliente", value: stats.waitingCustomer }, { label: "Empresas", value: stats.companies }]} />
     <SectionCard title="Tickets" description="Buscá, filtrá y abrí cualquier fila para gestionar el caso." tone="light">
       <TicketFilters basePath="/backoffice/queue" query={filters.query} multiple defaultedFilters={["status"]} filters={[
-        { name: "status", label: "Todos los estados", value: effectiveFilters.status, options: [{ value: "new", label: "Nuevo" }, { value: "analysis", label: "En análisis" }, { value: "in_progress", label: "En progreso" }, { value: "waiting_for_client", label: "Esperando al cliente" }, { value: "resolved", label: "Resuelto" }, { value: "closed", label: "Cerrado" }] },
+        { name: "status", label: "Todos los estados", value: effectiveFilters.status, options: ticketStatusOptions },
         { name: "area", label: "Todas las áreas", value: filters.area, options: [{ value: "automation", label: "Automatizaciones" }, { value: "custom_system", label: "Sistema personalizado" }, { value: "website", label: "Sitios web" }, { value: "ai_agent", label: "Agentes IA" }, { value: "crm", label: "CRM" }, { value: "erp", label: "ERP" }] },
         { name: "priority", label: "Todas las prioridades", value: filters.priority, options: [{ value: "low", label: "Baja" }, { value: "medium", label: "Media" }, { value: "high", label: "Alta" }, { value: "critical", label: "Crítica" }] },
         { name: "companyId", label: "Todas las empresas", value: filters.companyId, options: db.companies.map((company) => ({ value: company.id, label: company.name })) },
         { name: "assignedToId", label: "Todos los responsables", value: filters.assignedToId, options: [{ value: "unassigned", label: "Sin asignar" }, ...internalUsers.map((user) => ({ value: user.id, label: user.name }))] },
       ]} />
-      {tickets.length ? <TicketTable db={db} tickets={tickets} basePath="/backoffice" tone="light" actionLabel="Gestionar" returnPath={returnPath} /> : <EmptyState title="No hay resultados" detail="Probá quitar algún filtro o buscar con otras palabras." tone="light" />}
+      <TicketTable actor={actor} db={db} tickets={tickets} basePath="/backoffice" tone="light" actionLabel="Gestionar" returnPath={returnPath} />
+      {tickets.length === 0 ? <EmptyState title="No hay resultados" detail="Probá quitar algún filtro o buscar con otras palabras." tone="light" /> : null}
     </SectionCard>
   </AppShell>;
 }

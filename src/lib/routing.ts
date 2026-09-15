@@ -18,3 +18,11 @@ export function parseTicketReference(reference: string) {
   if (TICKET_CODE_PATTERN.test(normalized)) return { kind: "code" as const, value: normalized.toLocaleUpperCase("en-US") };
   return null;
 }
+
+export function ticketListReturnPath(returnTo?: string, companySlug?: string) {
+  const companyPath = companySlug ? `/backoffice/companies/${encodeURIComponent(companySlug)}` : null;
+  const allowedPaths = ["/backoffice/queue", ...(companyPath ? [companyPath] : [])];
+  return returnTo && allowedPaths.some((path) => returnTo === path || returnTo.startsWith(`${path}?`))
+    ? returnTo
+    : "/backoffice/queue";
+}

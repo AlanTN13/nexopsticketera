@@ -323,7 +323,7 @@ export function StatusPill({ status }: { status: TicketStatus }) {
       ? "neutral"
       : status === "resolved"
         ? "success"
-        : status === "waiting_for_client"
+        : status === "waiting_for_client" || status === "on_hold"
           ? "warning"
           : status === "new"
             ? "info"

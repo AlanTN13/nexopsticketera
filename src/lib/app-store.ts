@@ -1,5 +1,7 @@
 import "server-only";
 
+import { authorizeStatusUpdate, validateStatusUpdate } from "@/lib/ticket-status-update";
+
 import { PostgrestError } from "@supabase/supabase-js";
 
 import {
@@ -1001,6 +1003,30 @@ async function updateTicketWorkflowInSupabase(input: {
         : null,
     );
   }
+}
+
+export async function updateTicketStatuses(input: { actorId: string; ticketIds: string[]; status: TicketStatus }) {
+  const { ticketIds, status } = validateStatusUpdate(input.ticketIds, input.status);
+  const db = await getSupabaseSnapshot();
+  const actor = ensureActor(db, input.actorId);
+  const tickets = authorizeStatusUpdate(db, actor, ticketIds);
+  const client = await getSupabaseServerClient();
+  const { data, error } = await client.rpc("update_ticket_statuses_with_history", {
+    target_ticket_ids: ticketIds,
+    next_status: status,
+  });
+  assertNoError(error);
+  const results = data as Array<{ ticket_id: string; previous_status: TicketStatus; status_history_id: string | null }>;
+  // The RPC returns committed history IDs and the actual previous status under lock.
+  // Emails are best-effort, exactly as in the detail workflow.
+  await Promise.allSettled(results.filter((row) => row.status_history_id).map(async (row) => {
+    const ticket = tickets.find((item) => item.id === row.ticket_id)!;
+    const context = getNotificationContext(db, actor, ticket, "client");
+    if (context) await sendNotificationEmail(buildStatusChangedNotification({
+      ...context, statusHistoryId: row.status_history_id!, previousStatus: row.previous_status, newStatus: status,
+    }));
+  }));
+  return { changed: results.filter((row) => row.status_history_id).length, total: results.length };
 }
 
 async function createUserInSupabase(input: {
