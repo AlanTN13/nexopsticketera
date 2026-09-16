@@ -1,0 +1,27 @@
+{
+  "environment": "Local fixture Auth/PostgREST gateway + real migrations in PGlite",
+  "tickets": [
+    {
+      "code": "NEX-1003",
+      "status": "new",
+      "company_id": "20000000-0000-0000-0000-000000000002",
+      "priority": "medium",
+      "assigned_to_id": null
+    },
+    {
+      "code": "NEX-1001",
+      "status": "closed",
+      "company_id": "20000000-0000-0000-0000-000000000001",
+      "priority": "critical",
+      "assigned_to_id": "10000000-0000-0000-0000-000000000002"
+    },
+    {
+      "code": "NEX-1002",
+      "status": "on_hold",
+      "company_id": "20000000-0000-0000-0000-000000000001",
+      "priority": "low",
+      "assigned_to_id": null
+    }
+  ],
+  "statusHistoryCount": 5
+}
