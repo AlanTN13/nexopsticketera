@@ -9,7 +9,7 @@ import { TicketTable, UserTable } from "@/components/tables";
 import { AppShell, EmptyState, NavButton, SectionCard, StatCard } from "@/components/ui";
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedInternalActor } from "@/lib/auth";
-import { getClientUsersForCompany, getCompanyBySlugOrId, getTicketsForCompany, sortTickets } from "@/lib/queries";
+import { getClientUsersForCompany, getCompanyBySlugOrId, getInternalUsers, getTicketsForCompany, sortTickets } from "@/lib/queries";
 import { withActor } from "@/lib/routing";
 import { hasModuleAccess } from "@/lib/authorization";
 import { buildBackofficeNavigation } from "@/lib/backoffice-navigation";
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 type CompanyDetailProps = {
   params: Promise<{ companyId: string }>;
-  searchParams: Promise<{ query?: string; status?: string; area?: string; priority?: string; error?: string; success?: string }>;
+  searchParams: Promise<{ query?: string; status?: string | string[]; area?: string | string[]; priority?: string | string[]; assignedToId?: string | string[]; error?: string; success?: string }>;
 };
 
 export default async function BackofficeCompanyDetail({
@@ -52,17 +52,20 @@ export default async function BackofficeCompanyDetail({
     );
   }
 
-  if (companyLookup !== company.slug) {
-    redirect(`/backoffice/companies/${company.slug}`);
-  }
-
   const companyTickets = sortTickets(getTicketsForCompany(db, company.id));
   const filteredTickets = filterTickets(companyTickets, filters);
   const listParams = new URLSearchParams();
-  (["query", "status", "area", "priority"] as const).forEach((name) => {
-    if (filters[name]) listParams.set(name, filters[name]);
+  if (filters.query) listParams.set("query", filters.query);
+  (["status", "area", "priority", "assignedToId"] as const).forEach((name) => {
+    const value = filters[name];
+    const values = Array.isArray(value) ? value : value ? [value] : [];
+    values.forEach((item) => listParams.append(name, item));
   });
   const returnPath = `/backoffice/companies/${company.slug}${listParams.size ? `?${listParams}` : ""}`;
+  if (companyLookup !== company.slug) {
+    redirect(returnPath);
+  }
+  const internalUsers = getInternalUsers(db);
   const companyUsers = getClientUsersForCompany(db, company.id);
   const openTickets = companyTickets.filter((ticket) => ticket.status !== "closed");
   const criticalTickets = companyTickets.filter((ticket) => ticket.priority === "critical");
@@ -155,10 +158,11 @@ export default async function BackofficeCompanyDetail({
       </SectionCard>
 
       <SectionCard title="Tickets de la empresa" description="Cola específica de esta cuenta, sin perder consistencia con la tabla global." tone="light">
-        <TicketFilters basePath={`/backoffice/companies/${company.slug}`} query={filters.query} filters={[
+        <TicketFilters basePath={`/backoffice/companies/${company.slug}`} query={filters.query} multiple filters={[
           { name: "status", label: "Todos los estados", value: filters.status, options: ticketStatusOptions },
           { name: "priority", label: "Todas las prioridades", value: filters.priority, options: TICKET_PRIORITIES.map((value) => ({ value, label: priorityLabels[value] })) },
           { name: "area", label: "Todas las áreas", value: filters.area, options: TICKET_AREAS.map((value) => ({ value, label: areaLabels[value] })) },
+          { name: "assignedToId", label: "Todos los responsables", value: filters.assignedToId, options: [{ value: "unassigned", label: "Sin asignar" }, ...internalUsers.map((user) => ({ value: user.id, label: user.name }))] },
         ]} />
         <TicketTable actor={actor} db={db} tickets={filteredTickets} basePath="/backoffice" tone="light" showCompany={false} returnPath={returnPath} />
         {filteredTickets.length === 0 ? <EmptyState title="No hay tickets para mostrar" detail="Probá cambiar los filtros o la búsqueda." tone="light" /> : null}

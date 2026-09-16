@@ -50,7 +50,7 @@ export function TicketFilters({
 
   return (
     <div className="grid gap-2.5">
-      <form className="flex flex-wrap items-center gap-2">
+      <form key={`${basePath}?${currentParams.toString()}`} action={basePath} className="flex flex-wrap items-center gap-2">
         <label className="min-w-[220px] flex-1" htmlFor="ticket-search">
           <span className="sr-only">Buscar por código o título</span>
           <input
