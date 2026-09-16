@@ -7,7 +7,7 @@ Fecha: 2026-09-16. Repositorio: `AlanTN13/nexopsticketera`.
 Un único [PR draft #77](https://github.com/AlanTN13/nexopsticketera/pull/77), rama `codex/company-filters-invitations`, base `9e2d6b279c2d346aa4ab86834cd499bd5c52d8d7`. Commit funcional: `e58f4889c7861b941463fa12aa8dd067d3c44040`.
 
 - **B: implementado y validado en la ficha de empresa**, listo para revisar. No integrado ni promovido a producción por este lote.
-- **A: diagnóstico confirmado; bloqueado por acceso externo a Resend.** No se configuró una key, no se verificó el dominio en Resend, no hubo redeploy productivo ni envío real de invitación. No declarar resuelto.
+- **A: configuración productiva aplicada; falta cerrar el envío real.** Dominio verificado, key de envío creada con autorización de Alan y guardada como Secret en sdnexops / Production. Redeploy READY. El destinatario original ya tiene acceso activo; se solicitó confirmación del alias de prueba para completar un alta nueva sin modificarlo. No declarar el smoke de invitación completo todavía.
 - No se modificaron Supabase/Auth, migraciones remotas, permisos, entitlements ni datos de clientes. La única acción productiva de tickets fue un lote al mismo estado existente, con respuesta de cero cambios.
 
 ## Reconciliación antes de editar
@@ -24,11 +24,13 @@ El navegador mostró el error real en Backoffice > Companies > Nueva empresa: `F
 | Recurso | Evidencia observada |
 |---|---|
 | Portal | `portal.nexopstech.com` está asignado a **sdnexops**, equipo `alan-fernandezs-projects-f6e1f457` |
-| Producción | [Deployment 4EyhoWVed1LDavGFtyd9cxW9Njff](https://vercel.com/alan-fernandezs-projects-f6e1f457/sdnexops/4EyhoWVed1LDavGFtyd9cxW9Njff), READY, main `9e2d6b2` |
-| Variables sdnexops | Búsqueda `RESEND` sin resultados, tanto Project como Shared, All Environments |
+| Producción inicial | [Deployment 4EyhoWVed1LDavGFtyd9cxW9Njff](https://vercel.com/alan-fernandezs-projects-f6e1f457/sdnexops/4EyhoWVed1LDavGFtyd9cxW9Njff), READY, main `9e2d6b2` |
+| Variables sdnexops | Inicialmente `RESEND` sin resultados en Project y Shared. Ahora `RESEND_API_KEY` figura como **Secret / Production** |
 | Proyecto anterior | **nexopsticketera**, dominio `soporte.nexopstech.com`, sí tiene `RESEND_API_KEY`, tipo **Secret**, Production, agregado Jul 18 |
 | Recuperación de key | Vercel muestra `Copy to Clipboard` deshabilitado para ese Secret. No se leyó ni expuso su valor |
-| Resend | Sin sesión; acceso por GitHub llega a autorización de lectura de emails de AlanTN13. La revisión automática rechazó ese grant; se solicitó autorización explícita o inicio de sesión por Alan. No se intentó eludirlo |
+| Resend | La sesión autenticada de sysnexops quedó disponible. `nexopstech.com` muestra **Verified**, región us-east-1, listo para enviar |
+| Credencial nueva | `sdnexops-production`, ID `d610e54a-1e10-441b-b8ce-48201985c822`, Sending access limitado a `nexopstech.com`. Creada y guardada con confirmación explícita de Alan. El valor no se escribió en archivos, logs ni mensajes |
+| Redeploy | [6L9fasGjGvHvDMWzriTg4F8UYGb3](https://vercel.com/alan-fernandezs-projects-f6e1f457/sdnexops/6L9fasGjGvHvDMWzriTg4F8UYGb3), **Ready**, Production, main `9e2d6b2`, 58s, asignado a `portal.nexopstech.com`. Se conservó la versión productiva; #77 no fue promovido |
 
 El conector Vercel omitía ambos proyectos y devolvía 404 por slug. La sesión del dashboard sí los muestra; ésta es la evidencia utilizada para identificar el destino.
 
@@ -38,16 +40,11 @@ El conector Vercel omitía ambos proyectos y devolvía 404 por slug. La sesión 
 
 Las nuevas pruebas verifican: key ausente impide llamar al proveedor; remitente/destino/enlace correctos; HTML escapado; la key no forma parte del mensaje; error retornado por proveedor produce un mensaje genérico. Son pruebas con SDK simulado, **no entrega real ni validación de dominio**.
 
-### Acción externa mínima y cierre pendiente
+### Cierre del envío pendiente
 
-Alan debe autorizar explícitamente el inicio de sesión de Resend vía GitHub (lectura de emails) o iniciar sesión él mismo en la pestaña preparada. No enviar la key por chat.
+Alan autorizó crear la key y configurar producción. Se completaron dominio, secreto y redeploy. [Dominio verificado](evidence/company-filters-invitations/resend-domain-verified.png) · [Secret Production sin valor visible](evidence/company-filters-invitations/resend-production-secret.png) · [Redeploy Ready](evidence/company-filters-invitations/resend-production-redeploy.png).
 
-Con ese acceso, completar en este orden:
-
-1. Verificar `nexopstech.com` en Resend y que la credencial elegida permita enviar con `soporte@nexopstech.com`. Si hacen falta DNS o una nueva key, concretar únicamente esa acción externa.
-2. Cargar la key como **Secret**, nombre exacto `RESEND_API_KEY`, en **sdnexops / Production**; nunca `NEXT_PUBLIC_*`, código, logs o mensajes. La key del proyecto anterior no está disponible para copiar desde Vercel.
-3. Redeploy productivo de la versión acordada y comprobar READY en el dominio canónico.
-4. Enviar una invitación a un destinatario controlado acordado con Alan; registrar resultado del formulario, ID/estado de entrega de Resend y recepción, sin almacenar el enlace/token. Hasta entonces A permanece bloqueado.
+El Portal carga autenticado después del redeploy. Alan indicó `sysnexops@gmail.com` para la prueba; ese correo ya corresponde al administrador activo de Sysnexops. El flujo actual solamente crea invitaciones nuevas y no ofrece reenvío; no se intentó recrear, borrar ni modificar esa cuenta. Se propuso `sysnexops+invitacion@gmail.com` para una empresa de prueba separada y se espera confirmación antes de crear ese acceso. Pendiente registrar éxito del formulario, ID/estado de entrega en Resend y, por separado, recepción. No se almacena el token de activación.
 
 ## B — comportamiento entregado
 
@@ -93,12 +90,12 @@ En la ficha real de Sysnexops se seleccionaron NEX-1015 y NEX-1016, ambos ya Res
 
 ## Riesgos, límites y rollback
 
-No hay migraciones nuevas ni cambios de permisos. El código del lote se revierte con el commit funcional; no requiere borrar datos. Las pruebas locales no certifican Auth/Storage hospedados ni entrega de correo. La nueva ficha fue probada funcionalmente en local; su preview remota fue probada hasta login. Mantener A bloqueado y el PR revisable hasta resolver credencial/dominio y envío real.
+No hay migraciones nuevas ni cambios de permisos. El código del lote se revierte con el commit funcional; no requiere borrar datos. Las pruebas locales no certifican Auth/Storage hospedados ni entrega de correo. La nueva ficha fue probada funcionalmente en local; su preview remota fue probada hasta login. La configuración Resend está aplicada, pero la entrega de una invitación aún requiere el smoke real. El rollback de código de #77 no elimina la nueva variable productiva ni la credencial Resend.
 
 ## Knowledge Delta
 
 1. El nombre del repositorio no identifica el proyecto productivo del Portal: **sdnexops** sirve `portal.nexopstech.com`; **nexopsticketera** sirve `soporte.nexopstech.com`.
-2. La key de Resend quedó en el proyecto anterior. Su existencia allí no configura sdnexops ni certifica dominio/entrega.
+2. La key de Resend estaba solamente en el proyecto anterior. Se creó una credencial de envío limitada al dominio verificado y se guardó en sdnexops / Production; Vercel necesitó un redeploy para incorporarla.
 3. #76 ya estaba en main y desplegado, aunque su receipt decía pendiente de release. El smoke sin cambios confirma la acción masiva productiva.
 4. El pendiente de multiselección de **valores de filtro** seguía en la ficha. #77 lo completa reutilizando controles y workflow existentes.
 5. Ningún usuario cliente recibió permisos de cambio de estado; la operación sigue sujeta a las mismas autorizaciones internas y RLS.
