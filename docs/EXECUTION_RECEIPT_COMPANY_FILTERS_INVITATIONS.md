@@ -7,8 +7,8 @@ Fecha: 2026-09-16. Repositorio: `AlanTN13/nexopsticketera`.
 Un único [PR draft #77](https://github.com/AlanTN13/nexopsticketera/pull/77), rama `codex/company-filters-invitations`, base `9e2d6b279c2d346aa4ab86834cd499bd5c52d8d7`. Commit funcional: `e58f4889c7861b941463fa12aa8dd067d3c44040`.
 
 - **B: implementado y validado en la ficha de empresa**, listo para revisar. No integrado ni promovido a producción por este lote.
-- **A: configuración productiva aplicada; falta cerrar el envío real.** Dominio verificado, key de envío creada con autorización de Alan y guardada como Secret en sdnexops / Production. Redeploy READY. El destinatario original ya tiene acceso activo; se solicitó confirmación del alias de prueba para completar un alta nueva sin modificarlo. No declarar el smoke de invitación completo todavía.
-- No se modificaron Supabase/Auth, migraciones remotas, permisos, entitlements ni datos de clientes. La única acción productiva de tickets fue un lote al mismo estado existente, con respuesta de cero cambios.
+- **A: configuración aplicada y envío real ejecutado.** Dominio verificado, secreto Production y redeploy READY. Alta de empresa QA exitosa; Resend registra **Sent**. Recepción en Gmail aún no confirmada: no afirmar Delivered ni activación de cuenta.
+- No se cambiaron código/configuración de Supabase/Auth, migraciones remotas ni reglas de permisos. El smoke autorizado creó una empresa QA con su administrador invitado y permisos iniciales mediante el flujo existente. La cuenta original permanece intacta. La única acción productiva de tickets fue un lote al mismo estado existente, con respuesta de cero cambios.
 
 ## Reconciliación antes de editar
 
@@ -40,11 +40,19 @@ El conector Vercel omitía ambos proyectos y devolvía 404 por slug. La sesión 
 
 Las nuevas pruebas verifican: key ausente impide llamar al proveedor; remitente/destino/enlace correctos; HTML escapado; la key no forma parte del mensaje; error retornado por proveedor produce un mensaje genérico. Son pruebas con SDK simulado, **no entrega real ni validación de dominio**.
 
-### Cierre del envío pendiente
+### Envío productivo real
 
 Alan autorizó crear la key y configurar producción. Se completaron dominio, secreto y redeploy. [Dominio verificado](evidence/company-filters-invitations/resend-domain-verified.png) · [Secret Production sin valor visible](evidence/company-filters-invitations/resend-production-secret.png) · [Redeploy Ready](evidence/company-filters-invitations/resend-production-redeploy.png).
 
-El Portal carga autenticado después del redeploy. Alan indicó `sysnexops@gmail.com` para la prueba; ese correo ya corresponde al administrador activo de Sysnexops. El flujo actual solamente crea invitaciones nuevas y no ofrece reenvío; no se intentó recrear, borrar ni modificar esa cuenta. Se propuso `sysnexops+invitacion@gmail.com` para una empresa de prueba separada y se espera confirmación antes de crear ese acceso. Pendiente registrar éxito del formulario, ID/estado de entrega en Resend y, por separado, recepción. No se almacena el token de activación.
+Alan confirmó el envío luego de proponer el alias `sysnexops+invitacion@gmail.com`, que usa su mismo buzón sin modificar la cuenta original activa. Se completó Backoffice > Companies > Nueva empresa una sola vez. El botón pasó a `Creando…` deshabilitado y el formulario respondió `Empresa creada correctamente.`
+
+- Empresa: **NexOps QA Invitaciones**, industria Pruebas internas, ID `88ea23ed-391e-4e9d-9253-d5a71f3d8836`, slug `nexops-qa-invitaciones`, estado Onboarding.
+- Responsable: Prueba NexOps, cargo QA, ID `f1b46467-0386-449f-bcc5-bb6395303965`, Cliente admin / Invitado. Soporte Administrar; otros módulos Sin acceso, conforme al bootstrap existente.
+- [Email Resend](https://resend.com/emails/02fe0177-6227-4915-ab62-0f4cfa65bba4): `02fe0177-6227-4915-ab62-0f4cfa65bba4`, **Sent**, 2026-09-16 13:11 America/Argentina/Buenos_Aires. Asunto `Activá tu acceso a NexOps`, from `soporte@nexopstech.com`, reply-to `info@nexopstech.com`, destinatario autorizado `sysnexops+invitacion@gmail.com`.
+- [Solicitud al proveedor](https://resend.com/logs/58a74947-a377-41f1-9940-216697fcf49a): POST /emails, ID `58a74947-a377-41f1-9940-216697fcf49a`.
+- La búsqueda específica en Gmail, incluido spam (`in:anywhere`), todavía no encontró el mensaje. **Sent no equivale a Delivered ni a recepción**. No se duplicó el envío ni se abrió el enlace de activación. No se almacenaron el token o el valor de la key.
+
+[Empresa y administrador creados](evidence/company-filters-invitations/invitation-company-created.png) · [Envío real y remitente](evidence/company-filters-invitations/invitation-sent-production.png).
 
 ## B — comportamiento entregado
 
@@ -90,7 +98,7 @@ En la ficha real de Sysnexops se seleccionaron NEX-1015 y NEX-1016, ambos ya Res
 
 ## Riesgos, límites y rollback
 
-No hay migraciones nuevas ni cambios de permisos. El código del lote se revierte con el commit funcional; no requiere borrar datos. Las pruebas locales no certifican Auth/Storage hospedados ni entrega de correo. La nueva ficha fue probada funcionalmente en local; su preview remota fue probada hasta login. La configuración Resend está aplicada, pero la entrega de una invitación aún requiere el smoke real. El rollback de código de #77 no elimina la nueva variable productiva ni la credencial Resend.
+No hay migraciones nuevas ni cambios en las reglas de permisos. El código del lote se revierte con el commit funcional; no requiere borrar datos. Las pruebas locales no certifican Auth/Storage hospedados. El alta productiva sí creó el administrador invitado y envió por Resend, pero falta confirmar entrega al buzón y activación por el usuario. La nueva ficha fue probada funcionalmente en local; su preview remota fue probada hasta login. El rollback de código de #77 no elimina la variable productiva, la credencial Resend ni los registros QA creados. No se borraron esos registros.
 
 ## Knowledge Delta
 
