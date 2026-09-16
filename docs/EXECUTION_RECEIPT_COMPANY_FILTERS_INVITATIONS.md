@@ -7,7 +7,7 @@ Fecha: 2026-09-16. Repositorio: `AlanTN13/nexopsticketera`.
 Un único [PR draft #77](https://github.com/AlanTN13/nexopsticketera/pull/77), rama `codex/company-filters-invitations`, base `9e2d6b279c2d346aa4ab86834cd499bd5c52d8d7`. Commit funcional: `e58f4889c7861b941463fa12aa8dd067d3c44040`.
 
 - **B: implementado y validado en la ficha de empresa**, listo para revisar. No integrado ni promovido a producción por este lote.
-- **A: configuración aplicada y envío real ejecutado.** Dominio verificado, secreto Production y redeploy READY. Alta de empresa QA exitosa; Resend registra **Sent**. Recepción en Gmail aún no confirmada: no afirmar Delivered ni activación de cuenta.
+- **A: envío de invitaciones resuelto y recepción confirmada.** Dominio verificado, secreto Production, redeploy READY y alta de empresa QA exitosa. Resend registró el envío; Alan confirmó la recepción con una captura de Gmail. No se probó la activación de cuenta.
 - No se cambiaron código/configuración de Supabase/Auth, migraciones remotas ni reglas de permisos. El smoke autorizado creó una empresa QA con su administrador invitado y permisos iniciales mediante el flujo existente. La cuenta original permanece intacta. La única acción productiva de tickets fue un lote al mismo estado existente, con respuesta de cero cambios.
 
 ## Reconciliación antes de editar
@@ -50,7 +50,7 @@ Alan confirmó el envío luego de proponer el alias `sysnexops+invitacion@gmail.
 - Responsable: Prueba NexOps, cargo QA, ID `f1b46467-0386-449f-bcc5-bb6395303965`, Cliente admin / Invitado. Soporte Administrar; otros módulos Sin acceso, conforme al bootstrap existente.
 - [Email Resend](https://resend.com/emails/02fe0177-6227-4915-ab62-0f4cfa65bba4): `02fe0177-6227-4915-ab62-0f4cfa65bba4`, **Sent**, 2026-09-16 13:11 America/Argentina/Buenos_Aires. Asunto `Activá tu acceso a NexOps`, from `soporte@nexopstech.com`, reply-to `info@nexopstech.com`, destinatario autorizado `sysnexops+invitacion@gmail.com`.
 - [Solicitud al proveedor](https://resend.com/logs/58a74947-a377-41f1-9940-216697fcf49a): POST /emails, ID `58a74947-a377-41f1-9940-216697fcf49a`.
-- La búsqueda específica en Gmail, incluido spam (`in:anywhere`), todavía no encontró el mensaje. **Sent no equivale a Delivered ni a recepción**. No se duplicó el envío ni se abrió el enlace de activación. No se almacenaron el token o el valor de la key.
+- **Recepción confirmada por Alan** mediante captura de Gmail compartida en esta conversación: remitente NexOps Soporte `<soporte@nexopstech.com>`, destinatario `sysnexops+invitacion`, asunto y contenido de la invitación esperada, hora visible **13:17 del 16 de septiembre de 2026**. La búsqueda inicial sin resultados fue anterior a la recepción. Esta evidencia cierra el smoke de envío real; no se infiere un evento Delivered del dashboard ni activación de cuenta. No se duplicó el envío ni se abrió el enlace. No se almacenaron el token o el valor de la key. La captura completa del escritorio permanece en la conversación y no se publica en el repositorio.
 
 [Empresa y administrador creados](evidence/company-filters-invitations/invitation-company-created.png) · [Envío real y remitente](evidence/company-filters-invitations/invitation-sent-production.png).
 
@@ -98,7 +98,7 @@ En la ficha real de Sysnexops se seleccionaron NEX-1015 y NEX-1016, ambos ya Res
 
 ## Riesgos, límites y rollback
 
-No hay migraciones nuevas ni cambios en las reglas de permisos. El código del lote se revierte con el commit funcional; no requiere borrar datos. Las pruebas locales no certifican Auth/Storage hospedados. El alta productiva sí creó el administrador invitado y envió por Resend, pero falta confirmar entrega al buzón y activación por el usuario. La nueva ficha fue probada funcionalmente en local; su preview remota fue probada hasta login. El rollback de código de #77 no elimina la variable productiva, la credencial Resend ni los registros QA creados. No se borraron esos registros.
+No hay migraciones nuevas ni cambios en las reglas de permisos. El código del lote se revierte con el commit funcional; no requiere borrar datos. Las pruebas locales no certifican Auth/Storage hospedados. El alta productiva creó el administrador invitado, envió por Resend y Alan confirmó recepción en Gmail. La activación y elección de contraseña quedan fuera de la evidencia de este smoke. La nueva ficha fue probada funcionalmente en local; su preview remota fue probada hasta login. El rollback de código de #77 no elimina la variable productiva, la credencial Resend ni los registros QA creados. No se borraron esos registros.
 
 ## Knowledge Delta
 
@@ -107,3 +107,5 @@ No hay migraciones nuevas ni cambios en las reglas de permisos. El código del l
 3. #76 ya estaba en main y desplegado, aunque su receipt decía pendiente de release. El smoke sin cambios confirma la acción masiva productiva.
 4. El pendiente de multiselección de **valores de filtro** seguía en la ficha. #77 lo completa reutilizando controles y workflow existentes.
 5. Ningún usuario cliente recibió permisos de cambio de estado; la operación sigue sujeta a las mismas autorizaciones internas y RLS.
+
+6. La recepción real quedó confirmada por Alan en Gmail a las 13:17, después del evento Sent de las 13:11. Un estado Sent y una búsqueda inicial sin resultados no bastaban para afirmar entrega ni fallo.
