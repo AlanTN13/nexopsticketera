@@ -36,9 +36,11 @@ describe("ticket presentation", () => {
 
   it("offers previews, removal and duplicate-submit protection for comment images", () => {
     const form = readFileSync(join(process.cwd(), "src/components/comment-form.tsx"), "utf8");
-    expect(form).toContain("Adjuntar imágenes");
-    expect(form).toContain("URL.createObjectURL");
-    expect(form).toContain("removeFile(index)");
+    const picker = readFileSync(join(process.cwd(), "src/components/image-attachment-picker.tsx"), "utf8");
+    expect(form).toContain('ImageAttachmentPicker kind="comment"');
+    expect(picker).toContain("Adjuntar archivo");
+    expect(picker).toContain("URL.createObjectURL");
+    expect(picker).toContain("removeImage(fingerprint)");
     expect(form).toContain("PendingSubmitButton");
     expect(form).toContain('pendingLabel="Enviando…"');
     expect(form).toContain('value={body}');

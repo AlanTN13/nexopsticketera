@@ -1,0 +1,59 @@
+{
+  "scope": "Real React components and form actions with a local action stub; no hosted Auth/Storage",
+  "browser": "153.0.8010.47",
+  "results": [
+    {
+      "name": "PNG paste opens collapsed ticket attachments and renders preview",
+      "status": "PASS"
+    },
+    {
+      "name": "Rapid repeat paste does not duplicate bytes",
+      "status": "PASS"
+    },
+    {
+      "name": "Native selector appends JPEG to same preview list",
+      "status": "PASS"
+    },
+    {
+      "name": "Existing count limit blocks fourth image without clearing accepted files",
+      "status": "PASS"
+    },
+    {
+      "name": "Oversize and invalid MIME show existing validation errors",
+      "status": "PASS"
+    },
+    {
+      "name": "Text paste is not cancelled and creates no attachment",
+      "status": "PASS"
+    },
+    {
+      "name": "Comment JPEG paste and form isolation",
+      "status": "PASS"
+    },
+    {
+      "name": "Remove and re-paste restores image exactly once",
+      "status": "PASS"
+    },
+    {
+      "name": "Mobile 390px preserves selector and previews without overflow",
+      "status": "PASS"
+    },
+    {
+      "name": "React ticket action receives attachment1..3 with bytes; reset clears previews and next submission",
+      "status": "PASS"
+    },
+    {
+      "name": "React comment action receives commentImages; reset starts a clean edit",
+      "status": "PASS"
+    },
+    {
+      "name": "Submitting during validation is blocked without locking comment retry",
+      "status": "PASS"
+    },
+    {
+      "name": "Real browser clipboard PNG and keyboard paste reaches active form",
+      "status": "PASS"
+    }
+  ],
+  "errors": []
+}
