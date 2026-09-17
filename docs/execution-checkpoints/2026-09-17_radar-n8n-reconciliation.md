@@ -45,6 +45,14 @@ Read-only query against existing Supabase Ticketera project `tfonsiurhjmllqaknhg
 
 New provider spend in this reconciliation: **USD 0**. Synthetic test tokens are not counted as live cost.
 
+## Remote verification of implementation commits
+
+Verified through GitHub after pushing both existing PR branches on 2026-09-17:
+
+- Portal `6ebd14fec509a9fab5dace301e19822eac82fe89`: [CI run 130](https://github.com/AlanTN13/nexopsticketera/actions/runs/35221959954) completed SUCCESS; both Vercel checks (`nexopsticketera`, `sdnexops`) SUCCESS.
+- Web `66d98f2529bc555b8b5001d2184e20aeb0afac56`: [Content Engine Validation run 337](https://github.com/AlanTN13/webneoxps/actions/runs/35221960220) completed SUCCESS; Netlify deploy-preview and Vercel checks SUCCESS.
+- Both PRs remain open, mergeable and draft. Deployment success verifies the build/deploy checks, not a live n8n execution or a browser acceptance test.
+
 ## External blocker and next executable step
 
 Existing `https://nexops.app.n8n.cloud` was found from the GlobalTrip integration; the authenticated browser session and existing `OpenAi account` credential were visible. No key was read, created or exposed.
