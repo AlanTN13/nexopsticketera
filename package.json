@@ -13,7 +13,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit --incremental false",
     "test": "vitest run",
-    "test:radar-db": "node supabase/tests/run-radar-api-local.mjs"
+    "test:radar-db": "node supabase/tests/run-radar-api-local.mjs",
+    "radar:n8n:build": "node scripts/build-radar-n8n.cjs",
+    "radar:n8n:check": "node scripts/build-radar-n8n.cjs --check"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.3",
@@ -34,11 +36,13 @@
     "@types/papaparse": "5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "0.25.12",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "4.1.10"
+    "vitest": "4.1.10",
+    "whatwg-url": "14.2.0"
   },
   "overrides": {
     "js-yaml": "5.2.1"

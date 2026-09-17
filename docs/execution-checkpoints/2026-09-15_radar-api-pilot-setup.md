@@ -1,3 +1,5 @@
+> HISTORICAL / SUPERSEDED: the direct backend worker described here was removed by the n8n reconciliation. See `2026-09-17_radar-n8n-reconciliation.md`. Do not activate the old runtime.
+
 # Radar API pilot — activation and recovery
 
 ## Existing deployment and limits

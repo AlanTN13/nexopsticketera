@@ -36,6 +36,7 @@ try {
     '20260901180902_radar_github_queue_bridge.sql',
     '20260901194500_radar_manual_publication_gate.sql',
     '20260915174740_radar_api_bounded_state.sql',
+    '20260917122641_radar_n8n_atomic_completion.sql',
   ];
   for (const migration of migrations) {
     await db.exec(await readFile(new URL(`migrations/${migration}`, supabaseDirectory), 'utf8'));

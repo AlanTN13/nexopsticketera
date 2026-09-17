@@ -2,7 +2,7 @@ import "server-only";
 
 import { isSafeHttpsUrl, type RadarAutonomyMode, type RadarManualNoteRequest, type RadarRequestKind } from "@/lib/radar-control-plane";
 import { radarApiConfiguration } from "@/lib/radar-api-provider";
-import { scheduleRadarApiWorker } from "@/lib/radar-api-worker";
+import { dispatchRadarN8n } from "@/lib/radar-api-worker";
 import { isRadarWorkerWorkspaceId } from "@/lib/radar-engine-contract";
 
 export type RadarQueueRequest = {
@@ -57,11 +57,12 @@ export function buildRadarQueueRequest(input: {
   };
 }
 
-/** API-only dispatch: never silently falls back to the historical private queue. */
+/** n8n-only dispatch: never silently falls back to the historical private queue. */
 export async function dispatchRadarRun(input: Parameters<typeof buildRadarQueueRequest>[0]) {
   const config = radarApiConfiguration();
   if (!config.enabled || input.workspaceId !== config.workspaceId) throw new Error("El piloto API no está habilitado para este workspace.");
   if (input.triggerKind === "scheduled") throw new Error("La programación API espera la validación de Buscar ahora.");
-  scheduleRadarApiWorker(input.runId);
-  return { externalRunId: `api:${input.runId}`, externalRunUrl: input.callbackUrl, reused: false };
+  buildRadarQueueRequest(input);
+  await dispatchRadarN8n(input.runId);
+  return { externalRunId: `n8n:${input.runId}`, externalRunUrl: input.callbackUrl, reused: false };
 }

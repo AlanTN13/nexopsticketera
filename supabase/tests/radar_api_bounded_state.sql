@@ -180,6 +180,22 @@ select public.reserve_radar_api_run('62000000-0000-0000-0000-000000000012','{"mo
 select public.finish_radar_api_run('62000000-0000-0000-0000-000000000012','review_pending',jsonb_set((select candidate from test_api_candidate),'{topicFingerprint}','"topic:prior-approval"'),null,'{}');
 select pg_temp.assert_true((select status='no_publication' from public.radar_runs where id='62000000-0000-0000-0000-000000000012'),'failed previously approved run still prevents duplicate topic');
 
+-- n8n finalization uses the same budget and completion function in one transaction.
+update private.radar_api_pilot_usage set reserved_runs=0,reserved_usd=0;
+select pg_temp.new_api_run('api-test-a',20);
+select public.reserve_radar_api_run('62000000-0000-0000-0000-000000000020','{"model":"gpt-5-mini","n8nExecutionId":"execution20","n8nRevision":0}',3);
+create temporary table test_n8n_context as select '{"n8nExecutionId":"execution20","n8nRevision":1,"engine":"radar_api_v1","decision":{"outcome":"AUTO_PUBLISH","eligibility":"ELIGIBLE","score":88,"failedGates":[]},"gates":{"sources":true,"facts":true,"novelty":true,"clientClaims":true,"content":true,"cover":true,"siteValidation":true,"budget":true,"consistency":true}}'::jsonb as context;
+select public.finish_radar_n8n_run('62000000-0000-0000-0000-000000000020','execution20',0,'review_pending',(select candidate from test_api_candidate),'controlled',(select '{"calls":2}'::jsonb),(select context from test_n8n_context));
+select pg_temp.assert_true((select status='no_publication' and candidate->>'score'='0' and api_context#>>'{decision,eligibility}'='INELIGIBLE' and api_context#>'{decision,score}'='null'::jsonb from public.radar_runs where id='62000000-0000-0000-0000-000000000020'),'dedupe and ineligibility clear score atomically');
+select pg_temp.assert_true(public.finish_radar_n8n_run('62000000-0000-0000-0000-000000000020','execution20',0,'review_pending',null,null,'{}','{}')=(select api_context->'n8nReceipt' from public.radar_runs where id='62000000-0000-0000-0000-000000000020'),'completion receipt is idempotent');
+select pg_temp.assert_true(not has_function_privilege('authenticated','public.finish_radar_n8n_run(uuid,text,integer,text,jsonb,text,jsonb,jsonb)','EXECUTE'),'authenticated cannot finish n8n');
+select pg_temp.assert_true(not has_function_privilege('anon','public.finish_radar_n8n_run(uuid,text,integer,text,jsonb,text,jsonb,jsonb)','EXECUTE'),'anon cannot finish n8n');
+select pg_temp.new_api_run('api-test-a',21);
+select public.reserve_radar_api_run('62000000-0000-0000-0000-000000000021','{"model":"gpt-5-mini","n8nExecutionId":"execution21","n8nRevision":0}',3);
+update public.radar_runs set api_deadline_at=clock_timestamp()-interval '1 second' where id='62000000-0000-0000-0000-000000000021';
+select public.finish_radar_n8n_run('62000000-0000-0000-0000-000000000021','execution21',0,'review_pending',(select candidate from test_api_candidate),'controlled','{}',(select jsonb_set(context,'{n8nExecutionId}','"execution21"') from test_n8n_context));
+select pg_temp.assert_true((select status='failed' and api_context#>'{decision,score}'='null'::jsonb from public.radar_runs where id='62000000-0000-0000-0000-000000000021'),'late completion fails without publicable score');
+
 -- Internal workspaces have no company; only active platform admins pass access.
 select pg_temp.assert_true(private.radar_workspace_has_access('api-test-a','admin'),'active platform admin can operate internal workspace');
 select set_config('request.jwt.claims','{"sub":"61000000-0000-0000-0000-000000000002","role":"authenticated"}',true);

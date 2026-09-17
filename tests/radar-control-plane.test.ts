@@ -73,7 +73,7 @@ describe("Radar Control Plane V1", () => {
     expect(migration).toContain("if request_mode not in ('suggest', 'review')");
     expect(migration).toContain("grant execute on function public.register_platform_radar_workspace(text) to service_role");
     expect(engineClient).toContain("publicationGate: false");
-    expect(engineClient).toContain("scheduleRadarApiWorker(input.runId)");
+    expect(engineClient).toContain("await dispatchRadarN8n(input.runId)");
     expect(engineClient).not.toContain("api.github.com");
     expect(engineClient).toContain("radarApiConfiguration");
     expect(publicationMigration).toContain("request_manual_radar_publication");

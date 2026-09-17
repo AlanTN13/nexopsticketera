@@ -17,8 +17,8 @@ async function run(outputs: unknown[], options: { active?: () => Promise<void>; 
 }
 afterEach(() => vi.unstubAllEnvs());
 describe("Radar API editorial contract", () => {
-  it("requires a server key, pilot workspace and bounded usage; expensive model cannot activate", () => {
-    vi.stubEnv("RADAR_API_ENABLED", "true"); vi.stubEnv("OPENAI_API_KEY", "test-only"); vi.stubEnv("RADAR_API_PILOT_WORKSPACE_ID", "nexops"); vi.stubEnv("RADAR_API_PILOT_MAX_RUNS", "3");
+  it("requires a private n8n webhook, pilot workspace and bounded usage; expensive model cannot activate", () => {
+    vi.stubEnv("RADAR_API_ENABLED", "true"); vi.stubEnv("RADAR_N8N_WEBHOOK_URL", "https://automation.example/webhook/radar"); vi.stubEnv("RADAR_N8N_DISPATCH_SECRET", "d".repeat(32)); vi.stubEnv("RADAR_N8N_CALLBACK_SECRET", "c".repeat(32)); vi.stubEnv("RADAR_API_PILOT_WORKSPACE_ID", "nexops"); vi.stubEnv("RADAR_API_PILOT_MAX_RUNS", "3");
     expect(radarApiConfiguration().enabled).toBe(true);
     vi.stubEnv("RADAR_OPENAI_MODEL", "gpt-6-astra"); expect(radarApiConfiguration().enabled).toBe(false);
   });
