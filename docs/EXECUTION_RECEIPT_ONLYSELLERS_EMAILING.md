@@ -71,7 +71,11 @@ Regresión ejecutada a través de `refreshAllMetricsCompanies`: con Meta OFF sol
 
 - 50 archivos / **229 pruebas PASS**.
 - Typecheck, lint y build de producción webpack: PASS.
-- Publicación de la corrección: pendiente de registrar resultado del PR/despliegue.
+- [PR #78](https://github.com/AlanTN13/nexopsticketera/pull/78) integrado el `2026-09-17T14:26:02Z`; main `52ec5ad39d49da4a9d6817a994a5d50a0c51d27b`.
+- [CI](https://github.com/AlanTN13/nexopsticketera/actions/runs/35233327634/job/105242795161): SUCCESS; previews de ambos proyectos: SUCCESS.
+- [Producción sdnexops](https://vercel.com/alan-fernandezs-projects-f6e1f457/sdnexops/2NkPSJfirVx2DvKGRFczSkdiFEwZ): SUCCESS según estado de GitHub/Vercel del commit integrado.
+- Producción del proyecto anterior nexopsticketera: SUCCESS, deployment `8rq8Yj2oPbUfWeZz7D44XZBSppma`, mismo commit. La integración habitual de main despliega ambos proyectos.
+- Ficha real de empresa reabierta: exactamente un usuario activo; Métricas habilitada / Ver; demás módulos no disponibles / Sin acceso; checkbox Meta apagado y Kommo vacío. Auditoría visible en la ficha.
 
 ## Knowledge Delta y pendiente real
 
