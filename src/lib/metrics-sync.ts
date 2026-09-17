@@ -277,6 +277,7 @@ function metricsSettings(value: unknown): PortalModuleSettings["metrics"] {
   const settings = objectSettings(value);
   const objective = settings.objective;
   return {
+    metaAdsEnabled: typeof settings.metaAdsEnabled === "boolean" ? settings.metaAdsEnabled : undefined,
     accountName: optionalString(settings.accountName),
     mailchimpName: optionalString(settings.mailchimpName),
     clientsSheetUrl: optionalString(settings.clientsSheetUrl),
