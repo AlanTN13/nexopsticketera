@@ -29,6 +29,13 @@ export function isNextNavigationSignal(error: unknown) {
   return digest.startsWith("NEXT_REDIRECT;") || digest.startsWith("NEXT_HTTP_ERROR_FALLBACK;");
 }
 
+// Both form wrappers must block before the duplicate-submit guard is armed.
+function attachmentsArePending(event: FormEvent<HTMLFormElement>) {
+  if (!event.currentTarget.querySelector('[data-attachments-pending="true"]')) return false;
+  event.preventDefault();
+  return true;
+}
+
 export function PendingForm({
   action,
   children,
@@ -60,7 +67,7 @@ export function PendingForm({
   }
 
   return (
-    <form action={guardedAction} className={className}>
+    <form action={guardedAction} className={className} onSubmitCapture={attachmentsArePending}>
       {children}
       {error ? (
         <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
@@ -103,6 +110,7 @@ export function ActionStateForm({
   }, [pending]);
 
   function preventDuplicateSubmit(event: FormEvent<HTMLFormElement>) {
+    if (attachmentsArePending(event)) return;
     if (submitted.current) {
       event.preventDefault();
       return;
