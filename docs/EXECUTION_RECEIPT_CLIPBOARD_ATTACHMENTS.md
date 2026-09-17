@@ -2,6 +2,8 @@
 
 Fecha: 2026-09-17. Estado: READY_FOR_REVIEW. Rama: `codex/clipboard-attachments`.
 
+Entrega: [PR #79](https://github.com/AlanTN13/nexopsticketera/pull/79). Commit de implementación y evidencia: [`aa93a83`](https://github.com/AlanTN13/nexopsticketera/commit/aa93a83).
+
 ## Reconciliación previa
 
 Base verificada contra GitHub: `52ec5ad39d49da4a9d6817a994a5d50a0c51d27b` (main, PR #78). Se creó un worktree desde esa base, sin mezclar los commits de documentación de la copia local anterior. Main volvió a verificarse antes del commit.
