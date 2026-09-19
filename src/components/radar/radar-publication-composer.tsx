@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { Eye, Palette, ShieldCheck } from "lucide-react";
 
 import { publishApprovedRadarRunAction } from "@/app/portal/radar/operacion/actions";
 import { PendingForm, PendingSubmitButton } from "@/components/pending-form";
+import type { RadarPublicationComposition } from "@/lib/radar-publication";
 import type { RadarRunCandidate } from "@/lib/radar-control-plane";
 
 function slugify(value: string) {
@@ -39,16 +41,66 @@ export function RadarPublicationComposer({
   publicationConnected: boolean;
 }) {
   const draft = candidate.draft;
-  const initialTitle = draft?.headline ?? candidate.title;
+  const initial = candidate.composition;
+  const initialTitle = initial?.title ?? draft?.headline ?? candidate.title;
   const [title, setTitle] = useState(initialTitle);
-  const [slug, setSlug] = useState(slugify(initialTitle));
-  const [visualType, setVisualType] = useState("editorial-diagram");
-  const [visualSubject, setVisualSubject] = useState(`Una representación editorial de ${candidate.topic} aplicada a operaciones reales`);
+  const [slug, setSlug] = useState(initial?.slug ?? slugify(initialTitle));
+  const [visualType, setVisualType] = useState(initial?.visualType ?? "editorial-diagram");
+  const [visualSubject, setVisualSubject] = useState(initial?.visualSubject ?? initialTitle);
   const [idempotencyKey] = useState(() => crypto.randomUUID());
-  const enabled = canPublish && publicationConnected;
+  const [previewToken, setPreviewToken] = useState("");
+  const [previewImage, setPreviewImage] = useState("");
+  const [previewError, setPreviewError] = useState("");
+  const [previewPending, setPreviewPending] = useState(false);
+  const section = useRef<HTMLElement>(null);
+  const revision = useRef(0);
+  const cleanup = useRef<() => void>(() => {});
+  const enabled = canPublish && publicationConnected && Boolean(previewToken);
+  useEffect(() => () => cleanup.current(), []);
+  async function preview() {
+    const form = section.current?.querySelector("form");
+    if (!form || previewPending) return;
+    cleanup.current();
+    setPreviewToken("");
+    setPreviewError("");
+    const requestRevision = revision.current;
+    const data = new FormData(form);
+    const composition = Object.fromEntries(data.entries()) as unknown as RadarPublicationComposition;
+    composition.sourceVerified = data.get("sourceVerified") === "true";
+    composition.rightsVerified = data.get("rightsVerified") === "true";
+    composition.clientClaimsAuthorizedOrAbsent = data.get("clientClaimsAuthorizedOrAbsent") === "true";
+    const child = window.open("about:blank", "_blank");
+    if (!child) { setPreviewError("Permití abrir ventanas para revisar la nota en webneoxps."); return; }
+    setPreviewPending(true);
+    try {
+      const response = await fetch(`/api/radar/runs/${runId}/preview`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId, composition }),
+      });
+      const prepared = await response.json();
+      if (!response.ok) throw new Error(prepared.error || "No se pudo preparar la vista previa.");
+      if (revision.current !== requestRevision) throw new Error("La nota cambió. Abrí una nueva vista previa.");
+      setPreviewImage(`data:image/png;base64,${prepared.cover.pngBase64}`);
+      const url = new URL(prepared.webUrl);
+      const nonce = crypto.randomUUID();
+      url.hash = new URLSearchParams({ origin: window.location.origin, nonce }).toString();
+      const receive = (event: MessageEvent) => {
+        if (revision.current !== requestRevision) return;
+        if (event.source !== child || event.origin !== url.origin || event.data?.nonce !== nonce) return;
+        if (event.data.type === "radar.preview.ready") child.postMessage({ type: "radar.preview.package", nonce, package: { article: prepared.article, cover: prepared.cover, compositionDigest: prepared.compositionDigest } }, url.origin);
+        if (event.data.type === "radar.preview.viewed" && event.data.compositionDigest === prepared.compositionDigest) {
+          setPreviewToken(prepared.token);
+          cleanup.current();
+        }
+      };
+      window.addEventListener("message", receive);
+      cleanup.current = () => window.removeEventListener("message", receive);
+      child.location.href = url.href;
+    } catch (error) { child.close(); setPreviewError(error instanceof Error ? error.message : "No se pudo abrir la vista previa."); }
+    finally { setPreviewPending(false); }
+  }
 
   return (
-    <section className="mt-6 overflow-hidden rounded-2xl border border-[#cfc3f4] bg-[#f8f5ff]">
+    <section ref={section} onChangeCapture={() => { revision.current += 1; setPreviewToken(""); setPreviewImage(""); cleanup.current(); }} className="mt-6 overflow-hidden rounded-2xl border border-[#cfc3f4] bg-[#f8f5ff]">
       <div className="grid lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]">
         <div className="p-5 sm:p-7">
           <div className="flex items-start gap-3">
@@ -58,36 +110,39 @@ export function RadarPublicationComposer({
           <PendingForm action={publishApprovedRadarRunAction} className="mt-6 grid gap-5">
             <input type="hidden" name="workspaceId" value={workspaceId} />
             <input type="hidden" name="runId" value={runId} />
+            <input type="hidden" name="previewToken" value={previewToken} />
             <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Título<input required name="title" value={title} onChange={(event) => { setTitle(event.target.value); setSlug(slugify(event.target.value)); }} minLength={10} maxLength={150} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Dirección web<input required name="slug" value={slug} onChange={(event) => setSlug(slugify(event.target.value))} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-mono text-xs font-normal text-slate-900" /></label>
-              <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Bajada<textarea required name="excerpt" defaultValue={draft?.deck ?? candidate.businessReasons[0]} minLength={40} maxLength={280} rows={3} className="rounded-lg border border-slate-300 bg-white p-3 text-sm font-normal text-slate-900" /></label>
-              <label className="grid gap-2 text-xs font-bold text-slate-700">Título para buscadores<input required name="seoTitle" defaultValue={initialTitle.slice(0, 70)} minLength={20} maxLength={70} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
-              <label className="grid gap-2 text-xs font-bold text-slate-700">Palabra clave<input required name="primaryKeyword" defaultValue={candidate.topic} minLength={3} maxLength={100} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
-              <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Descripción para buscadores<textarea required name="metaDescription" defaultValue={fitMeta(draft?.deck ?? "", candidate.title)} minLength={70} maxLength={180} rows={3} className="rounded-lg border border-slate-300 bg-white p-3 text-sm font-normal text-slate-900" /></label>
+              <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Bajada<textarea required name="excerpt" defaultValue={initial?.excerpt ?? draft?.deck ?? candidate.businessReasons[0]} minLength={40} maxLength={280} rows={3} className="rounded-lg border border-slate-300 bg-white p-3 text-sm font-normal text-slate-900" /></label>
+              <label className="grid gap-2 text-xs font-bold text-slate-700">Título para buscadores<input required name="seoTitle" defaultValue={initial?.seoTitle ?? initialTitle.slice(0, 70)} minLength={20} maxLength={70} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
+              <label className="grid gap-2 text-xs font-bold text-slate-700">Palabra clave<input required name="primaryKeyword" defaultValue={initial?.primaryKeyword ?? candidate.topic} minLength={3} maxLength={100} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
+              <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Descripción para buscadores<textarea required name="metaDescription" defaultValue={initial?.metaDescription ?? fitMeta(draft?.deck ?? "", candidate.title)} minLength={70} maxLength={180} rows={3} className="rounded-lg border border-slate-300 bg-white p-3 text-sm font-normal text-slate-900" /></label>
               <input type="hidden" name="searchIntent" value="Entender el impacto operativo y evaluar una aplicación concreta" />
-              <label className="grid gap-2 text-xs font-bold text-slate-700">Territorio<select name="territory" defaultValue={territoryFor(candidate.topic)} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900"><option value="automatizacion-procesos">Automatización de procesos</option><option value="ia-aplicada-empresas">IA aplicada</option><option value="crm-automatizacion-comercial">CRM y ventas</option><option value="data-analytics">Data & Analytics</option></select></label>
+              <label className="grid gap-2 text-xs font-bold text-slate-700">Territorio<select name="territory" defaultValue={initial?.territory ?? territoryFor(candidate.topic)} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900"><option value="automatizacion-procesos">Automatización de procesos</option><option value="ia-aplicada-empresas">IA aplicada</option><option value="crm-automatizacion-comercial">CRM y ventas</option><option value="data-analytics">Data & Analytics</option></select></label>
               <label className="grid gap-2 text-xs font-bold text-slate-700">Estilo visual<select name="visualType" value={visualType} onChange={(event) => setVisualType(event.target.value)} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900"><option value="editorial-diagram">Diagrama editorial</option><option value="process-diagram">Proceso</option><option value="data-flow">Flujo de datos</option><option value="operations-interface">Interfaz operativa</option></select></label>
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Concepto del visual<input required name="visualSubject" value={visualSubject} onChange={(event) => setVisualSubject(event.target.value)} minLength={5} maxLength={180} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
-              <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Texto accesible de portada<input required name="coverAlt" defaultValue={`Ilustración editorial de NexOps sobre ${candidate.topic}`} minLength={10} maxLength={220} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
-              <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Cuerpo de la nota<textarea required name="bodyMarkdown" defaultValue={draft?.bodyMarkdown ?? ""} minLength={120} maxLength={20_000} rows={16} className="rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs font-normal leading-6 text-slate-900" /></label>
+              <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Texto accesible de portada<input required name="coverAlt" defaultValue={initial?.coverAlt ?? `Ilustración editorial de NexOps sobre ${candidate.topic}`} minLength={10} maxLength={220} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
+              <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Cuerpo de la nota<textarea required name="bodyMarkdown" defaultValue={initial?.bodyMarkdown ?? draft?.bodyMarkdown ?? ""} minLength={120} maxLength={20_000} rows={16} className="rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs font-normal leading-6 text-slate-900" /></label>
             </div>
             <fieldset className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4">
               <legend className="px-1 text-xs font-bold text-slate-700">Confirmación editorial obligatoria</legend>
               <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="sourceVerified" value="true" /> Verifiqué que la fuente respalda la nota.</label>
               <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="rightsVerified" value="true" /> El visual es original de NexOps y puede publicarse.</label>
-              <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="clientClaimsAuthorizedOrAbsent" value="true" /> No hay afirmaciones de clientes sin autorización.</label>
+              <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="clientClaimsAuthorizedOrAbsent" value="true" /> No hay afirmaciones de clientes sin autorización ni advertencias editoriales críticas pendientes.</label>
             </fieldset>
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900"><strong className="block">Último gate manual</strong>Este clic inicia una sola publicación real. webneoxps todavía ejecuta validaciones, despliegue y verificación antes de declararla publicada.</div>
+            <button type="button" onClick={preview} disabled={previewPending} className="min-h-12 rounded-xl border border-[#4f35b5] bg-white px-5 text-sm font-bold text-[#4f35b5] disabled:opacity-50">{previewPending ? "Preparando vista previa…" : "Revisar nota completa en webneoxps"}</button>
+            {previewError && <p role="alert" className="text-sm text-rose-800">{previewError}</p>}
+            <p role="status" className="text-xs text-slate-600">{previewToken ? "Vista previa revisada. La aprobación corresponde a esta versión exacta." : "Revisá la vista previa y confirmala en la ventana del sitio. Cualquier edición requiere una nueva revisión."}</p>
             <PendingSubmitButton disabled={!enabled} idleLabel={publicationConnected ? "Aprobar visual y publicar ahora" : "Puente de publicación pendiente"} pendingLabel="Iniciando publicación…" className="min-h-12 rounded-xl bg-[#4f35b5] px-5 text-sm font-bold text-white disabled:bg-slate-300" />
           </PendingForm>
         </div>
         <aside className="border-t border-[#d9cff7] bg-[#25124f] p-5 text-white lg:border-l lg:border-t-0 sm:p-7">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.14em] text-[#c9baff]"><Eye size={15} /> Vista previa</div>
-          <div className="mt-5 aspect-[16/9] overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-br from-[#32176a] via-[#6544c4] to-[#0b7f76] p-6 shadow-2xl">
-            <p className="text-[9px] font-bold tracking-[.24em] text-[#d7ccff]">RADAR BY NEXOPS</p><div className="mt-4 h-1 w-16 rounded-full bg-[#9ef3d4]" /><h4 className="mt-12 text-2xl font-bold leading-tight">{title || "Título de la nota"}</h4><p className="mt-5 text-xs text-[#d9d2f8]">{candidate.topic}</p>
-            <div className="mt-8 grid grid-cols-3 gap-2 opacity-70"><span className="h-12 rounded-lg border border-white/30" /><span className="h-12 rounded-lg border border-[#9ef3d4]" /><span className="h-12 rounded-lg border border-white/30" /></div>
+          <div className="mt-5 aspect-video overflow-hidden rounded-2xl border border-white/15 bg-[#211245]">
+            {previewImage ? <Image unoptimized src={previewImage} alt={`Portada final: ${title}`} width={1600} height={900} className="h-full w-full object-contain" /> : <p className="p-6 text-sm leading-6 text-[#d9d2f8]">Abrí la vista previa para ver la portada PNG final de esta versión.</p>}
           </div>
           <div className="mt-5 grid gap-3 text-xs leading-5 text-[#ddd6f7]"><p><strong className="text-white">Concepto:</strong> {visualSubject}</p><p><strong className="text-white">Formato:</strong> 1600 × 900, preparado para portada y redes.</p><p><strong className="text-white">Estilo:</strong> {visualType}</p></div>
           <div className="mt-6 flex gap-2 rounded-xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100"><ShieldCheck className="mt-0.5 shrink-0" size={15} /> La composición no utiliza generadores de imágenes ni publica por sí sola.</div>

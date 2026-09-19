@@ -23,8 +23,8 @@ export async function POST(request: Request, context: { params: Promise<{ runId:
     secret: process.env.RADAR_PUBLICATION_CALLBACK_SECRET ?? "",
   })) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const deliveryId = `radar-publication-${runId}`;
-  if (request.headers.get("x-radar-delivery-id") !== deliveryId || request.headers.get("idempotency-key") !== deliveryId) {
+  const deliveryId = request.headers.get("x-radar-delivery-id") ?? "";
+  if (!new RegExp(`^radar-publication-${runId}(?:-attempt-[1-9][0-9]{0,2})?$`).test(deliveryId) || request.headers.get("idempotency-key") !== deliveryId) {
     return Response.json({ error: "Invalid delivery" }, { status: 400 });
   }
   let payload: Record<string, unknown>;

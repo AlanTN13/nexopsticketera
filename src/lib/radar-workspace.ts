@@ -451,7 +451,7 @@ export async function loadRadarWorkspace(
   }
 
   const [publicationResult, historyResult] = await Promise.allSettled([
-    readPublications(fetchImpl, workspaceId, config.publicationsUrl),
+    readPublications(fetchImpl, platformWorkspace ? (process.env.RADAR_CORPUS_WORKSPACE_ID?.trim() || workspaceId) : workspaceId, config.publicationsUrl),
     readHistory(fetchImpl, config),
   ]);
 
@@ -474,4 +474,16 @@ export async function loadRadarWorkspace(
     generatedAt:
       publicationResult.status === "fulfilled" ? publicationResult.value.generatedAt : null,
   };
+}
+
+/** Research requires the complete site corpus; never silently dedupe against a partial history. */
+export async function loadRadarResearchCorpus(workspaceId: string) {
+  const config = workspaceConfiguration(workspaceId, true);
+  if (!config) throw new Error("El corpus de Radar no está configurado.");
+  const manifest = asRecord(await fetchJson(fetch, config.publicationsUrl, { cache: "no-store" }));
+  if (manifest.schemaVersion !== 1 || manifest.workspace !== (process.env.RADAR_CORPUS_WORKSPACE_ID?.trim() || workspaceId) || !Array.isArray(manifest.corpus))
+    throw new Error("El sitio todavía no expone el corpus completo compatible con Radar API.");
+  if (manifest.corpus.length > 1000 || JSON.stringify(manifest.corpus).length > 50000)
+    throw new Error("El corpus supera el límite del piloto; no se recortó historial.");
+  return manifest.corpus;
 }

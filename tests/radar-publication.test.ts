@@ -7,9 +7,16 @@ vi.mock("server-only", () => ({}));
 
 import {
   buildRadarPublicationBundle,
+  buildRadarPublicationPackage,
+  prepareRadarPublicationCandidate,
+  radarTopicFingerprint,
+  radarPublicationPackageDigest,
   markdownToRadarContent,
   renderRadarCoverSvg,
 } from "@/lib/radar-publication";
+import sharp from "sharp";
+import { renderRadarCover, RADAR_COVER_TYPES } from "@/lib/radar-cover";
+import { issueRadarPreviewToken, verifyRadarPreviewToken } from "@/lib/radar-preview";
 import type { RadarRun } from "@/lib/radar-control-plane";
 
 const migration = readFileSync(join(process.cwd(), "supabase/migrations/20260901194500_radar_manual_publication_gate.sql"), "utf8");
@@ -70,8 +77,12 @@ const composition = {
 };
 
 describe("Radar manual publication gate", () => {
-  it("builds a unique visual and a bundle carrying the two-step approval proof", () => {
-    const bundle = buildRadarPublicationBundle({
+  it("builds a real PNG and a bundle carrying the two-step approval proof", async () => {
+    vi.stubEnv("RADAR_PREVIEW_SECRET", "test-only-secret-".repeat(4));
+    const prepared = await buildRadarPublicationPackage(run, composition);
+    const previewToken = issueRadarPreviewToken({ runId: run.id, workspaceId: run.workspaceId, actorId: run.requestedBy, compositionDigest: prepared.compositionDigest });
+    const bundle = await buildRadarPublicationBundle({
+      previewToken,
       run,
       composition,
       approvedBy: run.requestedBy,
@@ -85,7 +96,9 @@ describe("Radar manual publication gate", () => {
       portalCallback: { runId: run.id },
     });
     expect(bundle.article).toMatchObject({ generatedByEngine: true, engineRunId: run.id, coverWidth: 1600, coverHeight: 900 });
-    expect(bundle.coverSvg).toContain('viewBox="0 0 1600 900"');
+    expect(await sharp(Buffer.from(bundle.cover.pngBase64, "base64")).metadata()).toMatchObject({ format: "png", width: 1600, height: 900 });
+    expect(bundle.article.coverImage).toMatch(/\.png$/);
+    expect(bundle.decision.coverAsset).toBe("./cover.png");
   });
 
   it("converts the reviewed markdown to the webneoxps content contract", () => {
@@ -105,4 +118,52 @@ describe("Radar manual publication gate", () => {
     expect(migration).toContain("record_radar_publication_result");
   });
 
+});
+
+describe("Radar exact preview package", () => {
+  it("preserves every source and fingerprints topics independently of runs", async () => {
+    const multi = structuredClone(run);
+    multi.candidate!.sources = [
+      { name: "Official", url: "https://example.org/research", evidence: "Initial evidence" },
+      { name: "Second", url: "https://example.com/context", publishedAt: "2026-09-01" },
+    ];
+    const prepared = await buildRadarPublicationPackage(multi, composition);
+    expect(prepared.article.sources).toEqual(multi.candidate!.sources);
+    expect(radarTopicFingerprint(multi.candidate!)).toBe(radarTopicFingerprint(run.candidate!));
+    const otherRun = await buildRadarPublicationPackage({ ...multi, id: "different-run" }, composition);
+    expect(prepared.article.topicFingerprint).toBe(otherRun.article.topicFingerprint);
+    expect(prepared.compositionDigest).not.toBe(radarPublicationPackageDigest({ ...prepared.article, sources: prepared.article.sources.slice(0, 1) }, prepared.cover.sha256));
+    expect(prepared.compositionDigest).not.toBe(radarPublicationPackageDigest(prepared.article, "a".repeat(64)));
+    const edited = await buildRadarPublicationPackage(multi, { ...composition, visualSubject: "Otro concepto operativo para revisión" });
+    expect(edited.cover.sha256).not.toBe(prepared.cover.sha256);
+    expect(edited.compositionDigest).not.toBe(prepared.compositionDigest);
+  });
+
+  it("generates four distinct deterministic PNG templates with the article subject", async () => {
+    const covers = await Promise.all(RADAR_COVER_TYPES.map((visualType) => renderRadarCover({ title: composition.title, topic: run.candidate!.topic, visualType, visualSubject: composition.visualSubject })));
+    expect(new Set(covers.map((cover) => cover.sha256)).size).toBe(4);
+    expect(await renderRadarCover({ title: composition.title, topic: run.candidate!.topic, visualType: RADAR_COVER_TYPES[0], visualSubject: composition.visualSubject })).toEqual(covers[0]);
+    const draft = await prepareRadarPublicationCandidate(run.candidate!);
+    expect(draft.composition.sourceVerified).toBe(false);
+    expect(draft.composition.rightsVerified).toBe(false);
+    expect(draft.composition.clientClaimsAuthorizedOrAbsent).toBe(false);
+  });
+
+  it("allows preview before approval, rejects publication until human checks and PASS", async () => {
+    const draftComposition = { ...composition, sourceVerified: false };
+    await expect(buildRadarPublicationPackage({ ...run, status: "review_pending" }, draftComposition)).resolves.toHaveProperty("cover");
+    await expect(buildRadarPublicationBundle({ run, composition: draftComposition, approvedBy: run.requestedBy, approvedAt: run.createdAt, previewToken: "", callbackUrl: "https://portal.nexopstech.com/callback" })).rejects.toThrow("Confirmá");
+    await expect(buildRadarPublicationBundle({ run: { ...run, candidate: { ...run.candidate!, qa: { verdict: "FIX", reason: "Unresolved" } } }, composition, approvedBy: run.requestedBy, approvedAt: run.createdAt, previewToken: "", callbackUrl: "https://portal.nexopstech.com/callback" })).rejects.toThrow("QA");
+  });
+
+  it("binds signed preview to the exact package, actor, workspace, run and expiry", () => {
+    vi.stubEnv("RADAR_PREVIEW_SECRET", "test-only-secret-".repeat(4));
+    const claim = { runId: run.id, workspaceId: run.workspaceId, actorId: run.requestedBy, compositionDigest: "a".repeat(64) };
+    const token = issueRadarPreviewToken(claim, 1000);
+    expect(verifyRadarPreviewToken({ ...claim, token }, 2000)).toBe(true);
+    for (const key of ["runId", "workspaceId", "actorId", "compositionDigest"]) expect(() => verifyRadarPreviewToken({ ...claim, [key]: "changed", token }, 2000)).toThrow();
+    expect(() => verifyRadarPreviewToken({ ...claim, token }, 1_801_000)).toThrow();
+    expect(() => verifyRadarPreviewToken({ ...claim, token: `${token}x` }, 2000)).toThrow();
+    vi.unstubAllEnvs();
+  });
 });

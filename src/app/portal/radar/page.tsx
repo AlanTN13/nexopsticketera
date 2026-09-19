@@ -1,3 +1,4 @@
+export const maxDuration = 300;
 import { RadarProductPage } from "@/components/radar/radar-product-page";
 
 export const dynamic = "force-dynamic";

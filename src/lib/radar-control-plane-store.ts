@@ -21,7 +21,7 @@ import { RADAR_STALL_TIMEOUT_MS } from "@/lib/radar-live-status";
 import { parseRadarPreferences } from "@/lib/radar-preferences";
 import { radarPublicationConnected } from "@/lib/radar-publication";
 import { findPublishedRadarSource } from "@/lib/radar-workspace";
-import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseAdminClient, getSupabaseServerClient, isSupabaseAdminConfigured } from "@/lib/supabase-server";
 
 type UnknownRow = Record<string, unknown>;
 
@@ -56,6 +56,8 @@ function mapPublication(row: UnknownRow): RadarPublicationJob | null {
   if (!status || !["reserved", "dispatched", "published", "failed"].includes(status) || !compositionDigest || !createdAt) return null;
   return {
     status: status as RadarPublicationJob["status"],
+    attempt: typeof row.attempt === "number" ? row.attempt : 1,
+    composition: row.composition && typeof row.composition === "object" ? row.composition as import("@/lib/radar-publication").RadarPublicationComposition : undefined,
     compositionDigest,
     externalPrNumber: typeof row.external_pr_number === "number" ? row.external_pr_number : null,
     externalPrUrl: text(row.external_pr_url),
@@ -79,6 +81,8 @@ function mapRun(row: UnknownRow, events: RadarRunEvent[] = [], decisions: RadarR
   const updatedAt = text(row.updated_at);
   if (!id || !workspaceId || !requestedBy || !autonomyMode || !status || !requestKind || !createdAt || !updatedAt ||
       !isRadarAutonomyMode(autonomyMode) || !isRadarRunStatus(status) || !isRadarRequestKind(requestKind)) return null;
+  const parsedCandidate = parseRadarCandidate(row.candidate);
+  if (parsedCandidate && publication?.status === "failed" && publication.composition) parsedCandidate.composition = publication.composition;
   return {
     id,
     workspaceId,
@@ -91,7 +95,7 @@ function mapRun(row: UnknownRow, events: RadarRunEvent[] = [], decisions: RadarR
     status,
     externalRunId: text(row.external_run_id),
     externalRunUrl: text(row.external_run_url),
-    candidate: parseRadarCandidate(row.candidate),
+    candidate: parsedCandidate,
     resultReason: text(row.result_reason),
     finalUrl: text(row.final_url),
     errorMessage: text(row.error_message),
@@ -110,6 +114,7 @@ function missingControlPlane(error: { code?: string; message?: string } | null) 
 }
 
 export async function loadRadarControlPlane(workspaceId: string): Promise<RadarControlPlaneSnapshot> {
+  if (isSupabaseAdminConfigured()) await getSupabaseAdminClient().rpc("expire_radar_api_runs");
   const client = await getSupabaseServerClient();
   const [settingsResult, runsResult] = await Promise.all([
     client.from("radar_control_settings").select("*").eq("workspace_id", workspaceId).maybeSingle(),
@@ -184,6 +189,7 @@ export async function createRadarRun(input: {
   requestKind?: "opportunity_search" | "manual_note";
   requestPayload?: Record<string, unknown>;
 }) {
+  if (isSupabaseAdminConfigured()) await getSupabaseAdminClient().rpc("expire_radar_api_runs");
   const client = await getSupabaseServerClient();
   const { data, error } = await client.rpc("request_radar_run", {
     target_workspace_id: input.workspaceId,
@@ -265,7 +271,9 @@ export async function getRadarRunForPublication(runId: string) {
   const client = await getSupabaseServerClient();
   const { data, error } = await client.from("radar_runs").select("*").eq("id", runId).maybeSingle();
   if (error) throw new Error(error.message);
-  const run = data ? mapRun(data as UnknownRow) : null;
+  const { data: publication, error: publicationError } = await client.from("radar_publication_jobs").select("*").eq("run_id", runId).maybeSingle();
+  if (publicationError) throw new Error(publicationError.message);
+  const run = data ? mapRun(data as UnknownRow, [], [], publication ? mapPublication(publication as UnknownRow) : null) : null;
   if (!run) throw new Error("Corrida de Radar inexistente.");
   return run;
 }
@@ -290,6 +298,7 @@ export async function reserveRadarPublication(input: {
 }
 
 export async function acceptRadarPublicationDispatch(input: {
+  attempt?: number;
   runId: string;
   compositionDigest: string;
   pullRequestNumber: number;
@@ -301,33 +310,15 @@ export async function acceptRadarPublicationDispatch(input: {
     requested_composition_digest: input.compositionDigest,
     requested_pr_number: input.pullRequestNumber,
     requested_pr_url: input.pullRequestUrl,
+    requested_attempt: input.attempt ?? 1,
   });
   if (error) throw new Error(error.message);
 }
 
-export async function failRadarPublicationDispatch(runId: string, message: string) {
+export async function failRadarPublicationDispatch(runId: string, message: string, attempt = 1) {
   const client = getSupabaseAdminClient();
-  const now = new Date().toISOString();
-  const { error } = await client.from("radar_publication_jobs").update({
-    status: "failed",
-    error_message: message.slice(0, 500),
-    completed_at: now,
-    updated_at: now,
-  }).eq("run_id", runId).eq("status", "reserved");
+  const { error } = await client.rpc("fail_radar_publication_dispatch", { target_run_id: runId, requested_attempt: attempt, requested_message: message.slice(0, 500) });
   if (error) throw new Error(error.message);
-  const { error: runError } = await client.from("radar_runs").update({
-    status: "failed",
-    error_code: "PUBLICATION_DISPATCH_FAILED",
-    error_message: message.slice(0, 500),
-    completed_at: now,
-    updated_at: now,
-  }).eq("id", runId).eq("status", "validating");
-  if (runError) throw new Error(runError.message);
-  await client.from("radar_run_events").insert({
-    run_id: runId,
-    event_type: "manual_publication_dispatch_failed",
-    public_message: "La publicación se detuvo antes de ingresar a webneoxps.",
-  });
 }
 
 export async function recordRadarPublicationResult(input: {
@@ -359,6 +350,8 @@ export async function reserveRadarDispatch(runId: string) {
   const client = getSupabaseAdminClient();
   const { data, error } = await client.from("radar_runs").update({
     status: "dispatching",
+    api_context: { engine: "radar_api_v1" },
+    api_deadline_at: new Date(Date.now() + 240000).toISOString(),
     error_code: null,
     error_message: null,
     completed_at: null,
@@ -369,7 +362,7 @@ export async function reserveRadarDispatch(runId: string) {
   const { error: eventError } = await client.from("radar_run_events").insert({
     run_id: runId,
     event_type: "dispatch_started",
-    public_message: "Solicitud reservada para la cola editorial privada.",
+    public_message: "Solicitud reservada para investigación por API.",
   });
   if (eventError) throw new Error(eventError.message);
   return true;
@@ -386,7 +379,7 @@ export async function acceptRadarDispatch(input: { runId: string; externalRunId:
   const { error: eventError } = await client.from("radar_run_events").insert({
     run_id: input.runId,
     event_type: "queue_accepted",
-    public_message: "Solicitud ingresada en la cola editorial privada.",
+    public_message: "Investigación API recibida; sin publicación automática.",
   });
   if (eventError) throw new Error(eventError.message);
 }
@@ -395,7 +388,7 @@ export async function failRadarDispatch(runId: string, message?: string) {
   const client = getSupabaseAdminClient();
   const { error } = await client.from("radar_runs").update({
     status: "failed",
-    error_code: "QUEUE_DISPATCH_FAILED",
+    error_code: "API_DISPATCH_FAILED",
     error_message: message?.slice(0, 500) ?? "No se pudo contactar la cola editorial.",
     completed_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -412,11 +405,16 @@ export async function failRadarDispatch(runId: string, message?: string) {
 export async function cancelStalledRadarRun(input: { runId: string; workspaceId: string }) {
   const client = getSupabaseAdminClient();
   const { data: row, error: readError } = await client.from("radar_runs")
-    .select("id,workspace_id,status,updated_at")
+    .select("id,workspace_id,status,updated_at,api_context")
     .eq("id", input.runId)
     .maybeSingle();
   if (readError || !row || row.workspace_id !== input.workspaceId || !isRadarRunStatus(String(row.status))) {
     throw new Error("Corrida de Radar inexistente.");
+  }
+  if (row.api_context?.engine === "radar_api_v1") {
+    const { data: canceled, error } = await client.rpc("cancel_radar_api_run", { target_run_id: input.runId, target_workspace_id: input.workspaceId });
+    if (error || !canceled) throw new Error("La corrida ya cambió de estado. Actualizá el panel.");
+    return;
   }
   const status = String(row.status) as RadarRunStatus;
   if (!["queued", "dispatching", "running"].includes(status)) {
