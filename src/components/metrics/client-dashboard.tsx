@@ -669,18 +669,11 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     },
     costPerLead: {
       id: "costPerLead",
-      label: "Costo por resultado",
+      label: costPerResultLabel,
       icon: <Users className="w-3.5 h-3.5" />,
-      getValue: (m) =>
-        formatCurrency(
-          m.leads > 0
-            ? m.amountSpent / m.leads
-            : m.messagingConversationsStarted > 0
-            ? m.amountSpent / m.messagingConversationsStarted
-            : m.costPerResult
-        ),
+      getValue: (m) => formatCurrency(m.costPerResult),
       category: "Costos",
-      description: "Costo por lead / conversación",
+      description: "Costo por resultado según el objetivo de la cuenta",
     },
     conversions: {
       id: "conversions",

@@ -46,6 +46,18 @@ const snapshot: MetricsSourceSnapshot = {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Punky Meta Ads onboarding and tenant isolation", () => {
+  it("maps Punky to Starcred through company config without changing another tenant", () => {
+    const config = JSON.stringify({ punky: { accountName: "Starcred", metaSheetUrl: sourceUrl } });
+    const mapped = getMetricsProfile(company, config)!;
+    expect(mapped.accountName).toBe("Starcred");
+    const mixed = { ...snapshot, content: `${content}\nStarcred Otro,Similar account,600,2026-09-19,6000` };
+    const data = parseMetricsSnapshots(mapped, [mixed], null);
+    expect(data.metaRows.map(row => row.accountName)).toEqual(["Starcred"]);
+    expect(data.metaStatus).toBe("ready");
+    const other = { ...company, id: "other-id", name: "Global Trip", slug: "global-trip" };
+    expect(getMetricsProfile(other, config)).toEqual(getMetricsProfile(other, ""));
+  });
+
   it("uses the existing profile and navigation without granting access by company name", () => {
     expect(getMetricsProfile(company, "")).toMatchObject({ accountName: "Punky", metaAdsEnabled: true });
     const navigation = buildPortalNavigation({ active: "metrics", modules: getVisibleCompanyModules(actor, company) });

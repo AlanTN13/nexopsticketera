@@ -1,121 +1,101 @@
 # Meta Ads de Punky
 
-## Estado verificado el 19 de septiembre de 2026
+## Configuración aplicada el 19 de septiembre de 2026
 
-Repositorio: `AlanTN13/nexopsticketera`. Base: Ticketera nexops
+Repositorio: `AlanTN13/nexopsticketera`. Supabase: Ticketera nexops
 (`tfonsiurhjmllqaknhgh`). Empresa: `punky`, ID
 `a88d617e-f115-467a-a084-d0576480f45c`.
 
-La empresa y su usuario ya existían. Se habilitó Métricas desde el Backoffice
-con la sesión administrativa existente, usando los formularios y RPC protegidos
-del producto. Se verificó por lectura de la base:
+Alan confirmó que la cuenta publicitaria **Starcred pertenece exclusivamente a
+Punky**. Se configuró el perfil `punky` de `PORTAL_METRICS_COMPANY_CONFIG` en el
+entorno Production de **sdnexops**, proyecto Vercel que atiende
+`https://portal.nexopstech.com`. El proyecto `nexopsticketera` atiende Soporte;
+no confundir sus variables con las del portal.
 
-- `company_modules`: `metrics.enabled = true`, `settings.metaAdsEnabled = true`.
-- Usuario de Punky: permiso `metrics / view`; conserva `support / admin`.
-- Soporte sigue habilitado; Radar y Contenido siguen deshabilitados.
-- La invitación del usuario sigue pendiente (`users.status = invited`). Debe
-  aceptar su invitación para acceder; no se modificaron credenciales ni se enviaron mensajes.
-- Los cambios quedaron registrados en la auditoría de accesos del portal.
+El perfil de Punky contiene `accountName: "Starcred"` y `metaSheetUrl` apuntando
+exactamente a la exportación Meta existente, previamente utilizada por Global
+Trip. No se creó otro Sheet, no se copiaron snapshots entre empresas y no se
+cambió ninguna fuente global. La URL se conserva en Vercel, no en este documento.
 
-Se abrió `/portal/metricas?company=punky` con la sesión administrativa y se
-verificaron el nombre Punky, el único canal Meta Ads y los indicadores `—`
-pendientes. Esto verifica la vista administrativa de esa empresa, no una sesión
-del cliente: todavía no puede validarse su inicio de sesión mientras siga invitado.
+La referencia explícita a la fuente en el perfil fue necesaria: en el despliegue
+real de sdnexops no había una fuente Meta global disponible. Agregar sólo el
+nombre de cuenta dejaba el estado `unconfigured`. La exportación existente se
+leyó y validó antes de vincularla: 1.504 filas, de las cuales 588 correspondían
+exactamente a Starcred; fechas de Starcred desde 2026-07-01 hasta 2026-09-19.
 
-La configuración anterior ya está aplicada. Los cambios de código descritos abajo
-requieren integrar y desplegar esta rama para aparecer en producción.
+La precedencia se mantiene: settings de la empresa, perfil del servidor y fuente
+global como último recurso. Los settings de Punky conservan
+`metaAdsEnabled: true`; Soporte sigue activo, Radar y Contenido deshabilitados.
+El usuario conserva `metrics/view` y `support/admin`.
 
-## Fuente pendiente y decisión de aislamiento
+## Integración y evidencia de producción
 
-El portal integra exportaciones CSV de Google Sheets, no la API directa de Meta.
-La precedencia de la fuente es:
+El PR #80 fue revisado, pasó CI (lint, tipos, 250 pruebas, build y auditoría de
+dependencias) y se integró en `main` como
+`ddd18bfdadb2f898e265619791210c864cb82c56`.
 
-1. `company_modules.settings.metaSheetUrl` del módulo `metrics`.
-2. `PORTAL_METRICS_COMPANY_CONFIG` para el slug de la empresa, campo `metaSheetUrl`.
-3. `PORTAL_METRICS_META_SHEET_URL`, fuente compartida del servidor.
+El despliegue de sdnexops `BuBLFu5vLedFR39jhzRJJf2cggA8` quedó READY en Production,
+asignado a `portal.nexopstech.com`, con ese commit y el perfil completo. Se ejecutó
+«Actualizar datos» desde la sesión administrativa del portal. La base confirmó
+un snapshot Meta propio de Punky en estado `ready`, con `fetched_at`
+`2026-09-19T15:16:37.659Z`. Su fuente coincide con la exportación preexistente
+(hash MD5 de la URL `51964939e41a5a3e860e257039015613`). El snapshot de Global Trip
+conservó su fecha original: la operación no lo sobrescribió.
 
-La cuenta se resuelve desde `settings.accountName`, luego el perfil configurado
-y finalmente el nombre de la empresa. Para Punky queda `Punky`. No hay una URL
-propia ni una cuenta publicitaria alternativa confirmadas para esta empresa.
+En `/portal/metricas?company=punky`, el portal mostró actualización correcta y
+estas cifras para **21/08/2026–19/09/2026**, contrastadas con la exportación real:
 
-Se revisó la fuente publicada utilizada por los snapshots Meta existentes con
-un parser CSV: **0 filas con `Account name = Punky`**. Había 85 filas que mencionan
-Punky, pero su `Account name` era **Starcred**. Una mención en campañas o anuncios
-no demuestra que toda la cuenta Starcred pertenezca exclusivamente a Punky.
-Por eso no se vinculó Starcred ni se copiaron snapshots de otro cliente.
-No se guardan exportaciones reales ni URLs privadas en el repositorio.
+| Indicador | Valor |
+| --- | ---: |
+| Filas Starcred del período | 210 |
+| Inversión | $1.231.904,45 |
+| Impresiones | 185.068 |
+| Clics | 7.520 |
+| CTR | 4,06 % |
+| CPC | $163,82 |
+| Conversaciones iniciadas | 2.786 |
+| Costo por conversación calculado | $442,18 |
 
-Pendientes concretos:
+La moneda se presenta tal como la formatea el portal; no se verificó una moneda
+ISO en la fuente. Estas cifras corresponden a la lectura del 19/09, no son
+valores estáticos del producto.
 
-1. Confirmar el nombre exacto de la cuenta publicitaria y si Starcred pertenece
-   exclusivamente a Punky. Si reúne empresas, preparar una exportación exclusiva
-   de Punky con una identidad inequívoca; no alcanza un filtro parcial de campaña.
-2. Configurar la fuente propia y la cuenta confirmada en los settings de Métricas,
-   o usar el perfil de servidor existente. Ejemplo conceptual (reemplazar ambos
-   valores; no pegar marcadores como configuración real):
+## Corrección encontrada al verificar los indicadores
 
-   ```json
-   {
-     "punky": {
-       "accountName": "NOMBRE EXACTO CONFIRMADO",
-       "metaSheetUrl": "URL HTTPS DE GOOGLE SHEETS PUBLICADA COMO CSV"
-     }
-   }
-   ```
+La tarjeta de costo usaba leads cuando existía al menos uno, aun con objetivo
+CONVERSACIONES. En Punky había un lead y 2.786 conversaciones: la tarjeta mostraba
+incorrectamente toda la inversión como costo por resultado, mientras las tablas
+calculaban por conversación.
 
-   Incorporar la entrada al JSON existente de `PORTAL_METRICS_COMPANY_CONFIG`,
-   conservando las de otras empresas. Los settings guardados en la empresa
-   tienen prioridad. No cambiar la fuente global para conectar una sola empresa.
-3. Confirmar el objetivo comercial (`CONVERSACIONES`, `LEADS` o `COMPRAS`);
-   mientras no exista otro valor, el dashboard usa el estándar `CONVERSACIONES`.
-4. Ejecutar «Actualizar datos» desde una sesión interna autorizada, o esperar el
-   cron de las 00:05 de Argentina. El cliente tiene lectura, sin actualización manual.
-5. Completar la invitación del usuario y verificar su sesión real.
+La corrección en `client-dashboard.tsx` reutiliza `metrics.costPerResult` y su
+etiqueta por objetivo. Mantiene el identificador interno del KPI para conservar
+preferencias. Las pruebas de render verifican conversaciones, leads y compras
+cuando los tres tipos de resultados coexisten. No se cambió el objetivo de
+Punky: se conserva el predeterminado CONVERSACIONES.
 
-La exportación debe identificar cada fila con `Account name` y fecha (`Day`).
-El parser existente admite inversión, impresiones, alcance, clics, conversaciones,
-leads, compras y el desglose de campañas/creatividades; los KPIs y filtros de fecha
-se reutilizan sin inventar resultados si faltan datos.
+## Aislamiento y verificaciones
 
-## Comportamiento y permisos
+- El filtro de Meta se aplica en el servidor por igualdad de `Account name`,
+  ignorando mayúsculas y espacios externos; nunca por campaña ni subcadena.
+- La comprobación con la exportación real devolvió únicamente las 588 filas
+  Starcred para Punky y únicamente las 219 filas GLOBAL TRIP para ese perfil.
+- Una prueba con nombres parecidos, cuentas vacías y campañas que mencionan
+  Starcred confirma que esos registros no se incorporan a Punky.
+- El perfil configurado para Punky no altera el perfil de otras empresas.
+  Meta continúa deshabilitado para Onlysellers y Dexa.
+- Los clientes se resuelven por su `companyId`; manipular `?company=` no permite
+  seleccionar otra empresa. Las pruebas cubren usuarios invitados,
+  deshabilitados y sin permiso, además del nivel de lectura sin actualización.
+- Los snapshots se consultan por `company_id`, con RLS y sin lectura directa
+  para anon/authenticated. El navegador recibe las filas filtradas, no el CSV
+  completo ni su URL.
+- El PR #80 descarta snapshots de fuentes retiradas/reemplazadas y evita heredar
+  datos anteriores si la nueva fuente falla. Sus mensajes públicos no exponen
+  URLs ni nombres de otras cuentas.
 
-- Crear una empresa/usuario no habilita automáticamente Métricas: requiere el
-  producto habilitado y un permiso personal `view` o superior.
-- La navegación se deriva de esos permisos. El cliente sólo puede consultar su
-  `companyId`; cambiar `?company=` no permite seleccionar otra empresa.
-- Las páginas y la acción de actualización autentican al actor y verifican su
-  acceso antes de utilizar el cliente administrativo de Supabase.
-- Los snapshots se consultan por `company_id`, permanecen en tablas con RLS y sin
-  permisos de lectura directa para `anon`/`authenticated`. El servidor entrega
-  únicamente filas cuya cuenta coincide exactamente, ignorando mayúsculas y
-  espacios externos. No hay coincidencia por nombre de campaña ni por subcadena.
-- Las fuentes y los CSV completos no se pasan al dashboard del navegador.
-- El bloque muestra estados diferentes para fuente sin configurar, primera
-  actualización pendiente, fuente sin registros de la cuenta, error y datos
-  anteriores disponibles. Los avisos no revelan URLs ni nombres de otras cuentas.
-- Al quitar o reemplazar la fuente Meta se dejan de mostrar sus snapshots previos.
-  Una actualización fallida conserva datos anteriores sólo si la URL de la fuente
-  no cambió (aplica también a las demás fuentes del sincronizador).
+## Pendiente del usuario
 
-## Archivos y verificación
-
-- `src/lib/metrics-data.ts`: estado de Meta y descarte de snapshots de una fuente retirada/reemplazada.
-- `src/lib/metrics-sync.ts`: resolución común de URL Meta y protección de la caché al reemplazar fuentes.
-- `src/lib/metrics-source-status.ts`: mensajes públicos de estado.
-- `src/app/portal/metricas/page.tsx`: presentación de esos mensajes con `InlineNotice`.
-- `tests/punky-meta-metrics.test.ts`: permisos, navegación, parámetros manipulados,
-  filtros exactos, cuentas ajenas, fuentes y estados pendientes.
-- `tests/metrics-refresh-source-change.test.ts`: fallo de actualización con fuente
-  igual/reemplazada y consultas limitadas al ID de empresa.
-- `tests/metrics-channel-availability.test.ts`: expectativa de la nueva presentación.
-- Este documento: configuración aplicada, evidencia y pasos para conectar datos.
-
-Validación: revisión de tipos, suite de 250 pruebas y ESLint aprobados. La suite
-incluye pruebas PostgreSQL con las migraciones reales del proyecto. No se
-modificaron tablas, políticas RLS, roles ni la arquitectura de autenticación.
-
-La compilación de producción con `npm run build -- --webpack` también pasó.
-`npm run build` (Turbopack) quedó bloqueado por una restricción del entorno local
-al abrir el puerto usado para procesar CSS (`Operation not permitted`), incluso
-al reintentar con permisos ampliados. No se cambió el compilador predeterminado
-del repositorio; CI debe validar la compilación habitual.
+El usuario de Punky sigue con `users.status = invited`. La verificación visual
+se hizo con la sesión administrativa en la vista de Punky, no con una sesión del
+cliente. Debe aceptar la invitación y completar su acceso para verificar ese
+último paso. No se modificaron credenciales ni se reenviaron invitaciones.
