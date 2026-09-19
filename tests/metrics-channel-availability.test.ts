@@ -49,7 +49,7 @@ describe("metrics channel availability", () => {
     const workspace = read("src/components/metrics/metrics-workspace.tsx");
 
     expect(home).toContain("metricsProfile.metaAdsEnabled !== false");
-    expect(metrics).toContain("!hasPerformanceData && profile.metaAdsEnabled !== false");
+    expect(metrics).toContain("getMetaSourceNotice(data.metaStatus)");
     expect(metrics).toContain("{hasManagedSources ? (");
     expect(metrics).toContain("key={company.id}");
     expect(workspace).toContain("{metaAdsEnabled ? (");

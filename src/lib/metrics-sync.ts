@@ -73,7 +73,7 @@ export function getConfiguredMetricsSources(profile: MetricsCompanyProfile): Sou
       ? []
       : [[
           "meta",
-          profile.metaSheetUrl ?? process.env.PORTAL_METRICS_META_SHEET_URL,
+          getMetaSheetSourceUrl(profile),
           "Meta Ads",
         ] as [MetricsSourceType, string | undefined, string]]),
     [
@@ -87,6 +87,18 @@ export function getConfiguredMetricsSources(profile: MetricsCompanyProfile): Sou
     const url = getSheetUrl(rawUrl, `La fuente de ${label}`);
     return url ? [{ sourceType, url, label }] : [];
   });
+}
+
+export function getMetaSheetSourceUrl(profile: MetricsCompanyProfile) {
+  const raw = profile.metaSheetUrl?.trim() || process.env.PORTAL_METRICS_META_SHEET_URL?.trim();
+  if (!raw) return undefined;
+  try {
+    // Match the serialization used when persisting source_url during refresh.
+    return new URL(raw).toString();
+  } catch {
+    // Rendering remains available; refresh reports invalid configuration.
+    return raw;
+  }
 }
 
 async function fetchCsv(source: SourceDefinition) {
@@ -208,7 +220,9 @@ export async function refreshMetricsSources(input: {
 
     const rows = results.map((result, index) => {
       const source = sources[index];
-      const current = currentByType.get(source.sourceType);
+      const previous = currentByType.get(source.sourceType);
+      // A failed replacement source must never inherit the old source's data.
+      const current = previous?.sourceUrl === source.url.toString() ? previous : undefined;
       if (result.status === "fulfilled") {
         successfulSources += 1;
         return {
