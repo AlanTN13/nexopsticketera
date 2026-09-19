@@ -10,6 +10,7 @@ import { refreshMetricsAction } from "@/app/portal/metricas/actions";
 import { getAuthenticatedActor } from "@/lib/auth";
 import { getAppSnapshot } from "@/lib/app-store";
 import { loadMetricsData } from "@/lib/metrics-data";
+import { getMetaSourceNotice } from "@/lib/metrics-source-status";
 import { buildPortalNavigation, getMetricsProfile, resolveMetricsCompanyForActor } from "@/lib/portal-modules";
 import { getVisibleCompanyModules } from "@/lib/portal-modules";
 import { hasModuleAccess } from "@/lib/authorization";
@@ -56,6 +57,7 @@ export default async function PortalMetricsPage({
     (profile.metaAdsEnabled !== false && data.metaRows.length > 0) ||
     (Boolean(client.mailchimpName) && data.mailchimpRows.length > 0);
   const hasManagedSources = profile.metaAdsEnabled !== false || Boolean(client.mailchimpName);
+  const metaNotice = getMetaSourceNotice(data.metaStatus);
 
   return (
     <AppShell
@@ -107,9 +109,9 @@ export default async function PortalMetricsPage({
         </InlineNotice>
       ) : null}
 
-      {!hasPerformanceData && profile.metaAdsEnabled !== false ? (
+      {metaNotice ? (
         <InlineNotice tone="info">
-          El dashboard ya está habilitado. Los indicadores se completan cuando quede vinculada la exportación de Meta Ads.
+          {metaNotice}
         </InlineNotice>
       ) : null}
 

@@ -7,12 +7,14 @@ import {
   type MetricsClientSource,
 } from "@/features/metrics/strategy-parser";
 import type { MailchimpCampaignRow, SheetRow, StrategyEntry } from "@/features/metrics/types";
-import { getMetricsSnapshot } from "@/lib/metrics-sync";
+import { getMetaSheetSourceUrl, getMetricsSnapshot } from "@/lib/metrics-sync";
+import type { MetaSourceStatus } from "@/lib/metrics-source-status";
 import type { MetricsSourceSnapshot, MetricsSyncState } from "@/lib/metrics-sync";
 import type { MetricsCompanyProfile } from "@/lib/portal-modules";
 
 export type MetricsData = {
   metaRows: SheetRow[];
+  metaStatus: MetaSourceStatus;
   mailchimpRows: MailchimpCampaignRow[];
   loadedAt: string | null;
   latestDataDate: string | null;
@@ -66,7 +68,10 @@ export function parseMetricsSnapshots(
   const byType = snapshotByType(snapshots);
   const clients = byType.get("clients");
   const strategy = byType.get("strategy");
-  const meta = byType.get("meta");
+  const metaSourceUrl = getMetaSheetSourceUrl(profile);
+  const savedMeta = byType.get("meta");
+  // Ignore snapshots from a removed/replaced source, even before the next sync.
+  const meta = metaSourceUrl && savedMeta?.sourceUrl === metaSourceUrl ? savedMeta : undefined;
   const mailchimp = byType.get("mailchimp");
 
   const clientSource = clients?.content
@@ -82,6 +87,15 @@ export function parseMetricsSnapshots(
   const metaRows = profile.metaAdsEnabled !== false && meta?.content
     ? parseSheetCSV(meta.content).filter((row) => sameAccount(row.accountName, profile.accountName))
     : [];
+  const metaStatus: MetaSourceStatus = profile.metaAdsEnabled === false
+    ? "disabled"
+    : !metaSourceUrl
+      ? "unconfigured"
+      : meta?.status === "error"
+        ? metaRows.length ? "stale" : "error"
+        : !meta || meta.content === null
+          ? "pending"
+          : metaRows.length ? "ready" : "empty";
   const mailchimpRows = mailchimp?.content
     ? parseMailchimpCSV(mailchimp.content).rows.filter(
         (row) =>
@@ -99,14 +113,14 @@ export function parseMetricsSnapshots(
 
   if (
     profile.metaAdsEnabled !== false &&
-    !profile.metaSheetUrl &&
-    !process.env.PORTAL_METRICS_META_SHEET_URL
+    !metaSourceUrl
   ) {
     warnings.push("La fuente de Meta Ads todavía no está configurada en este entorno.");
   }
 
   return {
     metaRows,
+    metaStatus,
     mailchimpRows,
     loadedAt: sync?.lastSuccessAt ?? latestSnapshotDate(snapshots),
     latestDataDate: latestDate(metaRows, mailchimpRows),
