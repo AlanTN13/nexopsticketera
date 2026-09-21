@@ -58,9 +58,9 @@ describe("Radar bridge shared contract", () => {
     const action = readFileSync(join(process.cwd(), "src/app/portal/radar/operacion/actions.ts"), "utf8");
     expect(vercel.crons).toContainEqual({ path: "/api/cron/radar", schedule: "0 10 * * 1-6" });
     expect(route).toContain("process.env.CRON_SECRET");
-    expect(route).toContain('process.env.RADAR_SCHEDULER_ENABLED !== "true"');
-    expect(route).toContain('triggerKind: "scheduled"');
-    expect(route).toContain('autonomyMode: "review"');
+    expect(route).toContain('skipped: "api_rollout_gate_off"');
+    expect(route).not.toContain("dispatchRadarRun");
+    expect(route).toContain("expire_radar_api_runs");
     expect(action).toContain('scheduleHour !== 7 || scheduleDays.join(",") !== "1,2,3,4,5,6"');
   });
 });

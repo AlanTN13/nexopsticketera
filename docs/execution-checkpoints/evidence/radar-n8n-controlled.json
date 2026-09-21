@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "simulated": true,
+  "providerCalls": 2,
+  "sources": 2,
+  "materializedFiles": 2,
+  "compositionDigest": "479dfa74ccbf6ed9d344afff9a886eeb1fa89c121723d13c7f8246b51e35c385",
+  "outcome": "AUTO_PUBLISH",
+  "eligibility": "ELIGIBLE",
+  "score": 85,
+  "gates": {
+    "sources": true,
+    "facts": true,
+    "novelty": true,
+    "clientClaims": true,
+    "content": true,
+    "cover": true,
+    "siteValidation": true,
+    "budget": true,
+    "consistency": true
+  },
+  "scope": "SIMULATED_PROVIDER_CONTROLLED_JS_EXPORT_AND_REAL_PNG_SITE_PIPELINE",
+  "liveN8nExecution": false,
+  "newOpenAiSpendUsd": 0,
+  "controlledSiteBuild": "PASS: isolated corpus contains 19 articles including fixture"
+}

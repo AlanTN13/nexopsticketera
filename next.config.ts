@@ -47,6 +47,12 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
         ],
       },
+      // The private preview uses an explicitly tracked popup and exact-origin postMessage.
+      // Keep the stronger default for every page that does not open this preview.
+      ...["/portal/radar/operacion", "/backoffice/radar/operacion"].map((source) => ({
+        source,
+        headers: [{ key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" }],
+      })),
     ];
   },
 };

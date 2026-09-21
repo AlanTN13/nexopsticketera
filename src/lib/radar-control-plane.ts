@@ -1,5 +1,7 @@
+import type { RadarPublicationComposition } from "@/lib/radar-publication";
 import type { RadarPreferences } from "@/lib/radar-preferences";
 
+export const RADAR_EDITORIAL_MIN_SCORE = 80;
 export const RADAR_AUTONOMY_MODES = ["suggest", "review", "automatic"] as const;
 export const RADAR_RUN_STATUSES = [
   "queued",
@@ -42,7 +44,14 @@ export type RadarControlSettings = {
   nextRunAt: string | null;
 };
 
+export type RadarSource = { name: string; url: string; evidence?: string; publishedAt?: string };
+
 export type RadarRunCandidate = {
+  sources?: RadarSource[];
+  topicFingerprint?: string;
+  qa?: { verdict: "PASS" | "FIX" | "REJECT"; reason: string };
+  composition?: RadarPublicationComposition;
+  cover?: { pngBase64: string; sha256: string };
   title: string;
   topic: string;
   sourceName: string;
@@ -71,6 +80,8 @@ export type RadarRunDecision = {
 };
 
 export type RadarPublicationJob = {
+  composition?: RadarPublicationComposition;
+  attempt?: number;
   status: "reserved" | "dispatched" | "published" | "failed";
   compositionDigest: string;
   externalPrNumber: number | null;
@@ -118,8 +129,8 @@ export type RadarControlPlaneSnapshot = {
 
 export const RADAR_STATUS_COPY: Record<RadarRunStatus, string> = {
   queued: "Solicitud recibida",
-  dispatching: "En cola editorial",
-  running: "Trabajador editorial en curso",
+  dispatching: "Preparando investigación",
+  running: "Investigación y revisión en curso",
   no_publication: "Sin oportunidad suficiente",
   suggested: "Sugerencia lista",
   review_pending: "Esperando revisión",
@@ -204,7 +215,34 @@ export function parseRadarCandidate(value: unknown): RadarRunCandidate | null {
       typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 100 || !reasons.length) {
     return null;
   }
-  return { title, topic, sourceName, sourceUrl, score, businessReasons: reasons, draft };
+  const sources: RadarSource[] = [];
+  if (candidate.sources !== undefined) {
+    if (!Array.isArray(candidate.sources) || candidate.sources.length > 100) return null;
+    for (const source of candidate.sources) {
+      if (!source || typeof source !== "object") return null;
+      const name = text(source.name, 300);
+      const url = text(source.url, 2000);
+      if (!name || !url || !isSafeHttpsUrl(url)) return null;
+      sources.push({ name, url, ...(typeof source.evidence === "string" ? { evidence: source.evidence.slice(0, 4000) } : {}),
+        ...(typeof source.publishedAt === "string" ? { publishedAt: source.publishedAt.slice(0, 40) } : {}) });
+    }
+  }
+  const extra: Partial<RadarRunCandidate> = {};
+  if (candidate.sources !== undefined) extra.sources = sources;
+  if (typeof candidate.topicFingerprint === "string" && /^[a-z0-9:._-]{5,240}$/.test(candidate.topicFingerprint)) extra.topicFingerprint = candidate.topicFingerprint;
+  if (candidate.qa && typeof candidate.qa === "object") {
+    const qa = candidate.qa as Record<string, unknown>;
+    if (["PASS", "FIX", "REJECT"].includes(String(qa.verdict)) && typeof qa.reason === "string")
+      extra.qa = { verdict: qa.verdict as "PASS" | "FIX" | "REJECT", reason: qa.reason.slice(0, 1200) };
+  }
+  // Only server-owned persistence writes these fields; incoming provider output is parsed separately.
+  if (candidate.composition && typeof candidate.composition === "object") extra.composition = candidate.composition as RadarPublicationComposition;
+  if (candidate.cover && typeof candidate.cover === "object") {
+    const cover = candidate.cover as Record<string, unknown>;
+    if (typeof cover.pngBase64 === "string" && cover.pngBase64.length <= 2000000 && typeof cover.sha256 === "string" && /^[a-f0-9]{64}$/.test(cover.sha256))
+      extra.cover = { pngBase64: cover.pngBase64, sha256: cover.sha256 };
+  }
+  return { title, topic, sourceName, sourceUrl, score, businessReasons: reasons, draft, ...extra };
 }
 
 export function parseRadarManualNoteRequest(value: unknown): RadarManualNoteRequest | null {

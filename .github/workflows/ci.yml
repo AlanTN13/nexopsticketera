@@ -37,8 +37,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Verify generated n8n workflow
+        run: npm run radar:n8n:check
+
       - name: Test
         run: npm test
+
+      - name: Radar database regression
+        run: npm run test:radar-db
 
       - name: Build
         run: npm run build
