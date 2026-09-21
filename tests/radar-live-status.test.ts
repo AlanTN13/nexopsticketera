@@ -11,15 +11,15 @@ describe("Radar live operation status", () => {
     ]);
 
     expect(view.mode).toBe("working");
-    expect(view.phaseLabel).toBe("Misión en cola editorial");
-    expect(view.title).toContain("Nexys");
+    expect(view.phaseLabel).toBe("Preparando");
+    expect(view.description).toContain("Aún no hay confirmación");
     expect(view.stages.map((stage) => stage.name)).toEqual([
       "Nexy Core",
       "Nexy Flow",
       "Nexy AI",
       "Nexy Growth",
     ]);
-    expect(view.stages.map((stage) => stage.state)).toEqual(["done", "done", "active", "waiting"]);
+    expect(view.stages.map((stage) => stage.state)).toEqual(["done", "active", "waiting", "waiting"]);
     expect(view.stages[2].imageSrc).toBe("/radar/nexys/nexy-ai.png");
   });
 
@@ -27,12 +27,12 @@ describe("Radar live operation status", () => {
     const view = getRadarLiveView("review_pending", "opportunity_search", ["queue_accepted"]);
 
     expect(view.mode).toBe("action");
-    expect(view.actionLabel).toBe("Revisar propuesta");
+    expect(view.actionLabel).toBe("Revisar pieza");
     expect(view.stages.every((stage) => stage.state === "done")).toBe(true);
   });
 
   it("explains manual source reading without claiming an open search", () => {
-    const view = getRadarLiveView("running", "manual_note", ["queue_accepted"]);
+    const view = getRadarLiveView("running", "manual_note", ["queue_accepted"], "research");
 
     expect(view.title).toContain("leyendo tu fuente");
     expect(view.stages[2].role).toContain("fuente indicada");

@@ -13,7 +13,7 @@ export async function POST(request: Request, context: { params: Promise<{ runId:
     const body = await request.text();
     if (body.length > 100_000) return Response.json({ error: "Paquete demasiado grande." }, { status: 413 });
     const { workspaceId, composition } = JSON.parse(body) as { workspaceId: string; composition: RadarPublicationComposition };
-    const { actor } = await requireRadarWorkspaceAccess(workspaceId, "admin");
+    const { actor } = await requireRadarWorkspaceAccess(workspaceId, "operate");
     const run = await getRadarRunForPublication(runId);
     if (run.workspaceId !== workspaceId) return Response.json({ error: "Nota no disponible." }, { status: 403 });
     const webUrl = radarPreviewWebUrl();

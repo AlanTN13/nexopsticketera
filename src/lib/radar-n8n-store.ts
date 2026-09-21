@@ -32,6 +32,17 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
     const corpus = await loadRadarResearchCorpus(row.workspace_id);
     const { data: claimed, error: claimError } = await client.rpc("reserve_radar_api_run", { target_run_id: runId,
       requested_context: { corpus, model: config.model, requestedAt: new Date().toISOString(), n8nExecutionId: executionId, n8nRevision: 0, n8nIssuedCall: 0 }, pilot_max_runs: config.maxRuns });
+    // Admission is a read-only precheck and can race. Only the identified last-guard
+    // budget failure is terminalized here; unrelated conflicts keep their own cause.
+    if (claimError?.code === "55000" && claimError.message === "Límite persistente del piloto API alcanzado.") {
+      const reason = "El presupuesto autorizado del piloto está agotado. No se inició la investigación ni se llamó a OpenAI.";
+      const { data: finished, error: finishError } = await client.rpc("finish_radar_api_run", {
+        target_run_id: runId, requested_status: "failed", requested_candidate: null,
+        requested_reason: reason, requested_usage: {},
+      });
+      if (finishError || !finished) throw new Error("No se pudo confirmar el cierre de la solicitud rechazada por presupuesto.");
+      throw new Error(reason);
+    }
     if (claimError || !claimed) throw fail();
     return { version: 1, runId, executionId, deadline: claimed.api_deadline_at,
       context: { preferences: claimed.api_context.preferences, corpus, model: config.model, requestedAt: claimed.api_context.requestedAt, requestKind: claimed.request_kind, requestPayload: claimed.request_payload }, responses: [] } satisfies RadarN8nState;

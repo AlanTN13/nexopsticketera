@@ -1,14 +1,11 @@
-export const maxDuration = 300;
 import { getAppSnapshot } from "@/lib/app-store";
 import { getAuthenticatedActor } from "@/lib/auth";
-import { PlatformRadarOperationPage, RadarOperationPage } from "@/components/radar/radar-operation-page";
-
+import { PlatformRadarOperationPage, RadarOperationPage, type RadarHistoryFilters } from "@/components/radar/radar-operation-page";
 export const dynamic = "force-dynamic";
-
-export default async function PortalRadarOperationRoute({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
-  const { company } = await searchParams;
-  const db = await getAppSnapshot();
-  const actor = await getAuthenticatedActor(db);
-  if (actor?.role === "platform_admin" && !company) return <PlatformRadarOperationPage />;
-  return <RadarOperationPage companyLookup={company} />;
+export const maxDuration = 300;
+export default async function RadarRoute({ searchParams }: { searchParams: Promise<RadarHistoryFilters & { company?: string }> }) {
+  const { company, ...filters } = await searchParams;
+  const actor = await getAuthenticatedActor(await getAppSnapshot());
+  if (actor?.role === "platform_admin" && !company) return <PlatformRadarOperationPage view="review" filters={filters} />;
+  return <RadarOperationPage companyLookup={company} view="review" filters={filters} />;
 }

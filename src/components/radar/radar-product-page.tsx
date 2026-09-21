@@ -1,3 +1,4 @@
+import { getRadarAdmission } from "@/lib/radar-admission";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -560,6 +561,7 @@ export async function RadarProductPage({
   if (actor?.role === "platform_admin" && !companyLookup) {
     const platform = await getPlatformRadarContext();
     const controlPlane = await loadRadarControlPlane(platform.workspace.workspaceId);
+    const admission = await getRadarAdmission(platform.workspace.workspaceId);
     return (
       <RadarProductScreen
         view={view}
@@ -571,7 +573,7 @@ export async function RadarProductPage({
           companyName: "NexOps · cuenta madre",
           companyId: "",
           workspaceId: platform.workspace.workspaceId,
-          model: mergeRadarPendingRuns(platform.model, controlPlane.runs),
+          model: { ...mergeRadarPendingRuns(platform.model, controlPlane.runs), health: { state: "limited", label: admission.allowed ? "Búsqueda disponible" : "Búsqueda no disponible", detail: admission.message } },
           preferences: platform.preferences,
           canManagePreferences: false,
           exitHref: "/backoffice/queue",
@@ -584,6 +586,7 @@ export async function RadarProductPage({
   }
   const context = await getRadarProductContext(companyLookup);
   const controlPlane = await loadRadarControlPlane(context.workspace.workspaceId);
+  const admission = await getRadarAdmission(context.workspace.workspaceId);
 
   return (
     <RadarProductScreen
@@ -596,7 +599,7 @@ export async function RadarProductPage({
         companyName: context.company.name,
         companyId: context.company.id,
         workspaceId: context.workspace.workspaceId,
-        model: mergeRadarPendingRuns(context.model, controlPlane.runs),
+        model: { ...mergeRadarPendingRuns(context.model, controlPlane.runs), health: { state: "limited", label: admission.allowed ? "Búsqueda disponible" : "Búsqueda no disponible", detail: admission.message } },
         preferences: context.preferences,
         canManagePreferences: context.canManagePreferences,
         exitHref: context.exitHref,

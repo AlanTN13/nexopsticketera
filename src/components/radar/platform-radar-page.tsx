@@ -1,3 +1,4 @@
+import { getRadarAdmission } from "@/lib/radar-admission";
 import { RadarProductScreen } from "@/components/radar/radar-product-page";
 import type { RadarView } from "@/components/radar/radar-shell";
 import { loadRadarControlPlane } from "@/lib/radar-control-plane-store";
@@ -12,6 +13,7 @@ export async function PlatformRadarPage({
   opportunityFilter?: "all" | "pending" | "published" | "discarded";
 }) {
   const context = await getPlatformRadarContext();
+  const admission = await getRadarAdmission(context.workspace.workspaceId);
   const controlPlane = await loadRadarControlPlane(context.workspace.workspaceId);
   return (
     <RadarProductScreen
@@ -23,7 +25,7 @@ export async function PlatformRadarPage({
         companyName: "NexOps · cuenta madre",
         companyId: "",
         workspaceId: context.workspace.workspaceId,
-        model: mergeRadarPendingRuns(context.model, controlPlane.runs),
+        model: { ...mergeRadarPendingRuns(context.model, controlPlane.runs), health: { state: "limited", label: admission.allowed ? "Búsqueda disponible" : "Búsqueda no disponible", detail: admission.message } },
         preferences: context.preferences,
         canManagePreferences: false,
         exitHref: "/backoffice/queue",

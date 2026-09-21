@@ -4,8 +4,6 @@ import {
   BookOpenCheck,
   History,
   ListChecks,
-  LayoutDashboard,
-  Lightbulb,
   RadioTower,
   Settings2,
 } from "lucide-react";
@@ -16,12 +14,10 @@ import type { RadarProductHealth } from "@/lib/radar-product";
 export type RadarView = "overview" | "operation" | "opportunities" | "published" | "history" | "strategy";
 
 const NAVIGATION = [
-  { view: "overview" as const, label: "Centro de control", href: "/portal/radar", icon: LayoutDashboard },
-  { view: "operation" as const, label: "Operación", href: "/portal/radar/operacion", icon: ListChecks },
-  { view: "opportunities" as const, label: "Oportunidades", href: "/portal/radar/oportunidades", icon: Lightbulb },
+  { view: "operation" as const, label: "Revisión", href: "/portal/radar", icon: ListChecks },
   { view: "published" as const, label: "Publicadas", href: "/portal/radar/publicadas", icon: BookOpenCheck },
   { view: "history" as const, label: "Historial", href: "/portal/radar/historial", icon: History },
-  { view: "strategy" as const, label: "Estrategia", href: "/portal/radar/estrategia", icon: Settings2 },
+  { view: "strategy" as const, label: "Configuración", href: "/portal/radar/configuracion", icon: Settings2 },
 ];
 
 function withRadarCompany(href: string, companyLookup?: string) {
@@ -63,7 +59,6 @@ export function RadarShell({
   exitLabel,
   companyLookup,
   basePath = "/portal/radar",
-  strategyAvailable = true,
   children,
 }: {
   active: RadarView;
@@ -104,9 +99,9 @@ export function RadarShell({
           </div>
 
           <nav aria-label="Navegación de Radar" className="mt-6 grid gap-1.5">
-            {NAVIGATION.filter((item) => strategyAvailable || item.view !== "strategy").map((item) => {
+            {NAVIGATION.map((item) => {
               const Icon = item.icon;
-              const selected = item.view === active;
+              const selected = item.view === active || (item.view === "operation" && ["overview", "opportunities"].includes(active));
               return (
                 <Link
                   key={item.view}
@@ -160,9 +155,9 @@ export function RadarShell({
               </div>
             </div>
             <nav aria-label="Secciones de Radar" className="flex gap-1 overflow-x-auto px-4 pb-3 sm:px-6 xl:hidden">
-              {NAVIGATION.filter((item) => strategyAvailable || item.view !== "strategy").map((item) => {
+              {NAVIGATION.map((item) => {
                 const Icon = item.icon;
-                const selected = item.view === active;
+                const selected = item.view === active || (item.view === "operation" && ["overview", "opportunities"].includes(active));
                 return (
                   <Link key={item.view} href={withRadarCompany(item.href.replace("/portal/radar", basePath), companyLookup)} aria-current={selected ? "page" : undefined} className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${selected ? "bg-[#eeeafe] text-[#43299c]" : "text-slate-500"}`}>
                     <Icon size={14} aria-hidden="true" />

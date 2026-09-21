@@ -93,6 +93,8 @@ function mapRun(row: UnknownRow, events: RadarRunEvent[] = [], decisions: RadarR
     manualNote: requestKind === "manual_note" ? parseRadarManualNoteRequest(row.request_payload) : null,
     autonomyMode,
     status,
+    editorialPhase: text((row.api_context as UnknownRow | null)?.phase),
+    eligibility: ["ELIGIBLE", "INELIGIBLE"].includes(String(((row.api_context as UnknownRow | null)?.decision as UnknownRow | null)?.eligibility)) ? ((row.api_context as UnknownRow).decision as UnknownRow).eligibility as "ELIGIBLE" | "INELIGIBLE" : null,
     externalRunId: text(row.external_run_id),
     externalRunUrl: text(row.external_run_url),
     candidate: parsedCandidate,
@@ -250,13 +252,15 @@ export async function updateRadarSchedule(input: {
 
 export async function decideRadarRun(input: {
   runId: string;
+  actorId: string;
   idempotencyKey: string;
   decision: RadarDecisionAction;
   reason: string | null;
 }) {
-  const client = await getSupabaseServerClient();
-  const { data, error } = await client.rpc("decide_radar_run", {
+  const client = getSupabaseAdminClient();
+  const { data, error } = await client.rpc("decide_radar_run_authorized", {
     target_run_id: input.runId,
+    requested_actor_id: input.actorId,
     decision_idempotency_key: input.idempotencyKey,
     requested_decision: input.decision,
     decision_reason: input.reason,
@@ -583,4 +587,12 @@ export async function recordRadarEngineEvent(input: {
   });
   if (error) throw new Error(error.message);
   return { duplicate: duplicate === true };
+}
+
+// Authenticated lookup preserves retries without starting another request or reservation.
+export async function findRadarRequest(workspaceId: string, idempotencyKey: string) {
+  const client = await getSupabaseServerClient();
+  const { data, error } = await client.from("radar_runs").select("*").eq("workspace_id", workspaceId).eq("idempotency_key", idempotencyKey).maybeSingle();
+  if (error) throw new Error("No se pudo comprobar la solicitud existente. Búsqueda no iniciada.");
+  return data ? mapRun(data as UnknownRow) : null;
 }

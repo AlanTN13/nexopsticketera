@@ -1,9 +1,6 @@
-import { PlatformRadarPage } from "@/components/radar/platform-radar-page";
-
+import { PlatformRadarOperationPage, type RadarHistoryFilters } from "@/components/radar/radar-operation-page";
 export const dynamic = "force-dynamic";
-
-export default async function BackofficeRadarOpportunitiesPage({ searchParams }: { searchParams: Promise<{ estado?: string }> }) {
-  const { estado } = await searchParams;
-  const filter = estado === "pending" || estado === "published" || estado === "discarded" ? estado : "all";
-  return <PlatformRadarPage view="opportunities" opportunityFilter={filter} />;
+export const maxDuration = 300;
+export default async function RadarRoute({ searchParams }: { searchParams: Promise<RadarHistoryFilters> }) {
+  return <PlatformRadarOperationPage basePath="/backoffice/radar" view="review" filters={await searchParams} />;
 }

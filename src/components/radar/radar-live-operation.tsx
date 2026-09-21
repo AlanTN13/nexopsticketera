@@ -22,6 +22,7 @@ type RadarLiveOperationProps = {
   createdAt: string;
   updatedAt: string;
   events: RadarRunEvent[];
+  editorialPhase?: string | null;
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-AR", {
@@ -56,11 +57,11 @@ function ElapsedClock({ from, label }: { from: string; label: string }) {
   return <span className="inline-flex items-center gap-1.5"><Clock3 size={13} /> {label} {elapsedLabel(from, now)}</span>;
 }
 
-export function RadarLiveOperation({ runId, status, requestKind, createdAt, updatedAt, events }: RadarLiveOperationProps) {
+export function RadarLiveOperation({ runId, status, requestKind, createdAt, updatedAt, events, editorialPhase }: RadarLiveOperationProps) {
   const router = useRouter();
   const [isRefreshing, startTransition] = useTransition();
   const eventTypes = events.map((event) => event.type);
-  const view = getRadarLiveView(status, requestKind, eventTypes);
+  const view = getRadarLiveView(status, requestKind, eventTypes, editorialPhase);
   const latestEvent = events.at(-1) ?? null;
   const refreshesAutomatically = view.mode === "working";
 
@@ -85,7 +86,7 @@ export function RadarLiveOperation({ runId, status, requestKind, createdAt, upda
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">
             <span className="relative flex size-2"><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-300 opacity-60" /><span className="relative inline-flex size-2 rounded-full bg-emerald-300" /></span>
-            Centro de operaciones · en vivo
+            Estado de la solicitud
           </span>
           <span className="font-mono text-[10px] text-slate-500">Misión {runId.slice(0, 8)}</span>
         </div>
@@ -93,7 +94,7 @@ export function RadarLiveOperation({ runId, status, requestKind, createdAt, upda
 
       <div className="relative grid gap-8 px-5 py-7 sm:px-7 lg:grid-cols-[minmax(17rem,0.8fr)_minmax(0,1.2fr)] lg:items-center lg:gap-12 lg:py-10">
         <div className="grid place-items-center">
-          <div className={styles.nexyTeam} aria-label="Equipo de Nexys trabajando en la misión">
+          <div className={styles.nexyTeam} aria-label="Etapas de la solicitud">
             <span className={styles.handoffLine} aria-hidden="true" />
             {view.stages.map((stage, index) => (
               <div
@@ -112,7 +113,7 @@ export function RadarLiveOperation({ runId, status, requestKind, createdAt, upda
                 {stage.state === "active" && view.mode === "working" ? <span className={styles.workSignal} aria-hidden="true" /> : null}
                 <div className={styles.nexyWorkerLabel}>
                   <strong>{stage.name}</strong>
-                  <span>{stage.state === "active" ? "Trabajando" : stage.state === "done" ? "Completado" : "En espera"}</span>
+                  <span>{stage.state === "active" ? view.phaseLabel === "Preparando" ? "Preparando" : "En curso" : stage.state === "done" ? "Completado" : "En espera"}</span>
                 </div>
               </div>
             ))}
