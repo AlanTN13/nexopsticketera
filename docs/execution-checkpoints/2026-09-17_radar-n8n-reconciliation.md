@@ -1,5 +1,38 @@
 # EXECUTION RECEIPT — Radar reconciliation to n8n
 
+## EXECUTION RECEIPT + KNOWLEDGE DELTA — 2026-09-21, 18:30 UTC
+
+**El camino vivo NO_PUBLICATION está validado. Radar V1 editorial completo con revisión humana todavía no está aceptado.** Continúa #75 y webneoxps#74 ya mergeadas, sin arquitectura ni PR competidora.
+
+### Corrección y despliegue
+- El 401 había quedado resuelto al corregir Name/Value de Radar — Callback; no queda acción humana de credenciales.
+- El siguiente fallo era JSON editorial incompleto y campos fuera del contrato. Commit **08a0b9376640b53bd18138ed729ac0f210dadaee**, integrado en main, exige Responses text.format/json_schema estricto para escritor y QA. Conserva gpt-5-mini, web search, máximo una corrección, gates/scoring y publicador.
+- CI [35638413133](https://github.com/AlanTN13/nexopsticketera/actions/runs/35638413133) SUCCESS. Production **dpl_CXGRryyUZBjfiYyvdZCG8cD6zgZd**, READY con ese commit; Portal recargado antes de la única prueba viva.
+- Workflow **BRbvcSEHpTIMpw63**, Published **8d33575e-d87a-4f82-92a0-3e7e27e00098**. Export vivo cotejado: tres Code nodes idénticos a Git, diez nodos, conexiones y credenciales conservadas, pinData vacío, timeout240 y retención desactivada. Prueba sintética Cloud sin proveedor retirada antes de publicar.
+
+### Autorización y presupuesto
+Alan autorizó expresamente USD5 → USD6 y una sola reserva adicional de USD1.50, conservando el ledger histórico3/USD4.50. Migración 20260921181608_radar_pilot_six_dollar_extension.sql aplicada; CHECK/RPC/gate a6 y Production RADAR_API_PILOT_MAX_RUNS=4. Sin UPDATE/reset/refund del ledger. Estado final verificado: **4 reservas / USD6**; no hay autorización ni presupuesto reservado disponible para otra corrida. USD6 reservado no equivale a costo facturado.
+
+### Evidencia viva
+- Portal **4260e34c-41b9-4b99-882f-9c297193cf53**; n8n **31268**.
+- 18:29:30.726947–18:30:03.134168UTC, disparada desde Buscar ahora en producción.
+- **NO_PUBLICATION / INELIGIBLE / score=null**: «La fuente principal ya está publicada en el corpus vigente».
+- OpenAI: **1 llamada**, **12.732 input / 2.006 output**, **1 web search**, **USD0.017195 estimados a partir del uso**, no factura. Response resp_0777283cbf2bd538016ab17790b9c887d29b1e5f6549385e1f.
+- Writer devolvió JSON válido y campos raíz correctos. 28 fuentes consultadas preservadas. Fuente principal https://about.fb.com/news/2026/06/meta-business-agent/ coincide con el corpus publicado de https://www.nexopstech.com/noticias/meta-business-agent-whatsapp-leads-ventas (13/08/2026). No se confundió un run fallido con una publicación.
+- Callback recibido y persistido: Supabase radar_runs.status=no_publication, api_context.n8nReceipt.ok=true, decision y api_usage coincidentes. Portal muestra el resultado.
+- El gate de duplicados detuvo la pieza antes de QA. **No hay QA, portada ni preview vivos para esta corrida**, por diseño; no se forzó publicación ni score para obtenerlos.
+- Supabase final: nexops y nexops-api-pilot autonomy_mode/publishingMode=review y scheduler_enabled=false. Scheduler y autopublicación OFF.
+
+### Evidencia controlada
+54 tests/4 suites PASS; typecheck, lint de archivos tocados, export freshness y build webpack PASS. Suite SQL original y ampliación PGlite PASS: ledger histórico intacto, cuarta reserva, quinta bloqueada, idempotencia/cancelación sin refund y ACLs conservadas. Revisión independiente sin bloqueantes.
+Fixture crossrepo: writer/QA simulados, fuentes, PNG1600×900 y paquete/publicador válidos; elegibilidad AUTO_PUBLISH85 controlada, sin publicación. Digest 479dfa74ccbf6ed9d344afff9a886eeb1fa89c121723d13c7f8246b51e35c385. No convertir esas pruebas en evidencia editorial viva.
+
+### Estados y próximo gate
+Implementado **sí**; integrado/mergeado **sí**; desplegado **sí**; transporte y NO_PUBLICATION E2E vivo **sí**; E2E editorial QA→portada→preview **no**; Radar V1 productivo con revisión humana **no aceptado todavía**; autónomo **no**.
+El defecto de formato quedó resuelto para el escritor vivo. QA estricto sigue validado sólo de forma controlada. Falta una oportunidad nueva que pase los gates y permita validar QA/paquete/preview vivos. La única corrida adicional autorizada ya se consumió; detenerse aquí, conservar reservas y no iniciar más llamadas sin autorización adicional. No quedan credenciales que Alan deba copiar ni pruebas manuales que deba operar.
+
+Receipt PR: https://github.com/AlanTN13/nexopsticketera/pull/75#issuecomment-5765570193 . Los cortes inferiores se conservan como historia; este corte rige el estado actual.
+
 ## EXECUTION PREFLIGHT — extensión autorizada, 2026-09-21
 
 Alan respondió «dale si» a ampliar el piloto deUSD5 aUSD6 conservando ledger3/USD4.50. Alcance: esquema JSON estricto escritor/QA en Responses existente, migración del CHECK/RPC/gate presupuesto a6, max_runs4, misma reserva1.50 y una sola corrida real tras pruebas. Modelo/credencial/runtimes/gates/scoring/publicador inalterados. M/T2/R3, owner/implementador único y reviewer independiente del presupuesto/schema. Base Portal ef52f6a, canon Alanos248a61a y contrato/hogar consultados. Challenge: prompt JSON no exige estructura; no reparar arbitrariamente salida ni añadir llamada. Pruebas de request/schema y fixture Cloud offline antes de proveedor; PGlite valida extensión sin refund, cuarta reserva y quinta rechazada. Recuperación: revertir código/workflow si falla; nunca reducir cap por debajo de reservas ni borrar ledger. STOP al consumir la cuarta reserva o cualquier fallo sin diagnóstico concreto. No cron/autopublicación.
