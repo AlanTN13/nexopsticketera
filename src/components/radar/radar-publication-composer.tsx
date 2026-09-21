@@ -27,6 +27,16 @@ function fitMeta(value: string, fallback: string) {
   return `${base} Conocé el criterio operativo de NexOps y qué implica para empresas que buscan resultados medibles.`.slice(0, 180);
 }
 
+export function radarPreviewComposition(data: FormData, candidate: RadarRunCandidate, editable: boolean): RadarPublicationComposition {
+  const composition = !editable && candidate.composition
+    ? { ...candidate.composition }
+    : Object.fromEntries(data.entries()) as unknown as RadarPublicationComposition;
+  composition.sourceVerified = data.get("sourceVerified") === "true";
+  composition.rightsVerified = data.get("rightsVerified") === "true";
+  composition.clientClaimsAuthorizedOrAbsent = data.get("clientClaimsAuthorizedOrAbsent") === "true";
+  return composition;
+}
+
 export function RadarPublicationComposer({
   runId,
   workspaceId,
@@ -71,10 +81,7 @@ export function RadarPublicationComposer({
     setPreviewError("");
     const requestRevision = revision.current;
     const data = new FormData(form);
-    const composition = Object.fromEntries(data.entries()) as unknown as RadarPublicationComposition;
-    composition.sourceVerified = data.get("sourceVerified") === "true";
-    composition.rightsVerified = data.get("rightsVerified") === "true";
-    composition.clientClaimsAuthorizedOrAbsent = data.get("clientClaimsAuthorizedOrAbsent") === "true";
+    const composition = radarPreviewComposition(data, candidate, editable);
     const child = window.open("about:blank", "_blank");
     if (!child) { setPreviewError("Permití abrir ventanas para revisar la nota en webneoxps."); return; }
     setPreviewPending(true);

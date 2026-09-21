@@ -6,6 +6,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refres
 vi.mock("@/app/portal/radar/operacion/actions", () => ({ createManualRadarNoteAction: vi.fn(), requestRadarRunAction: vi.fn(), updateRadarPreferencesAction: vi.fn(), releaseStalledRadarRunAction: vi.fn(), decideRadarRunAction: vi.fn(), publishApprovedRadarRunAction: vi.fn() }));
 import { RadarControlPlaneView } from "@/components/radar/radar-operation-page";
 import { RadarRunDetail } from "@/components/radar/radar-run-detail";
+import { radarPreviewComposition } from "@/components/radar/radar-publication-composer";
+import type { RadarPublicationComposition } from "@/lib/radar-publication";
 import { RadarShell } from "@/components/radar/radar-shell";
 import { radarPhase, radarCandidateEligible, radarResultReason } from "@/lib/radar-presentation";
 import { getRadarLiveView } from "@/lib/radar-live-status";
@@ -34,6 +36,13 @@ describe("Radar truthful recovery", () => {
     const rejected = { ...run, status: "rejected" as const, eligibility: "INELIGIBLE" as const, failedGates: ["clientClaims"] };
     expect(radarResultReason(rejected)).toContain("clientes sin autorización");
     expect(render(<RadarRunDetail run={rejected} canOperate canAdmin publicationConnected={false} />)).toContain("El PASS original no habilita");
+  });
+  it("preserves the canonical preview for an operator whose approved composition fields are disabled", () => {
+    const canonical = { title: "Approved canonical title", sourceVerified: false } as RadarPublicationComposition;
+    const form = new FormData(); // disabled fields are omitted by the browser
+    form.set("sourceVerified", "true");
+    expect(radarPreviewComposition(form, { ...candidate, composition: canonical }, false).title).toBe("Approved canonical title");
+    expect(canonical.sourceVerified).toBe(false);
   });
   it("does not infer eligibility from a legacy review status with missing QA", () => {
     expect(radarCandidateEligible({ ...run, eligibility: null, candidate: { ...candidate, qa: undefined } })).toBe(false);
