@@ -106,6 +106,7 @@ export type RadarRun = {
   status: RadarRunStatus;
   editorialPhase?: string | null;
   eligibility?: "ELIGIBLE" | "INELIGIBLE" | null;
+  failedGates?: string[];
   externalRunId: string | null;
   externalRunUrl: string | null;
   candidate: RadarRunCandidate | null;

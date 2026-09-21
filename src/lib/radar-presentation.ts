@@ -15,3 +15,14 @@ export function radarCandidateEligible(run: Pick<RadarRun, "status" | "candidate
 export function radarResultTitle(run: RadarRun) {
   return run.candidate?.title ?? run.manualNote?.title ?? (run.requestKind === "manual_note" ? "Fuente ingresada" : "Búsqueda de oportunidad");
 }
+
+const gateLabels: Record<string, string> = {
+  sources: "fuentes insuficientes", facts: "afirmaciones sin respaldo", novelty: "tema duplicado o sin novedad",
+  clientClaims: "afirmaciones sobre clientes sin autorización confirmada", content: "contenido editorial inválido",
+  cover: "portada no válida", siteValidation: "paquete incompatible con el sitio", budget: "presupuesto no disponible", consistency: "inconsistencia del resultado",
+};
+export function radarResultReason(run: RadarRun) {
+  const reason = run.errorMessage ?? run.resultReason;
+  const gates = run.failedGates?.map(gate => gateLabels[gate] ?? gate).join("; ");
+  return gates ? `${reason ?? "La pieza no superó los controles finales."} Controles pendientes: ${gates}.` : reason;
+}

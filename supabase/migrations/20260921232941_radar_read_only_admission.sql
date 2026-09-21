@@ -47,7 +47,8 @@ create or replace function public.decide_radar_run_authorized(
   decision_idempotency_key uuid,
   requested_decision text,
   requested_actor_id uuid,
-  decision_reason text default null
+  decision_reason text default null,
+  expected_candidate jsonb default null
 )
 returns public.radar_runs
 language plpgsql
@@ -91,6 +92,11 @@ begin
     or run.api_context #>> '{decision,eligibility}' is distinct from 'ELIGIBLE') then
     raise exception 'La pieza no superó QA y elegibilidad.' using errcode = '55000';
   end if;
+  -- Compare under the same row lock as the decision, after the idempotent return.
+  -- The server supplies the exact persisted candidate used for signed preview verification.
+  if requested_decision = 'approve' and run.candidate is distinct from expected_candidate then
+    raise exception 'La pieza cambió desde la revisión. Abrí nuevamente la preview antes de aprobar.' using errcode = '55000';
+  end if;
 
   insert into public.radar_run_decisions (
     run_id, workspace_id, company_id, actor_user_id,
@@ -129,7 +135,7 @@ $$;
 -- current authenticated actor. Retain the old function for code rollback, but
 -- prevent authenticated Data API callers from bypassing the server gate.
 revoke all on function public.decide_radar_run(uuid, uuid, text, text) from public, anon, authenticated;
-revoke all on function public.decide_radar_run_authorized(uuid, uuid, text, uuid, text) from public, anon, authenticated;
-grant execute on function public.decide_radar_run_authorized(uuid, uuid, text, uuid, text) to service_role;
+revoke all on function public.decide_radar_run_authorized(uuid, uuid, text, uuid, text, jsonb) from public, anon, authenticated;
+grant execute on function public.decide_radar_run_authorized(uuid, uuid, text, uuid, text, jsonb) to service_role;
 -- Code rollback requires restoring EXECUTE on the old function to authenticated;
 -- this is a deliberate separate rollback action, not an automatic gate bypass.

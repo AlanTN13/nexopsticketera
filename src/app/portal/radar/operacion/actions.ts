@@ -26,6 +26,7 @@ import {
 } from "@/lib/radar-control-plane-store";
 import {
   buildRadarPublicationBundle,
+  buildRadarPublicationPackage,
   dispatchRadarPublication,
   radarPublicationConnected,
   type RadarPublicationComposition,
@@ -261,9 +262,11 @@ export async function decideRadarRunAction(formData: FormData): Promise<RadarCon
     if (run.workspaceId !== workspaceId) return { error: "La pieza no pertenece a esta cuenta." };
     if (decision === "approve") {
       if (!radarCandidateEligible(run)) return { error: "La pieza no conserva QA PASS y elegibilidad confirmada. No se puede aprobar." };
-      verifyRadarPreviewToken({ runId, workspaceId, actorId: actor.id, compositionDigest: value(formData, "compositionDigest"), token: value(formData, "previewToken") });
+      if (!run.candidate?.composition) return { error: "La pieza no conserva su composición de revisión. No se puede aprobar." };
+      const bundle = await buildRadarPublicationPackage(run, run.candidate.composition);
+      verifyRadarPreviewToken({ runId, workspaceId, actorId: actor.id, compositionDigest: bundle.compositionDigest, token: value(formData, "previewToken") });
     }
-    await decideRadarRun({ runId, actorId: actor.id, idempotencyKey, decision, reason });
+    await decideRadarRun({ runId, actorId: actor.id, idempotencyKey, decision, reason, expectedCandidate: run.persistedCandidate });
     revalidateRadarOperation();
     return {
       error: null,

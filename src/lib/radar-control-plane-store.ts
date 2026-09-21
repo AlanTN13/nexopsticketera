@@ -81,6 +81,7 @@ function mapRun(row: UnknownRow, events: RadarRunEvent[] = [], decisions: RadarR
   const updatedAt = text(row.updated_at);
   if (!id || !workspaceId || !requestedBy || !autonomyMode || !status || !requestKind || !createdAt || !updatedAt ||
       !isRadarAutonomyMode(autonomyMode) || !isRadarRunStatus(status) || !isRadarRequestKind(requestKind)) return null;
+  const failedGates = ((row.api_context as UnknownRow | null)?.decision as UnknownRow | null)?.failedGates;
   const parsedCandidate = parseRadarCandidate(row.candidate);
   if (parsedCandidate && publication?.status === "failed" && publication.composition) parsedCandidate.composition = publication.composition;
   return {
@@ -98,6 +99,7 @@ function mapRun(row: UnknownRow, events: RadarRunEvent[] = [], decisions: RadarR
     externalRunId: text(row.external_run_id),
     externalRunUrl: text(row.external_run_url),
     candidate: parsedCandidate,
+    failedGates: Array.isArray(failedGates) ? failedGates.filter((gate): gate is string => typeof gate === "string") : [],
     resultReason: text(row.result_reason),
     finalUrl: text(row.final_url),
     errorMessage: text(row.error_message),
@@ -253,6 +255,7 @@ export async function updateRadarSchedule(input: {
 export async function decideRadarRun(input: {
   runId: string;
   actorId: string;
+  expectedCandidate: unknown;
   idempotencyKey: string;
   decision: RadarDecisionAction;
   reason: string | null;
@@ -261,6 +264,7 @@ export async function decideRadarRun(input: {
   const { data, error } = await client.rpc("decide_radar_run_authorized", {
     target_run_id: input.runId,
     requested_actor_id: input.actorId,
+    expected_candidate: input.expectedCandidate,
     decision_idempotency_key: input.idempotencyKey,
     requested_decision: input.decision,
     decision_reason: input.reason,
@@ -279,7 +283,8 @@ export async function getRadarRunForPublication(runId: string) {
   if (publicationError) throw new Error(publicationError.message);
   const run = data ? mapRun(data as UnknownRow, [], [], publication ? mapPublication(publication as UnknownRow) : null) : null;
   if (!run) throw new Error("Corrida de Radar inexistente.");
-  return run;
+  // Server-only CAS snapshot; the presentation parser may normalize optional fields.
+  return { ...run, persistedCandidate: (data as UnknownRow).candidate ?? null };
 }
 
 export async function reserveRadarPublication(input: {

@@ -43,6 +43,11 @@ describe("private Radar preview issuance", () => {
     expect(verifyRadarPreviewToken({ runId, workspaceId: "nexops", actorId: "actor", compositionDigest: payload.compositionDigest, token: payload.token })).toBe(true);
     expect(payload.webUrl).toBe("https://preview.example.com/radar/preview");
   });
+  it("uses the stored composition before approval, ignoring edited client content", async () => {
+    mocks.run.mockResolvedValue({ id: runId, workspaceId: "nexops", status: "review_pending", candidate: { composition: { title: "Persisted candidate" } } });
+    expect((await POST(request(), context)).status).toBe(200);
+    expect(mocks.build).toHaveBeenCalledWith(expect.anything(), { title: "Persisted candidate" });
+  });
   it("fails closed when preview signing is not configured", async () => {
     vi.stubEnv("RADAR_PREVIEW_SECRET", ""); vi.stubEnv("RADAR_PUBLICATION_CALLBACK_SECRET", "");
     expect((await POST(request(), context)).status).toBe(400);

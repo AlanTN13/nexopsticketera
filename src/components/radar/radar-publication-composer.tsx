@@ -35,6 +35,7 @@ export function RadarPublicationComposer({
   publicationConnected,
   onPreviewReviewed,
   canPreview = true,
+  editable = true,
 }: {
   runId: string;
   workspaceId: string;
@@ -43,6 +44,7 @@ export function RadarPublicationComposer({
   publicationConnected: boolean;
   onPreviewReviewed?: (receipt: { token: string; digest: string } | null) => void;
   canPreview?: boolean;
+  editable?: boolean;
 }) {
   const draft = candidate.draft;
   const initial = candidate.composition;
@@ -126,7 +128,7 @@ export function RadarPublicationComposer({
             <button type="button" onClick={preview} disabled={previewPending || !canPreview} className="min-h-12 rounded-xl border border-[#4f35b5] bg-white px-5 text-sm font-bold text-[#4f35b5] disabled:opacity-50">{!canPreview ? "Preview requiere permiso de operación" : previewPending ? "Preparando vista previa…" : "Revisar nota completa en webneoxps"}</button>
             {previewError && <p role="alert" className="text-sm text-rose-800">{previewError}</p>}
             <p role="status" className="text-xs text-slate-600">{previewToken ? "Vista previa revisada. La aprobación corresponde a esta versión exacta." : "Revisá la vista previa y confirmala en la ventana del sitio. Cualquier edición requiere una nueva revisión."}</p>
-            <details className="rounded-xl border border-slate-200 bg-white p-4"><summary className="cursor-pointer text-sm font-bold text-slate-700">Editar pieza y portada</summary>
+            <details className="rounded-xl border border-slate-200 bg-white p-4"><summary className="cursor-pointer text-sm font-bold text-slate-700">{editable ? "Editar pieza y portada" : "Consultar composición · edición después de aprobar"}</summary><fieldset disabled={!editable}>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Título<input required name="title" value={title} onChange={(event) => { setTitle(event.target.value); setSlug(slugify(event.target.value)); }} minLength={10} maxLength={150} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Dirección web<input required name="slug" value={slug} onChange={(event) => setSlug(slugify(event.target.value))} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-mono text-xs font-normal text-slate-900" /></label>
@@ -141,7 +143,7 @@ export function RadarPublicationComposer({
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Texto accesible de portada<input required name="coverAlt" defaultValue={initial?.coverAlt ?? `Ilustración editorial de NexOps sobre ${candidate.topic}`} minLength={10} maxLength={220} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Cuerpo de la nota<textarea required name="bodyMarkdown" defaultValue={initial?.bodyMarkdown ?? draft?.bodyMarkdown ?? ""} minLength={120} maxLength={20_000} rows={16} className="rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs font-normal leading-6 text-slate-900" /></label>
             </div>
-            </details>
+            </fieldset></details>
             <PendingSubmitButton disabled={!enabled} idleLabel={publicationConnected ? "Publicar versión revisada" : "Publicación no habilitada"} pendingLabel="Iniciando publicación…" className="min-h-12 rounded-xl bg-[#4f35b5] px-5 text-sm font-bold text-white disabled:bg-slate-300" />
           </PendingForm>
         </div>

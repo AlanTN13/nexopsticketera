@@ -11,7 +11,7 @@
 - Data: additive read-only service-role admission RPC if required; no new tables, queues or ledger modification. Existing run state and events remain authoritative. Configuration changes cannot activate scheduler/autopublish during this phase.
 - Product: existing URLs remain valid; Review is daily entry, Published/History/Configuration separate. History compact with filters and details. Manual sources show editorial result first. Sources, QA and exact-version preview precede human decisions.
 - Validation: targeted offline SQL/action/state/render tests, recorded provider replay, existing persisted records and historical preview; permission and tenant checks; full typecheck/lint/tests/build/CI; read-only production browser verification. No fresh research request.
-- Rollout: reviewed backwards-compatible migration then verified code deployment. Rollback code to prior SHA; additive RPC may remain unused. No budget reset/refund and no stored run promotion during verification.
+- Rollout: reviewed migration then coordinated code deployment; old decisions fail closed during the transition. Code rollback also requires explicitly restoring the old authenticated decision RPC grant; new RPC stays service-role-only. No budget reset/refund and no stored run promotion during verification.
 - Challenge pass: admission may race, so preserve the atomic last guard and terminalize only identified budget failures. Missing/unavailable admission fails closed. Configuration presence cannot assert worker health. Publication remains a separate exact-version gate.
 - STOP: irreversible data change, new budget/provider call, real article publication, or unavoidable external authentication. No such action is needed to begin Phase A.
 
@@ -34,3 +34,7 @@ Implementation started. Not merged, deployed or validated for this phase yet.
 The migration is additive for data/schema but intentionally restricts the old decision RPC ACL. Deploy after checks/review, followed by the new server action. No pending eligible live article is approved during rollout. To roll back the code, also restore `GRANT EXECUTE ON FUNCTION public.decide_radar_run(uuid, uuid, text, text) TO authenticated` as an explicit rollback step; otherwise old approvals fail closed. No tables, ledger rows, reservations, credentials, scheduled jobs or provider settings are changed.
 
 Not yet merged/deployed/visually verified for this phase. No live editorial run is authorized by this receipt.
+
+### Final independent review correction
+
+Approval now rebuilds the canonical persisted package, verifies that server-derived digest against the signed preview and passes the expected candidate into the locked decision RPC. A candidate changed concurrently cannot be approved. Pending/postponed preview uses the stored composition and cannot substitute edited client content; editing remains available after approval with a fresh exact-version publication preview. No article is published by these checks.

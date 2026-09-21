@@ -11,7 +11,7 @@ export function RadarHumanReview({ run, canOperate, canAdmin, publicationConnect
   const [keys] = useState(() => ({ approve: crypto.randomUUID(), postpone: crypto.randomUUID(), discard: crypto.randomUUID() }));
   if (!run.candidate) return null;
   return <>
-    <RadarPublicationComposer runId={run.id} workspaceId={run.workspaceId} candidate={run.candidate} canPublish={canAdmin && run.status === "approved"} publicationConnected={publicationConnected} canPreview={canOperate} onPreviewReviewed={setReviewed} />
+    <RadarPublicationComposer runId={run.id} workspaceId={run.workspaceId} candidate={run.candidate} canPublish={canAdmin && run.status === "approved"} publicationConnected={publicationConnected} canPreview={canOperate} editable={run.status === "approved" && canAdmin} onPreviewReviewed={setReviewed} />
     {["review_pending", "postponed"].includes(run.status) && <section className="mt-5 rounded-xl border border-slate-200 p-4">
       <h3 className="font-bold text-slate-900">Decisión editorial</h3>
       <p className="mt-2 text-sm text-slate-600">{reviewed ? "Vista previa revisada. Aprobar deja la pieza lista para la confirmación final de publicación." : "Revisá y confirmá la vista previa para aprobar. Podés postergar o descartar sin publicar."}</p>

@@ -7,7 +7,7 @@ vi.mock("@/app/portal/radar/operacion/actions", () => ({ createManualRadarNoteAc
 import { RadarControlPlaneView } from "@/components/radar/radar-operation-page";
 import { RadarRunDetail } from "@/components/radar/radar-run-detail";
 import { RadarShell } from "@/components/radar/radar-shell";
-import { radarPhase, radarCandidateEligible } from "@/lib/radar-presentation";
+import { radarPhase, radarCandidateEligible, radarResultReason } from "@/lib/radar-presentation";
 import { getRadarLiveView } from "@/lib/radar-live-status";
 import type { RadarControlPlaneSnapshot, RadarRun } from "@/lib/radar-control-plane";
 import type { RadarAdmission } from "@/lib/radar-admission";
@@ -29,6 +29,11 @@ describe("Radar truthful recovery", () => {
   it.each(["rejected", "failed", "no_publication"] as const)("never scores or presents %s as an opportunity", status => {
     const html = render(<RadarRunDetail run={{ ...run, status, eligibility: "INELIGIBLE", resultReason: "Motivo real del resultado" }} canOperate canAdmin publicationConnected={false} />);
     expect(html).toContain("Motivo real del resultado"); expect(html).toContain("sin score publicable"); expect(html).not.toContain("82/100"); expect(html).not.toContain("Oportunidad encontrada"); expect(html).not.toContain("Decisión editorial");
+  });
+  it("explains the persisted critical gate even when the historical QA claimed PASS", () => {
+    const rejected = { ...run, status: "rejected" as const, eligibility: "INELIGIBLE" as const, failedGates: ["clientClaims"] };
+    expect(radarResultReason(rejected)).toContain("clientes sin autorización");
+    expect(render(<RadarRunDetail run={rejected} canOperate canAdmin publicationConnected={false} />)).toContain("El PASS original no habilita");
   });
   it("does not infer eligibility from a legacy review status with missing QA", () => {
     expect(radarCandidateEligible({ ...run, eligibility: null, candidate: { ...candidate, qa: undefined } })).toBe(false);
