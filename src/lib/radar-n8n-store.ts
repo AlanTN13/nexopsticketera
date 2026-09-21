@@ -13,7 +13,7 @@ import type { RadarRun, RadarRunCandidate } from "@/lib/radar-control-plane";
 export function authenticateRadarN8n(value: string | null) {
   const secret = process.env.RADAR_N8N_CALLBACK_SECRET?.trim() ?? "";
   if (secret.length < 32 || !value) return false;
-  const expected = Buffer.from(secret); const received = Buffer.from(value);
+  const expected = Buffer.from(secret); const received = Buffer.from(value.trim());
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
 const emptyUsage = { calls: 0, inputTokens: 0, outputTokens: 0, webSearchCalls: 0, responseIds: [] };
