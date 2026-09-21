@@ -69,7 +69,7 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
   if (!["prepare", "finish"].includes(operation) || state.request) throw fail();
   let candidate: RadarRunCandidate | null = state.result?.candidate ?? state.checkpoint?.candidate ?? null;
   const gates: RadarGates = { ...editorialGates(state), cover: false, siteValidation: false,
-    budget: row.api_usage?.reserved === true && row.api_usage.pilotReservedUsd <= 5 && (state.checkpoint?.usage.calls ?? 0) <= 4 && (state.checkpoint?.usage.estimatedUsd ?? 0) <= row.api_usage.reservedUsd,
+    budget: row.api_usage?.reserved === true && row.api_usage.pilotReservedUsd <= 6 && (state.checkpoint?.usage.calls ?? 0) <= 4 && (state.checkpoint?.usage.estimatedUsd ?? 0) <= row.api_usage.reservedUsd,
     consistency: !state.error && responses.length <= 4 };
   if (state.result?.status === "review_pending" && candidate) {
     try {

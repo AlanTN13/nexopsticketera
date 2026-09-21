@@ -2,6 +2,7 @@ import "server-only";
 
 import { isSafeHttpsUrl, parseRadarCandidate, type RadarRunCandidate, type RadarSource } from "@/lib/radar-control-plane";
 import { radarPayloadDigest } from "@/lib/radar-engine-contract";
+import { radarOutputFormat } from "@/lib/radar-output-schema";
 
 export const RADAR_API_LIMITS = { callsPerRun: 4, toolCallsPerRequest: 2, outputTokensPerRequest: 4000, inputCharacters: 60000, requestTimeoutMs: 45000 } as const;
 export type RadarApiUsage = { calls: number; inputTokens: number; outputTokens: number; webSearchCalls: number; estimatedUsd?: number; responseIds: string[] };
@@ -121,7 +122,7 @@ export async function executeRadarEditorial(input: {
       body: JSON.stringify({ model: input.context.model, service_tier: "default", store: false, instructions: `${POLICY}\n${task}`, input: content,
         max_output_tokens: RADAR_API_LIMITS.outputTokensPerRequest, max_tool_calls: RADAR_API_LIMITS.toolCallsPerRequest, reasoning: { effort: "low" },
         tools: [{ type: "web_search", search_context_size: "low" }], tool_choice: "required",
-        include: ["web_search_call.action.sources"] }),
+        include: ["web_search_call.action.sources"], text: { format: radarOutputFormat(phase) } }),
     });
     // Never persist or expose provider error bodies, headers, keys or private reasoning.
     if (!response.ok) fail("PROVIDER_FAILED", `OpenAI rechazó la solicitud (${response.status}). El borrador y el uso reservado se conservan.`);

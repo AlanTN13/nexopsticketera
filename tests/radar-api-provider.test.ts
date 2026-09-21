@@ -49,6 +49,23 @@ describe("Radar API editorial contract", () => {
     const output = review(); output.checkedClaims = [];
     const test = await run([writer(), output]); expect((await test.result).status).toBe("rejected");
   });
+  it("constrains writer, QA and the one correction with strict root schemas while preserving web search", async () => {
+    const test = await run([writer(), review("FIX"), writer(), review()]); await test.result;
+    const requests = (test.fetchImpl.mock.calls as unknown as Array<[unknown, RequestInit]>).map(call => JSON.parse(String(call[1].body)));
+    expect(requests.map(request => request.text.format.name)).toEqual(["radar_writer_v1", "radar_review_v1", "radar_writer_v1", "radar_review_v1"]);
+    for (const request of requests) {
+      expect(request.text.format).toMatchObject({ type: "json_schema", strict: true, schema: { type: "object", additionalProperties: false } });
+      expect(request.tools).toEqual([{ type: "web_search", search_context_size: "low" }]);
+      expect(request.tool_choice).toBe("required"); expect(request.model).toBe("gpt-5-mini");
+    }
+    const schema = requests[0].text.format.schema;
+    expect(schema.required).toEqual(["outcome", "reason", "candidate", "sources", "claims", "topicIdentity"]);
+    expect(schema.properties.candidate.anyOf[0].properties.sources).toBeUndefined();
+    expect(schema.properties.candidate.anyOf[1]).toEqual({ type: "null" });
+    expect(schema.properties.sources.items.properties.publishedAt.type).toEqual(["string", "null"]);
+    expect(requests[1].text.format.schema.required).toContain("criticalGates");
+    expect(requests[1].text.format.schema.required).toContain("rubric");
+  });
   it("provider errors fail without exposing response body or pretending NO_PUBLICATION", async () => {
     const test = await run([{ secret: "must-not-surface" }], { status: 429 }); await expect(test.result).rejects.toThrow("OpenAI rechazó la solicitud (429)"); expect(test.checkpoints[0].usage.calls).toBe(1);
   });

@@ -39,6 +39,17 @@ describe("Portal n8n durable ownership",()=>{
   expect(await handleRadarN8n(runId,"finish",{executionId:"one",state,decision})).toEqual(receipt);
  });
 
+ it.each([[6,true],[6.01,false]])("enforces the authorized USD6 budget gate at %s",async(reserved,allowed)=>{
+  let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
+  row.api_usage.pilotReservedUsd=reserved;
+  for(const output of [writer(),review(3)]){state=await advanceRadarN8n(state);state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;state.responses.push(response(output));}
+  state=await advanceRadarN8n(state);
+  const prepared=await handleRadarN8n(runId,"prepare",{executionId:"one",state}) as {state:RadarN8nState;gates:RadarGates;bands:{review:number;automatic:number}};
+  expect(prepared.gates.budget).toBe(allowed);
+  const decision=decideRadarN8n(prepared.state,prepared.gates,prepared.bands);
+  expect(decision.outcome).toBe(allowed?"AUTO_PUBLISH":"REJECT");
+  if(!allowed)expect(decision.score).toBeNull();
+ });
  it("claims once and rejects a duplicate execution before spend",async()=>{await handleRadarN8n(runId,"claim",{executionId:"one"});await expect(handleRadarN8n(runId,"claim",{executionId:"two"})).rejects.toThrow();expect(reservations).toBe(1);});
  it("authorizes each billable request once and keeps dollar reservation",async()=>{const initial=await handleRadarN8n(runId,"claim",{executionId:"one"});const state=await advanceRadarN8n(initial as Parameters<typeof advanceRadarN8n>[0]);await handleRadarN8n(runId,"checkpoint",{executionId:"one",state});expect(row.api_usage).toMatchObject({reservedUsd:1.5,calls:1});await expect(handleRadarN8n(runId,"checkpoint",{executionId:"one",state})).rejects.toThrow();expect(writes).toBe(1);});
  it("rejects execution-id substitution and does not replace context with caller data",async()=>{const state=await handleRadarN8n(runId,"claim",{executionId:"one"});await expect(handleRadarN8n(runId,"checkpoint",{executionId:"two",state})).rejects.toThrow();expect(writes).toBe(0);});

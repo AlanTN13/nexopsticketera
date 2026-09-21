@@ -1,6 +1,10 @@
 # EXECUTION RECEIPT — Radar reconciliation to n8n
 
-## Corte vigente — 2026-09-21, callback resuelto / gate editorial y presupuesto
+## EXECUTION PREFLIGHT — extensión autorizada, 2026-09-21
+
+Alan respondió «dale si» a ampliar el piloto deUSD5 aUSD6 conservando ledger3/USD4.50. Alcance: esquema JSON estricto escritor/QA en Responses existente, migración del CHECK/RPC/gate presupuesto a6, max_runs4, misma reserva1.50 y una sola corrida real tras pruebas. Modelo/credencial/runtimes/gates/scoring/publicador inalterados. M/T2/R3, owner/implementador único y reviewer independiente del presupuesto/schema. Base Portal ef52f6a, canon Alanos248a61a y contrato/hogar consultados. Challenge: prompt JSON no exige estructura; no reparar arbitrariamente salida ni añadir llamada. Pruebas de request/schema y fixture Cloud offline antes de proveedor; PGlite valida extensión sin refund, cuarta reserva y quinta rechazada. Recuperación: revertir código/workflow si falla; nunca reducir cap por debajo de reservas ni borrar ledger. STOP al consumir la cuarta reserva o cualquier fallo sin diagnóstico concreto. No cron/autopublicación.
+
+## Corte previo — 2026-09-21, callback resuelto / gate editorial y presupuesto
 
 **401 resuelto. Transporte productivo Portal → n8n → OpenAI → callback → Supabase demostrado. Radar V1 editorial NO aceptado: respuesta inválida, FAILED/INELIGIBLE y sin preview. BUDGET_RISK: no iniciar otra corrida.** Los cortes inferiores son históricos y quedan sustituidos para el estado actual.
 
