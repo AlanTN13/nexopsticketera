@@ -14,8 +14,10 @@ if (process.argv.includes('--sync-site-contract')) {
   }
   fs.writeFileSync(path.join(root,'src/lib/radar-site-contract/provenance.json'),JSON.stringify(provenance,null,2)+'\n');
 }
-const result = esbuild.buildSync({entryPoints:[path.join(root,'src/lib/radar-n8n-editorial.ts')],bundle:true,write:false,format:'iife',globalName:'RadarN8n',platform:'browser',target:'es2022',minify:true,external:['crypto'],alias:{'node:crypto':'crypto','server-only':path.join(root,'n8n/empty.mjs')},inject:[path.join(root,'n8n/runtime-globals.mjs')]});
-const bundle = result.outputFiles[0].text.replace(/require\("server-only"\)/g, '({})')+'\nconst engine = RadarN8n;\n';
+// Cloud task runners strip accessor descriptors used by esbuild namespace
+// exports. Capture only our public functions as ordinary data properties.
+const result = esbuild.buildSync({stdin:{contents:"import { advanceRadarN8n, sanitizeRadarResponse, decideRadarN8n } from './src/lib/radar-n8n-editorial.ts'; __radarExport({ advanceRadarN8n, sanitizeRadarResponse, decideRadarN8n });",resolveDir:root,loader:'ts'},bundle:true,write:false,format:'iife',platform:'browser',target:'es2022',minify:true,external:['crypto'],alias:{'node:crypto':'crypto','server-only':path.join(root,'n8n/empty.mjs')},inject:[path.join(root,'n8n/runtime-globals.mjs')]});
+const bundle = 'let engine; const __radarExport = value => { engine = value; };\n'+result.outputFiles[0].text.replace(/require\("server-only"\)/g, '({})')+'\n';
 const nodes=[];const connections={};
 function node(name,type,parameters,position,extra={}){nodes.push({id:name.toLowerCase().replace(/ /g,'-'),name,type:'n8n-nodes-base.'+type,typeVersion:type==='httpRequest'?4.2:type==='code'?2:type==='if'?2.2:2,position,parameters,...extra});}
 function link(from,to,output=0){ connections[from]??={main:[]}; while(connections[from].main.length<=output)connections[from].main.push([]); connections[from].main[output].push({node:to,type:'main',index:0}); }

@@ -21,6 +21,10 @@ async function main() {
   const code = workflow.nodes.find(node => node.name === 'Advance editorial').parameters.jsCode;
   async function runExport(state) {
     const sandbox = vm.createContext({ Buffer, TextDecoder, TextEncoder, require: id => { if (id !== 'crypto') throw new Error('Unexpected n8n Cloud import: '+id); return require('crypto'); }, $json: structuredClone(state) });
+    // n8n Cloud 2.39.6 exposes Uint8Array without its TypedArray constructor
+    // ancestry. The old WebIDL URL wrapper crashes before the engine can run.
+    vm.runInContext('Object.setPrototypeOf(Uint8Array, Function.prototype)', sandbox);
+    vm.runInContext('Object.defineProperty = (object) => object', sandbox);
     return (await vm.runInContext('(async()=>{'+code+'})()', sandbox))[0].json;
   }
   const { prepareRadarPublicationCandidate, buildRadarPublicationPackage, buildRadarPublicationBundle } = require(path.join(portal, 'src/lib/radar-publication.ts'));

@@ -4,6 +4,8 @@ This is the replacement runtime for PR #75, retaining the package/preview implem
 
 ## Workflow
 
+The export is compatible with the n8n Cloud task-runner sandbox: the URL adapter bundles the existing WHATWG parser directly as CommonJS, without WebIDL constructor inspection or runtime imports. The build exposes engine functions as ordinary data properties because the sandbox removes dynamically defined property descriptors. `radar-n8n-runtime.test.mjs` reproduces these restrictions; the cross-repository package fixture covers writer/QA, URL parsing, gates, PNG and publisher validation. Validate a changed bundle with synthetic data in the real Code node before spending another pilot reservation, and remove all fixtures before publishing.
+
 `Private webhook → Claim run → Advance editorial → Needs OpenAI → Authorize request → OpenAI web search → Preserve safe response → Advance editorial`.
 
 When no further request is due: `Prepare PNG and gates → Eligibility then score → Finish in Portal`.
