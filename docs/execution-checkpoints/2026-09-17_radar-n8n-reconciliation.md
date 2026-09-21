@@ -1,5 +1,9 @@
 # EXECUTION RECEIPT — Radar reconciliation to n8n
 
+## EXECUTION PREFLIGHT — dos corridas autorizadas / USD9, 2026-09-21
+
+Alan rechaza USD15 y autoriza exclusivamente ampliar USD6→USD9 para un máximo de dos corridas buscando QA→gates→portada→preview→revisión humana vivos. Base Portal59e48c2, Alanos5d29e7a; contrato/hogar y ledger4/USD6 verificados. M/T2/R3: owner/implementador único y reviewer independiente de migración/presupuesto. Reutilizar RPC/ledger/credenciales/n8n y formulario Nueva nota (manual_note) existente; no cambiar prompts, bandas, gates ni publicador. Seleccionar fuente primaria fechada reciente ausente del corpus18 y tema diferente a Meta/WhatsApp; primera candidata Salesforce AIforce15/09, contexto empresarial acotado y contrastación obligatoria. Si hace falta segunda, diagnóstico previo y fuente/acontecimiento distinto. Validar SQL sin reset/refund, quinta/sexta reserva y séptima rechazada, gate backend, typecheck/lint/build. Cloud/export sin cambio si sólo cambia store server-side. Rollout: migración no destructiva y max_runs6 Production, deploy verificado antes de disparar. Recuperación: deshabilitar entrada/forward-fix conservando reservas, nunca bajar cap por debajo del ledger. STOP al lograr aceptación o consumir dos corridas; ninguna tercera autorizada. Scheduler/autopublicación OFF; no aprobar/publicar en nombre humano.
+
 ## EXECUTION RECEIPT + KNOWLEDGE DELTA — 2026-09-21, 18:30 UTC
 
 **El camino vivo NO_PUBLICATION está validado. Radar V1 editorial completo con revisión humana todavía no está aceptado.** Continúa #75 y webneoxps#74 ya mergeadas, sin arquitectura ni PR competidora.

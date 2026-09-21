@@ -2,7 +2,11 @@
 
 This is the replacement runtime for PR #75, retaining the package/preview implementation in webneoxps#74. Do not run the superseded Next `after()` worker: it has been removed. `radar-api-provider.ts` is a reusable interpreter; its transport is mandatory, and Portal only supplies a network-free replay of responses. Only the native n8n HTTP Request node calls OpenAI.
 
-## Structured output and authorized pilot extension (2026-09-21)
+## Current pilot: two additional validation runs (2026-09-21)
+
+Alan explicitly authorized USD6 → USD9, preserving the existing four reservations / USD6. Migration `20260921202253_radar_pilot_nine_dollar_extension.sql`, backend gate <=9 and Production `RADAR_API_PILOT_MAX_RUNS=6` allow at most two additional USD1.50 reservations. No reset/refund or third run. Use the existing manual-note form with a fresh primary source absent from the corpus to reduce duplicate research; this uses the same n8n/QA/gates. Stop after success or two attempts; diagnose before requesting further budget. Scheduler/autopublishing OFF. The workflow bundle itself is unchanged.
+
+## Structured output and prior USD6 extension (2026-09-21)
 
 Writer and independent QA requests use Responses `text.format` with strict JSON schemas. Sources, claims and topic identity remain root fields; malformed/incomplete output still fails closed. This changes shape enforcement only, not factual validation or scoring. Reference: https://developers.openai.com/api/docs/guides/structured-outputs .
 
@@ -16,7 +20,7 @@ The export is compatible with the n8n Cloud task-runner sandbox: the URL adapter
 
 When no further request is due: `Prepare PNG and gates → Eligibility then score → Finish in Portal`.
 
-The bounded cycle is research/draft → independent QA → at most one FIX → new QA. At most four provider requests, two search calls per request, 4,000 output tokens, 60,000 bytes supplied input. No automatic HTTP retries. Every call is authorized once against the existing durable reservation and execution ID. The original 240-second deadline and USD 1.50 reservation/run remain in force; the explicitly authorized lifetime cap is now USD 6. A failed or ambiguous run does not refund its reservation.
+The bounded cycle is research/draft → independent QA → at most one FIX → new QA. At most four provider requests, two search calls per request, 4,000 output tokens, 60,000 bytes supplied input. No automatic HTTP retries. Every call is authorized once against the existing durable reservation and execution ID. The original 240-second deadline and USD 1.50 reservation/run remain in force; the explicitly authorized lifetime cap is now USD 9. A failed or ambiguous run does not refund its reservation.
 
 The workflow is exported inactive and has no scheduler node. Successful/error/manual execution persistence and progress persistence are disabled because webhook headers contain secrets. Never pin production execution data. Public run identity and safe sources, claims, usage, response IDs and outcomes remain in Supabase; no raw error bodies or reasoning are retained there.
 
@@ -57,7 +61,7 @@ No permission or credential values belong in Git/chat. Enter new credentials thr
 
 A pre-existing direct-worker run `fb783cc0-29cc-4f69-b64d-cdc723de1b66` (2026-09-15) is FAILED due to invalid editorial JSON. Supabase recorded 12,582 input tokens, 1,797 output tokens, one web search, estimated USD 0.0167395 and USD 1.50 reserved. This corrects the old PR description claiming zero historical consumption. It does **not** validate n8n.
 
-On 2026-09-21, production run `4260e34c-41b9-4b99-882f-9c297193cf53` / n8n `31268` completed as NO_PUBLICATION because its primary source was already published. Strict writer JSON, callback and Supabase persistence passed: one call, 12,732 input / 2,006 output tokens, one web search, USD 0.017195 usage-derived estimate. The duplicate gate stopped before QA; no live cover/preview was produced. Ledger is now four reservations / USD 6, with no refund or additional run authorized. See the [current receipt](https://github.com/AlanTN13/nexopsticketera/pull/75#issuecomment-5765570193).
+On 2026-09-21, production run `4260e34c-41b9-4b99-882f-9c297193cf53` / n8n `31268` completed as NO_PUBLICATION because its primary source was already published. Strict writer JSON, callback and Supabase persistence passed: one call, 12,732 input / 2,006 output tokens, one web search, USD 0.017195 usage-derived estimate. The duplicate gate stopped before QA; no live cover/preview was produced. That cutoff had four reservations / USD 6. The later authorization above permits only two further runs, retaining that history. See the [current receipt](https://github.com/AlanTN13/nexopsticketera/pull/75#issuecomment-5765570193).
 
 Never report synthetic token fixtures as measured provider cost. Prices were checked against OpenAI's [model](https://developers.openai.com/api/docs/models/gpt-5-mini) and [pricing](https://developers.openai.com/api/docs/pricing) documentation. `estimatedUsd` is derived from reported usage; it is not an invoice reconciliation. A live eligible opportunity reaching QA, package and preview remains the acceptance gate for Radar V1 with human review.
 

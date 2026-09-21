@@ -39,7 +39,7 @@ describe("Portal n8n durable ownership",()=>{
   expect(await handleRadarN8n(runId,"finish",{executionId:"one",state,decision})).toEqual(receipt);
  });
 
- it.each([[6,true],[6.01,false]])("enforces the authorized USD6 budget gate at %s",async(reserved,allowed)=>{
+ it.each([[7.5,true],[9,true],[9.01,false]])("enforces the authorized USD9 budget gate at %s",async(reserved,allowed)=>{
   let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
   row.api_usage.pilotReservedUsd=reserved;
   for(const output of [writer(),review(3)]){state=await advanceRadarN8n(state);state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;state.responses.push(response(output));}

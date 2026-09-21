@@ -49,6 +49,12 @@ try {
   await db.exec(await readFile(new URL('migrations/20260921181608_radar_pilot_six_dollar_extension.sql', supabaseDirectory), 'utf8'));
   await db.exec(afterExtension);
   console.log('Radar pilot USD6 extension regression PASS (isolated PGlite)');
+  await db.exec(await readFile(new URL('migrations/20260921181608_radar_pilot_six_dollar_extension.sql', supabaseDirectory), 'utf8'));
+  const [beforeNine, afterNine] = (await readFile(new URL('tests/radar_pilot_nine_dollar_extension.sql', supabaseDirectory), 'utf8')).split('-- APPLY EXTENSION HERE');
+  await db.exec(beforeNine);
+  await db.exec(await readFile(new URL('migrations/20260921202253_radar_pilot_nine_dollar_extension.sql', supabaseDirectory), 'utf8'));
+  await db.exec(afterNine);
+  console.log('Radar pilot USD9 extension regression PASS (isolated PGlite)');
 } catch (error) {
   console.error('Radar API SQL regression FAILED:', error.message, error.where ?? '');
   process.exitCode = 1;
