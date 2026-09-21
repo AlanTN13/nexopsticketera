@@ -4,6 +4,7 @@ const mocks=vi.hoisted(()=>({client:{} as Record<string,unknown>,prepare:vi.fn()
 vi.mock("@/lib/supabase-server",()=>({getSupabaseAdminClient:()=>mocks.client}));
 vi.mock("@/lib/radar-workspace",()=>({loadRadarResearchCorpus:async()=>[]}));
 vi.mock("@/lib/radar-api-provider",async()=>({...await vi.importActual("@/lib/radar-api-provider"),radarApiConfiguration:()=>({enabled:true,workspaceId:"pilot",maxRuns:3,model:"gpt-5-mini"})}));
+import * as publication from "@/lib/radar-publication";
 import { handleRadarN8n, authenticateRadarN8n } from "@/lib/radar-n8n-store";
 import { advanceRadarN8n, decideRadarN8n, type RadarN8nState, type RadarGates } from "@/lib/radar-n8n-editorial";
 import { POST } from "@/app/api/radar/runs/[runId]/n8n/route";
@@ -39,6 +40,18 @@ describe("Portal n8n durable ownership",()=>{
   expect(await handleRadarN8n(runId,"finish",{executionId:"one",state,decision})).toEqual(receipt);
  });
 
+ it("never prepares a cover for contradictory QA, even through the callback",async()=>{
+  let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
+  const report=review(4); report.criticalGates.clientClaims=false;
+  for(const output of [writer(),report]){state=await advanceRadarN8n(state);state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;state.responses.push(response(output));}
+  state=await advanceRadarN8n(state);
+  const prepare=vi.spyOn(publication,"prepareRadarPublicationCandidate");
+  try {
+    const prepared=await handleRadarN8n(runId,"prepare",{executionId:"one",state}) as {state:RadarN8nState;gates:RadarGates};
+    expect(prepare).not.toHaveBeenCalled();
+    expect(decideRadarN8n(prepared.state,prepared.gates)).toMatchObject({outcome:"REJECT",score:null,failedGates:["clientClaims"]});
+  } finally { prepare.mockRestore(); }
+ });
  it.each([[7.5,true],[9,true],[9.01,false]])("enforces the authorized USD9 budget gate at %s",async(reserved,allowed)=>{
   let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
   row.api_usage.pilotReservedUsd=reserved;

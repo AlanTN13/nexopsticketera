@@ -18,6 +18,9 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    "/*": ["./src/assets/radar-fonts/*.ttf", "./src/assets/radar-fonts/OFL.txt", "./src/assets/radar-fonts/fonts.conf"],
+  },
   images: {
     remotePatterns: [
       {

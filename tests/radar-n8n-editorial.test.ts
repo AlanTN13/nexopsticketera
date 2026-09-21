@@ -38,6 +38,35 @@ describe("n8n bounded editorial state and gate-aware scoring",()=>{
  it("partial or invented rubric evidence earns no free points",async()=>{const report=review(4);for(const key of RADAR_SCORE_CRITERIA)report.rubric[key].sourceUrls=["https://invented.example/"];const state=await completed([writer(),report]);expect(decideRadarN8n(state,gates()).outcome).toBe("REJECT");});
  it("permits only one correction and re-review",async()=>{const state=await completed([writer(),review(2,"FIX"),writer(),review(2,"FIX")]);expect(state.request).toBeUndefined();expect(state.checkpoint?.usage.calls).toBe(4);expect(decideRadarN8n(state,gates()).outcome).toBe("REJECT");});
  it("FIX then fresh PASS can reach review",async()=>{const state=await completed([writer(),review(2,"FIX"),writer(),review(2)]);expect(decideRadarN8n(state,gates()).outcome).toBe("READY_FOR_REVIEW");});
+ it.each(["concrete", "missing"])("rejects contradictory PASS with %s client-claim reason before cover preparation",async reason=>{
+  const report=review(4); report.criticalGates.clientClaims=false;
+  report.criticalGateReasons.clientClaims=reason==="concrete"?"La afirmación de resultados de un cliente no tiene autorización verificable.":"";
+  const state=await completed([writer(),report]);
+  expect(state.result?.status).toBe("rejected"); expect(state.result?.candidate?.qa?.verdict).toBe("REJECT");
+  expect(state.result?.candidate?.qa?.reason).toContain("clientClaims:");
+  expect(state.request).toBeUndefined(); expect(state.checkpoint?.usage.calls).toBe(2);
+  expect(decideRadarN8n(state,gates())).toMatchObject({outcome:"REJECT",eligibility:"INELIGIBLE",score:null,failedGates:["clientClaims"]});
+ });
+ it("missing critical flag cannot retain PASS",async()=>{
+  const report=review(); Reflect.deleteProperty(report.criticalGates,"facts");
+  const state=await completed([writer(),report]); expect(state.result?.candidate?.qa?.verdict).toBe("REJECT");
+  expect(decideRadarN8n(state,gates())).toMatchObject({score:null,failedGates:["facts"]});
+ });
+ it("does not spend a correction on unexplained failed controls",async()=>{
+  const report=review(2,"FIX"); report.criticalGates.facts=false;
+  const state=await completed([writer(),report]); expect(state.request).toBeUndefined();
+  expect(state.checkpoint?.usage.calls).toBe(2); expect(state.result?.candidate?.qa?.verdict).toBe("REJECT");
+ });
+ it("permits a justified FIX then exactly one corrected draft and fresh passing review",async()=>{
+  const report=review(2,"FIX"); report.criticalGates.facts=false; report.criticalGateReasons.facts="Eliminar el porcentaje de ahorro que no aparece en la fuente consultada.";
+  const state=await completed([writer(),report,writer(),review(2)]);
+  expect(state.checkpoint?.usage.calls).toBe(4); expect(state.request).toBeUndefined();
+  expect(decideRadarN8n(state,gates())).toMatchObject({outcome:"READY_FOR_REVIEW",score:70});
+ });
+ it("does not invent failed controls when correction writer returns no publication",async()=>{
+  const state=await completed([writer(),review(2,"FIX"),{outcome:"NO_PUBLICATION",candidate:null,reason:"La corrección no conserva una oportunidad verificable."}]);
+  expect(decideRadarN8n(state,gates())).toMatchObject({outcome:"REJECT",score:null,failedGates:[]});
+ });
  it("expired runs cannot yield another billable request",async()=>{const state=await advanceRadarN8n({...initial(),deadline:"2020-01-01"});expect(state.request).toBeUndefined();expect(decideRadarN8n(state,gates()).outcome).toBe("FAILED");});
  it("does not convert transport error into NO_PUBLICATION or retain provider secrets",async()=>{const state=initial();state.responses.push(sanitizeRadarResponse({error:{message:"SECRET"}}));const next=await advanceRadarN8n(state);expect(decideRadarN8n(next,gates()).outcome).toBe("FAILED");expect(JSON.stringify(next)).not.toContain("SECRET");});
  it("uses configured bands and rejects malformed ones",async()=>{const state=await completed([writer(),review(3)]);expect(decideRadarN8n(state,gates(),{review:80,automatic:90}).outcome).toBe("READY_FOR_REVIEW");expect(decideRadarN8n(state,gates(),{review:90,automatic:80}).outcome).toBe("FAILED");});

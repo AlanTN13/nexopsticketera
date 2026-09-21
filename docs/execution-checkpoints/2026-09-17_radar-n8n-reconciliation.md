@@ -1,5 +1,21 @@
 # EXECUTION RECEIPT — Radar reconciliation to n8n
 
+## EXECUTION PREFLIGHT — coherencia QA y tipografía, 2026-09-21
+
+Continuación de Alan «cómo hacemos para resolverlo», en el alcance ya autorizado de cierre y producción controlada. Canon Alanos b1ecfb7 (contrato de runtime, hogar Content Engine, framework/capacidad); Portal 17ef72d verificado contra origin/main. M/T2/R3 por contrato editorial y producción. Un integrador/implementador y reviewer independiente del gate/preview. Diseño A1: ampliar el schema/prompt con motivos públicos de los gates; PASS contradictorio se vuelve REJECT antes de preparar portada, sin elevar flags ni usar corrección automática adicional. Reusar Sharp con fuente OFL empaquetada y fontfile explícito, mismo layout/PNG/publicador; probar sin fuentes del sistema y verificar tracing del deploy. Sin nueva arquitectura, dependencia de servicio, DB, cambios de permisos/modelo/bandas/ledger. Aceptación: replay offline del payload vivo conserva rechazo coherente; regresiones PASS/FIX/REJECT y máximo cuatro llamadas; PNG legible1600×900; preview existente sólo en estados permitidos, sin promover pieza rechazada ni atestar aprobación humana. Rollout recuperable mediante revert de código y workflow; permisos de producción previos siguen vigentes. STOP ante necesidad de nueva llamada OpenAI, credencial o ampliar alcance. Ledger6/USD9 sin reset/refund, scheduler/autopublicaciónOFF.
+
+## EXECUTION RECEIPT — corrección QA / portada sin gasto, 2026-09-21
+
+Implementación revisada por reviewer independiente, sin bloqueantes finales. El schema exige motivos por cada control; el prompt distingue casos/resultados de clientes de capacidades públicas de software. Un PASS con algún control crítico falso/ausente se normaliza a REJECT antes de preparar portada y no solicita otra corrección. FIX sin motivo concreto rechaza; FIX válido conserva máximo una corrección y nueva revisión. El score no se calcula para ineligibles, bandas 70/85 intactas. FIX→NO_PUBLICATION no inventa gates de una revisión inexistente.
+
+Sharp reutilizado con Lato Regular/Bold OFL empaquetadas, fontfile explícito y configuración Fontconfig sin directorios del host, caché temporal. TTFs, licencia y configuración verificados en los manifests NFT del callback, preview y página con server actions. No nuevo servicio ni dependencia de runtime.
+
+Evidencia **controlada, sin OpenAI ni escritura de corridas**: replay de las dos respuestas persistidas de 480e1520/n8n31358, alterando sólo el deadline de la copia local, devuelve REJECT, motivo `clientClaims: el QA no justificó el control fallido`, sin nuevo request; las dos llamadas reportadas son históricas. Render local del título guardado legible con acentos, PNG 1600×900 SHA256 d8d2fee0f0ff7d0a9bb4ce6ce07ae30ba7e161b9af56e0e3eca4b186ca274674: [imagen de comprobación offline](../execution-evidence/radar/2026-09-21-cover-font-offline.png). No reemplaza la portada ni el rechazo persistidos.
+
+Validación: suite completa 339 tests PASS, más regresión final FIX→NO_PUBLICATION y runtime Cloud (40 tests focalizados PASS); typecheck y lint PASS. Build Webpack PASS con tracing verificado. Build Turbopack local bloqueado por creación de puerto del sandbox, incluso al pedir escalación; CI/hosting deben validar build estándar. Prueba de proceso nuevo con Fontconfig vacío distingue glifos I/W y acentos; prueba callback confirma que no prepara portada del rechazado.
+
+Estado al integrar: implementación lista; despliegue, n8n Published final y preview productiva aún pendientes de verificación. Ninguna nueva corrida OpenAI autorizada; ledger 6/USD9 intacto. Scheduler/autopublicación OFF. No declarar V1 editorial cerrado.
+
 ## EXECUTION RECEIPT + KNOWLEDGE DELTA — 2026-09-21, dos corridas adicionales / STOP
 
 **Se consumieron exactamente las dos corridas autorizadas. QA, gates y callback vivos demostrados; preview y aceptación productiva editorial pendientes. No declarar Radar V1 cerrado.**

@@ -76,7 +76,7 @@ export function decideRadarN8n(state: RadarN8nState, gates: RadarGates, bands: {
   const fail = (outcome: RadarEditorialDecision["outcome"], reason: string, failedGates: string[] = []): RadarEditorialDecision => ({ outcome, eligibility: "INELIGIBLE", score: null, reason, failedGates });
   if (state.error) return fail("FAILED", state.error, ["consistency"]);
   if (state.result?.status === "no_publication") return fail("NO_PUBLICATION", state.result.reason);
-  if (state.result?.status !== "review_pending" || state.result.candidate?.qa?.verdict !== "PASS") return fail("REJECT", state.result?.reason ?? "QA no aprobado.");
+  if (state.result?.status !== "review_pending" || state.result.candidate?.qa?.verdict !== "PASS") return fail("REJECT", state.result?.reason ?? "QA no aprobado.", state.result?.candidate?.qa && ["PASS", "FIX", "REJECT"].includes(String(lastReview(state).verdict)) ? Object.entries(editorialGates(state)).filter(([, passed]) => !passed).map(([key]) => key) : []);
   const failed = RADAR_CRITICAL_GATES.filter(key => gates[key] !== true);
   if (failed.length) return fail("REJECT", "La pieza incumple normas críticas.", failed);
   if (!Number.isInteger(bands.review) || !Number.isInteger(bands.automatic) || bands.review < 0 || bands.review >= bands.automatic || bands.automatic > 100) return fail("FAILED", "Bandas editoriales inválidas.", ["consistency"]);

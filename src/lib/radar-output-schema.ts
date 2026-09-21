@@ -23,6 +23,7 @@ const review = object({
   verdict: { type: "string", enum: ["PASS", "FIX", "REJECT"] }, reason: text,
   sources: array(source), checkedClaims: array(object({ text, supported: { type: "boolean" }, sourceUrls: texts })),
   criticalGates: object(Object.fromEntries(["sources", "facts", "novelty", "clientClaims", "content"].map(key => [key, { type: "boolean" }]))),
+  criticalGateReasons: object(Object.fromEntries(["sources", "facts", "novelty", "clientClaims", "content"].map(key => [key, text]))),
   rubric: object(Object.fromEntries(["businessImpact", "novelty", "evidenceQuality", "actionability", "timeliness"].map(key => [key, criterion]))),
 });
 
