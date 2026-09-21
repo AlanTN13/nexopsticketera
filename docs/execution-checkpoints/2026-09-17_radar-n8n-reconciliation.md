@@ -1,5 +1,42 @@
 # EXECUTION RECEIPT — Radar reconciliation to n8n
 
+## EXECUTION RECEIPT + KNOWLEDGE DELTA — 2026-09-21, dos corridas adicionales / STOP
+
+**Se consumieron exactamente las dos corridas autorizadas. QA, gates y callback vivos demostrados; preview y aceptación productiva editorial pendientes. No declarar Radar V1 cerrado.**
+
+### Presupuesto y despliegue
+- Extensión explícita USD6→USD9, máximo dos reservas adicionales deUSD1.50. Commit54143af, migración20260921202253 y Production max_runs6. Ledger previo4/USD6 → final **6/USD9**, sin reset/refund. SQL/ACLs conservados; séptima reserva bloqueada por pruebas controladas. No otra corrida autorizada.
+- Corrección posterior **0c56593f1a96e506bef220890f7aed94b93a45be** integrada en main. CI [35657674675](https://github.com/AlanTN13/nexopsticketera/actions/runs/35657674675) SUCCESS. Deployment **dpl_H5ijXjHejECfZDPY5Sn2nVQRipe8**, READY/Production, alias portal.nexopstech.com verificado antes de la última corrida. PR75/PR74 siguen siendo las implementaciones integradas; no nueva PR/arquitectura, Web sin cambios.
+- n8n **BRbvcSEHpTIMpw63**, Published **325702d6-d312-4e4a-9b05-1a9da32a58ca**. Export vivo: tres Code nodes idénticos a Git, diez nodos, conexiones/settings/credenciales intactos, pinData vacío. Se retiró el nodo sintético antes de publicar. Timeout240/retención OFF.
+- Estrategia: fuente primaria Salesforce AIforce15/09 ausente de corpus18; briefing acotado CRM, sin reutilizar Meta/WhatsApp ni afirmar casos de clientes. Se usó Nueva nota/manual_note existente, pasando por el mismo backend autorizado/n8n/QA. No se cambió configuración global ni se fabricó aceptación.
+
+### Evidencia viva de las dos corridas
+| Corrida | Portal | n8n | Outcome | Uso observado |
+|---|---|---|---|---|
+| 1 | db79020f-53ad-4751-89fa-f5cb118313c2 | 31335 | FAILED/INELIGIBLE, score=null, NO_WEB_EVIDENCE antes de QA | 1 llamada; 13.265 input +1.634 output; 1 acción web; USD0.01658425 estimados |
+| 2 | 480e1520-51ec-453f-9b28-fd2eb2afb70e | 31358 | REJECT/INELIGIBLE, score=null, gate clientClaims=false | 2 llamadas; 32.450 input +3.073 output; 3 acciones web; USD0.0442585 estimados |
+
+Corrida2: **21:34:14.522138–21:35:04.721914UTC**. Writer y QA separados reales gpt-5-mini, sin corrección adicional. JSON válido, QA.verdict=PASS y cuatro checkedClaims supported=true, pero criticalGates.clientClaims=false. El resumen del QA no explica ese false: contradicción del propio resultado del modelo, no fallo de mapping, secreto ni Supabase. Hard gate prevalece, no se computa score publicable ni se altera el booleano para aceptar la pieza. Sources/facts/novelty/content/cover/siteValidation/budget/consistency=true; bandas70/85 intactas. La rúbrica alta no evita el rechazo.
+
+Fuentes25 preservadas: primarias https://www.salesforce.com/news/stories/aiforce-announcement/ y https://claude.com/blog/salesforce-in-claude ; resto consultado conservado, sin equiparar consulta con verificación de cada página. Response IDs `resp_01f8e16801493d64016ab1a2dd644087d282c0abb024e0a162` y `resp_022041aaae0cb531016ab1a2f2844487d2865e1fa946a0cf31`. Callback `n8nReceipt.ok=true`, outcome/usage idénticos al run; Supabase status=rejected, phase=quality_reviewed, controlledPublication=true. No publicación ni aprobación humana.
+
+### Portada y preview: límite real
+La portada se generó y persistió, firma PNG y1600×900 verificadas, sha256 **a63bdbca69c478340f7247d9bdec92e80aaee789ba309b1b1680fe6a2eb86041**. **La inspección visual falla: todo el texto aparece como cuadrados.** El validador de formato/paquete aceptó un PNG con glifos ilegibles. Evidencia [PNG real defectuoso](../execution-evidence/radar/2026-09-21-run-31358-cover-defect.png). El renderer usa SVG con Arial/Helvetica/sans-serif y Sharp, sin fuente tipográfica empaquetada; la dependencia de fuentes del runtime explica el riesgo, pero no se inspeccionó el inventario de fuentes remoto. No presentar cover=true como aprobación visual. La pieza rechazada no se promovió a review_pending para abrir preview: **preview privada viva y revisión humana todavía no validadas**. Confirmaciones editoriales permanecen false.
+
+### Costo y controles
+Las dos corridas suman **50.422 tokens (45.715 input/4.707 output), 3 llamadas de modelo, 4 acciones web, USD0.06084275 estimados**. Acumulado api_usage persistido: **94.173 tokens (83.536/10.637), 7 acciones web, USD0.112158 estimados**, incluyendo worker histórico anterior a n8n. Son estimaciones conservadoras por uso, no factura; web_search_call incluye open/find y no prueba que cada acción fuera cobrada. El ledgerUSD9 sigue separado del costo.
+
+Ambos workspaces nexops/nexops-api-pilot verificados: scheduler=false, autonomy_mode=review, preferences.publishingMode=review. Scheduler y autopublicación OFF. No se ejecutó tercera corrida ni se liberó presupuesto. Idempotencia/timeout/cancelación conservados; pruebas SQL cubren reserva única y cancelación sin refund. Evidencia histórica de timeout/NO_PUBLICATION se conserva.
+
+### Evidencia controlada y diagnóstico siguiente
+63tests/4suites, typecheck/lint/export/build webpack PASS; CI completo SUCCESS; revisión independiente del cambio de metadatos sin bloqueantes. Fixture crossrepo con proveedor simulado: paquete/PNG1600×900 y AUTO_PUBLISH85 elegible controlado, nunca publicación real. Probe aislado Cloud preservó completed/open_page sin pattern, providerCalls=0. No confundir estos resultados con portada visual productiva aprobada.
+
+Corrección efectiva: preservar status/type/url de open_page/find_in_page completados y HTTPS seguros; consulta no depende de sources[] exclusivo de search. Corrida31335 perdió metadatos por sanitización anterior, por lo que su causa exacta no puede probarse retrospectivamente. Corrida31358 sí superó extracción y QA.
+
+Próximo gate antes de considerar nuevo gasto: resolver offline la coherencia PASS/criticalGates sin suavizar clientClaims; si hay un crítico falso debe existir motivo verificable y REJECT/FIX acorde. Corregir render tipográfico determinístico y verificar PNG en runtime productivo con datos guardados, sin OpenAI. Sólo después correspondería evaluar otra autorización para aceptación viva de preview/revisión; no se pide ni se presupone en este receipt. No volver a poner el run rechazado como aceptado ni reutilizar su reserva para una nueva llamada.
+
+Estados: implementado **sí**, integrado/mergeado **sí**, desplegado **sí**, transporte/NO_PUBLICATION/QA+hard REJECT vivos **sí**; portada visual aceptada **no**; preview/revisión E2E completo **no**; Radar V1 productivo con revisión humana **no aceptado**; autónomo **no**.
+
 ## Diagnóstico y corrección antes de la segunda corrida — 2026-09-21
 
 Primera de las dos corridas adicionales: Portal `db79020f-53ad-4751-89fa-f5cb118313c2`, n8n `31335`, 20:29:53–20:30:29 UTC. Fuente Salesforce AIforce15/09 ausente del corpus18. FAILED/INELIGIBLE, score=null: NO_WEB_EVIDENCE antes de QA. Callback ok persistido; una llamada, 13.265 input / 1.634 output / una acción web, USD0.01658425 estimados. Ledger5/USD7.50 conservado; queda exactamente una corrida autorizada, no hubo refund.
