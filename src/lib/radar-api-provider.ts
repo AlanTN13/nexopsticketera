@@ -54,6 +54,11 @@ function extractRadarApiResponse(body: ApiResponse) {
       for (const source of Array.isArray(action.sources) ? action.sources : []) {
         const parsed = safeSource(source); if (parsed) sources.push(parsed);
       }
+      // Reasoning models may open/find a page without a search-results sources array.
+      // Only provider-attested completed actions count, never URLs declared by the writer.
+      if (item.status === "completed" && ["open_page", "find_in_page"].includes(String(action.type))) {
+        const parsed = safeSource({ url: action.url }); if (parsed) sources.push(parsed);
+      }
     }
     if (item.type === "message") for (const raw of Array.isArray(item.content) ? item.content : []) {
       const content = record(raw);

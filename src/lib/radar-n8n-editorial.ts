@@ -18,7 +18,14 @@ export function sanitizeRadarResponse(value: unknown): Json {
     usage: { input_tokens: object(body.usage).input_tokens, output_tokens: object(body.usage).output_tokens },
     output: body.output.filter(raw => ["message", "web_search_call"].includes(String(object(raw).type))).map(raw => {
       const item = object(raw);
-      if (item.type === "web_search_call") return { type: item.type, action: { sources: Array.isArray(object(item.action).sources) ? object(item.action).sources : [] } };
+      if (item.type === "web_search_call") {
+        const action = object(item.action);
+        return { type: item.type,
+          status: ["completed", "failed", "incomplete", "in_progress", "searching"].includes(String(item.status)) ? item.status : undefined,
+          action: { sources: Array.isArray(action.sources) ? action.sources : [],
+            type: ["search", "open_page", "find_in_page"].includes(String(action.type)) ? action.type : undefined,
+            ...(typeof action.url === "string" && action.url.length <= 2000 && isSafeHttpsUrl(action.url) ? { url: action.url } : {}) } };
+      }
       return { type: item.type, content: (Array.isArray(item.content) ? item.content : []).filter(raw => object(raw).type === "output_text").map(raw => {
         const content = object(raw);
         return { type: content.type, text: content.text, annotations: Array.isArray(content.annotations) ? content.annotations : [] };
