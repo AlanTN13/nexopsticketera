@@ -41,7 +41,7 @@
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "4.1.10",
+    "vitest": "5.0.1",
     "whatwg-url": "14.2.0"
   },
   "overrides": {
