@@ -1,8 +1,11 @@
-import { RadarProductPage } from "@/components/radar/radar-product-page";
-
+import { getAppSnapshot } from "@/lib/app-store";
+import { getAuthenticatedActor } from "@/lib/auth";
+import { PlatformRadarOperationPage, RadarOperationPage, type RadarHistoryFilters } from "@/components/radar/radar-operation-page";
 export const dynamic = "force-dynamic";
-
-export default async function RadarHistoryPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
-  const { company } = await searchParams;
-  return <RadarProductPage view="history" companyLookup={company} />;
+export const maxDuration = 300;
+export default async function RadarRoute({ searchParams }: { searchParams: Promise<RadarHistoryFilters & { company?: string }> }) {
+  const { company, ...filters } = await searchParams;
+  const actor = await getAuthenticatedActor(await getAppSnapshot());
+  if (actor?.role === "platform_admin" && !company) return <PlatformRadarOperationPage view="history" filters={filters} />;
+  return <RadarOperationPage companyLookup={company} view="history" filters={filters} />;
 }

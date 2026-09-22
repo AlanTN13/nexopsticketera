@@ -1,7 +1,6 @@
-import { PlatformRadarPage } from "@/components/radar/platform-radar-page";
-
+import { PlatformRadarOperationPage, type RadarHistoryFilters } from "@/components/radar/radar-operation-page";
 export const dynamic = "force-dynamic";
-
-export default function BackofficeRadarHistoryPage() {
-  return <PlatformRadarPage view="history" />;
+export const maxDuration = 300;
+export default async function RadarRoute({ searchParams }: { searchParams: Promise<RadarHistoryFilters> }) {
+  return <PlatformRadarOperationPage basePath="/backoffice/radar" view="history" filters={await searchParams} />;
 }

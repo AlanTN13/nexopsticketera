@@ -1,5 +1,8 @@
 "use server";
 
+import { verifyRadarPreviewToken } from "@/lib/radar-preview";
+import { radarCandidateEligible } from "@/lib/radar-presentation";
+import { getRadarAdmission } from "@/lib/radar-admission";
 import { revalidatePath } from "next/cache";
 
 import { dispatchRadarRun, radarEngineConnected } from "@/lib/radar-engine-client";
@@ -10,6 +13,7 @@ import {
   acceptRadarPublicationDispatch,
   decideRadarRun,
   createRadarRun,
+  findRadarRequest,
   cancelStalledRadarRun,
   acceptRadarDispatch,
   failRadarDispatch,
@@ -22,6 +26,7 @@ import {
 } from "@/lib/radar-control-plane-store";
 import {
   buildRadarPublicationBundle,
+  buildRadarPublicationPackage,
   dispatchRadarPublication,
   radarPublicationConnected,
   type RadarPublicationComposition,
@@ -49,10 +54,9 @@ function uuid(valueToValidate: string) {
 }
 
 function revalidateRadarOperation() {
-  revalidatePath("/portal/radar");
-  revalidatePath("/portal/radar/operacion");
-  revalidatePath("/backoffice/radar");
-  revalidatePath("/backoffice/radar/operacion");
+  for (const base of ["/portal/radar", "/backoffice/radar"]) {
+    for (const suffix of ["", "/operacion", "/oportunidades", "/historial", "/publicadas", "/configuracion", "/estrategia"]) revalidatePath(`${base}${suffix}`);
+  }
 }
 
 export async function requestRadarRunAction(formData: FormData): Promise<RadarControlMutationState> {
@@ -65,6 +69,10 @@ export async function requestRadarRunAction(formData: FormData): Promise<RadarCo
 
   try {
     await requireRadarWorkspaceAccess(workspaceId, "operate");
+    const existing = await findRadarRequest(workspaceId, idempotencyKey);
+    if (existing && existing.status !== "queued") return { error: null, success: "La solicitud ya estaba registrada en Radar. No se inició otra búsqueda." };
+    const admission = await getRadarAdmission(workspaceId, existing?.status === "queued" ? existing.id : undefined);
+    if (!admission.allowed) { revalidateRadarOperation(); return { error: admission.message }; }
     const origin = getPublicAppUrl();
     if (!origin) throw new Error("Falta configurar la URL pública del Portal.");
     if (!radarEngineConnected()) throw new Error("El piloto API espera su configuración segura y límite de uso.");
@@ -113,6 +121,10 @@ export async function createManualRadarNoteAction(formData: FormData): Promise<R
 
   try {
     await requireRadarWorkspaceAccess(workspaceId, "operate");
+    const existing = await findRadarRequest(workspaceId, idempotencyKey);
+    if (existing && existing.status !== "queued") return { error: null, success: "La solicitud ya estaba registrada en Radar. No se inició otra búsqueda." };
+    const admission = await getRadarAdmission(workspaceId, existing?.status === "queued" ? existing.id : undefined);
+    if (!admission.allowed) { revalidateRadarOperation(); return { error: admission.message }; }
     const origin = getPublicAppUrl();
     if (!origin) throw new Error("Falta configurar la URL pública del Portal.");
     const manualNote = { title, sourceUrl, instructions };
@@ -151,7 +163,7 @@ export async function createManualRadarNoteAction(formData: FormData): Promise<R
       throw error;
     }
     revalidateRadarOperation();
-    return { error: null, success: "Nota recibida. Radar la envió a revisión sin publicarla." };
+    return { error: null, success: "Fuente recibida. Preparando la investigación; la revisión editorial todavía no comenzó." };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "No pudimos dar de alta la nota." };
   }
@@ -167,7 +179,7 @@ export async function releaseStalledRadarRunAction(formData: FormData): Promise<
     await requireRadarWorkspaceAccess(workspaceId, "operate");
     await cancelStalledRadarRun({ runId, workspaceId });
     revalidateRadarOperation();
-    return { error: null, success: "Panel liberado. Ya podés iniciar una nueva misión." };
+    return { error: null, success: "Solicitud cerrada. La disponibilidad para una nueva búsqueda se comprueba por separado." };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "No pudimos liberar el panel." };
   }
@@ -192,6 +204,7 @@ export async function updateRadarPreferencesAction(formData: FormData): Promise<
 
   try {
     await requireRadarWorkspaceAccess(workspaceId, "admin");
+    if (publishingMode !== "review") return { error: "La autopublicación no está habilitada. Las notas requieren revisión humana." };
     await updateRadarPreferences({
       workspaceId,
       topics,
@@ -218,12 +231,7 @@ export async function updateRadarScheduleAction(formData: FormData): Promise<Rad
   }
   try {
     await requireRadarWorkspaceAccess(workspaceId, "admin");
-    if (schedulerEnabled && !radarEngineConnected()) {
-      throw new Error("No se puede activar la programación hasta conectar el trabajador editorial.");
-    }
-    if (schedulerEnabled && autonomyMode !== "review") {
-      throw new Error("La programación temporal sólo puede operar en modo revisión.");
-    }
+    if (schedulerEnabled) return { error: "La programación automática no está habilitada durante el piloto." };
     await updateRadarSchedule({
       workspaceId,
       schedulerEnabled,
@@ -249,8 +257,16 @@ export async function decideRadarRunAction(formData: FormData): Promise<RadarCon
     return { error: "La decisión de Radar no es válida." };
   }
   try {
-    await requireRadarWorkspaceAccess(workspaceId, "operate");
-    await decideRadarRun({ runId, idempotencyKey, decision, reason });
+    const { actor } = await requireRadarWorkspaceAccess(workspaceId, "operate");
+    const run = await getRadarRunForPublication(runId);
+    if (run.workspaceId !== workspaceId) return { error: "La pieza no pertenece a esta cuenta." };
+    if (decision === "approve") {
+      if (!radarCandidateEligible(run)) return { error: "La pieza no conserva QA PASS y elegibilidad confirmada. No se puede aprobar." };
+      if (!run.candidate?.composition) return { error: "La pieza no conserva su composición de revisión. No se puede aprobar." };
+      const bundle = await buildRadarPublicationPackage(run, run.candidate.composition);
+      verifyRadarPreviewToken({ runId, workspaceId, actorId: actor.id, compositionDigest: bundle.compositionDigest, token: value(formData, "previewToken") });
+    }
+    await decideRadarRun({ runId, actorId: actor.id, idempotencyKey, decision, reason, expectedCandidate: run.persistedCandidate });
     revalidateRadarOperation();
     return {
       error: null,

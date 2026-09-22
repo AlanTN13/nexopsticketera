@@ -2,5 +2,5 @@ import { PlatformRadarOperationPage, type RadarHistoryFilters } from "@/componen
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 export default async function RadarRoute({ searchParams }: { searchParams: Promise<RadarHistoryFilters> }) {
-  return <PlatformRadarOperationPage basePath="/backoffice/radar" view="review" filters={await searchParams} />;
+  return <PlatformRadarOperationPage basePath="/backoffice/radar" view="configuration" filters={await searchParams} />;
 }

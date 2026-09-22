@@ -104,6 +104,9 @@ export type RadarRun = {
   manualNote: RadarManualNoteRequest | null;
   autonomyMode: RadarAutonomyMode;
   status: RadarRunStatus;
+  editorialPhase?: string | null;
+  eligibility?: "ELIGIBLE" | "INELIGIBLE" | null;
+  failedGates?: string[];
   externalRunId: string | null;
   externalRunUrl: string | null;
   candidate: RadarRunCandidate | null;
@@ -128,19 +131,19 @@ export type RadarControlPlaneSnapshot = {
 };
 
 export const RADAR_STATUS_COPY: Record<RadarRunStatus, string> = {
-  queued: "Solicitud recibida",
-  dispatching: "Preparando investigación",
-  running: "Investigación y revisión en curso",
-  no_publication: "Sin oportunidad suficiente",
+  queued: "Preparando",
+  dispatching: "Preparando",
+  running: "Investigando",
+  no_publication: "Sin oportunidad",
   suggested: "Sugerencia lista",
-  review_pending: "Esperando revisión",
+  review_pending: "Lista para revisión",
   postponed: "Postergada",
-  rejected: "Descartada",
-  approved: "Aprobada · lista para componer",
+  rejected: "Rechazada",
+  approved: "Aprobada",
   validating: "Validando",
   publishing: "Publicando",
   published: "Publicada",
-  failed: "Requiere atención",
+  failed: "Error",
   canceled: "Cancelada",
 };
 

@@ -11,9 +11,10 @@ import { POST } from "@/app/api/radar/runs/[runId]/n8n/route";
 import { writer, review, response } from "./helpers/radar-n8n-fixtures";
 let row:Record<string,any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 let writes:number;let reservations:number;let race=false;
+let claimFailure: {code:string;message:string}|null;let finishFailure:boolean;
 const runId="c40b81b7-6ac4-4da1-92e8-86a7a50f9dc4";
 beforeEach(()=>{
- writes=0;reservations=0;race=false;
+ writes=0;reservations=0;race=false;claimFailure=null;finishFailure=false;
  row={id:runId,created_at:"2026-09-16T12:00:00Z",workspace_id:"pilot",status:"dispatching",api_context:{engine:"radar_api_v1"},api_deadline_at:new Date(Date.now()+240000).toISOString(),request_kind:"opportunity_search",request_payload:{}};
  mocks.client={from:()=>{
   let patch:Record<string,unknown>|undefined;const conditions:Array<[string,unknown]>=[];let deadline="";
@@ -21,12 +22,34 @@ beforeEach(()=>{
   const execute=()=>{if(patch&&race)row.status="canceled";const matches=conditions.every(([key,value])=>get(key)===value)&&(!deadline||row.api_deadline_at>deadline);if(patch&&matches){Object.assign(row,patch);writes++;}return {data:matches?structuredClone(row):null,error:null};};
   const q={select:()=>q,update:(v:Record<string,unknown>)=>{patch=v;return q;},eq:(k:string,v:unknown)=>{conditions.push([k,v]);return q;},gt:(_k:string,v:string)=>{deadline=v;return q;},maybeSingle:async()=>execute()};return q;
  },rpc:async(name:string,args:Record<string,unknown>)=>{
-  if(name==="reserve_radar_api_run"){if(row.status!=="dispatching")return{data:null,error:null};reservations++;row.status="running";row.api_context={...(args.requested_context as object),engine:"radar_api_v1",preferences:{topics:["CRM & Ventas"]}};row.api_usage={reserved:true,reservedUsd:1.5,pilotReservedUsd:1.5};return{data:structuredClone(row),error:null};}
+  if(name==="reserve_radar_api_run"){if(claimFailure)return{data:null,error:claimFailure};if(row.status!=="dispatching")return{data:null,error:null};reservations++;row.status="running";row.api_context={...(args.requested_context as object),engine:"radar_api_v1",preferences:{topics:["CRM & Ventas"]}};row.api_usage={reserved:true,reservedUsd:1.5,pilotReservedUsd:1.5};return{data:structuredClone(row),error:null};}
   if(name==="finish_radar_n8n_run"){if(row.status!=="running")return{data:null,error:null};row.status=args.requested_status;row.candidate=args.requested_candidate;row.api_context=args.requested_context;row.api_usage={...row.api_usage,...(args.requested_usage as object)};const receipt={ok:true,decision:row.api_context.decision,usage:row.api_usage,controlledPublication:true};row.api_context.n8nReceipt=receipt;return{data:receipt,error:null};}
-  if(name==="finish_radar_api_run"){if(row.status!=="running")return{data:false,error:null};row.status=args.requested_status;return{data:true,error:null};}throw Error(name);
+  if(name==="finish_radar_api_run"){if(race)row.status="canceled";if(finishFailure)return{data:false,error:{message:"database unavailable"}};if(!["running","dispatching"].includes(row.status))return{data:false,error:null};row.status=args.requested_status;row.result_reason=args.requested_reason;row.api_usage={...row.api_usage,...(args.requested_usage as object)};writes++;return{data:true,error:null};}throw Error(name);
  }};
 });
 describe("Portal n8n durable ownership",()=>{
+ it("immediately closes the identified budget rejection without reserving usage",async()=>{
+  claimFailure={code:"55000",message:"Límite persistente del piloto API alcanzado."};
+  await expect(handleRadarN8n(runId,"claim",{executionId:"budget-rejected"})).rejects.toThrow("presupuesto autorizado");
+  expect(row.status).toBe("failed");expect(row.result_reason).toContain("ni se llamó a OpenAI");expect(row.api_usage).toEqual({});
+  expect(writes).toBe(1);expect(reservations).toBe(0);
+  await expect(handleRadarN8n(runId,"claim",{executionId:"budget-rejected"})).rejects.toThrow();expect(writes).toBe(1);
+ });
+ it.each([{code:"55000",message:"Reserva API ausente o vencida."},{code:"22023",message:"Límite persistente del piloto API alcanzado."},{code:"PGRST000",message:"Connection failed"}])("does not misclassify another claim failure as budget: %s",async(error)=>{
+  claimFailure=error;
+  await expect(handleRadarN8n(runId,"claim",{executionId:"other-failure"})).rejects.toThrow();
+  expect(row.status).toBe("dispatching");expect(writes).toBe(0);expect(reservations).toBe(0);
+ });
+ it("does not report a persisted budget outcome when terminalization fails",async()=>{
+  claimFailure={code:"55000",message:"Límite persistente del piloto API alcanzado."};finishFailure=true;
+  await expect(handleRadarN8n(runId,"claim",{executionId:"finish-failure"})).rejects.toThrow("No se pudo confirmar el cierre");
+  expect(row.status).toBe("dispatching");expect(writes).toBe(0);expect(reservations).toBe(0);
+ });
+ it("preserves cancellation racing with budget rejection",async()=>{
+  claimFailure={code:"55000",message:"Límite persistente del piloto API alcanzado."};race=true;
+  await expect(handleRadarN8n(runId,"claim",{executionId:"canceled"})).rejects.toThrow("No se pudo confirmar el cierre");
+  expect(row.status).toBe("canceled");expect(writes).toBe(0);expect(reservations).toBe(0);
+ });
  it.each([['NO_PUBLICATION',null],['REJECT',0],['READY_FOR_REVIEW',2],['AUTO_PUBLISH',3]] as const)("persists controlled %s through the complete callback protocol",async(outcome,level)=>{
   let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
   const outputs=level===null?[{outcome:"NO_PUBLICATION",candidate:null,reason:"Sin novedad suficiente."}]:[writer(),review(level,level===0?"REJECT":"PASS")];

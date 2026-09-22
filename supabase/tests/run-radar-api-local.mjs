@@ -25,12 +25,18 @@ try {
     create table public.companies(id uuid primary key);
     create table public.users(id uuid primary key references auth.users(id),company_id uuid,name text,email text,role text,status text);
     create table public.company_modules(company_id uuid,module text,settings jsonb,enabled boolean);
+    create table public.portal_modules(key text primary key,active boolean);
+    create table public.user_company_assignments(user_id uuid,company_id uuid);
+    create table public.user_module_permissions(user_id uuid,company_id uuid,module text,access_level text);
     create function auth.uid() returns uuid language sql stable as $$ select (current_setting('request.jwt.claims',true)::jsonb->>'sub')::uuid $$;
     create function auth.role() returns text language sql stable as $$ select current_setting('request.jwt.claims',true)::jsonb->>'role' $$;
     create function private.is_platform_admin() returns boolean language sql stable as $$ select exists(select 1 from public.users where id=auth.uid() and role='platform_admin' and status='active') $$;
     create function private.has_module_access(uuid,text,text) returns boolean language sql stable as $$ select false $$;
     grant usage on schema public,private,auth to anon,authenticated,service_role;
   `);
+  // The new authorized decision uses this existing actor-aware access helper.
+  const accessMigration = await readFile(new URL('migrations/20260901102427_company_module_access_v2.sql', supabaseDirectory), 'utf8');
+  await db.exec(accessMigration.slice(accessMigration.indexOf('create or replace function private.user_has_module_access('), accessMigration.indexOf('create or replace function private.has_module_access(')));
   const migrations = [
     '20260901131322_radar_control_plane_v1.sql',
     '20260901180902_radar_github_queue_bridge.sql',
@@ -55,6 +61,13 @@ try {
   await db.exec(await readFile(new URL('migrations/20260921202253_radar_pilot_nine_dollar_extension.sql', supabaseDirectory), 'utf8'));
   await db.exec(afterNine);
   console.log('Radar pilot USD9 extension regression PASS (isolated PGlite)');
+  // The USD9 regression rolls back its fixture and migration together.
+  await db.exec(await readFile(new URL('migrations/20260921202253_radar_pilot_nine_dollar_extension.sql', supabaseDirectory), 'utf8'));
+  await db.exec(await readFile(new URL('migrations/20260921232941_radar_read_only_admission.sql', supabaseDirectory), 'utf8'));
+  await db.exec(await readFile(new URL('tests/radar_read_only_admission.sql', supabaseDirectory), 'utf8'));
+  console.log('Radar read-only admission regression PASS (isolated PGlite)');
+  await db.exec(await readFile(new URL('tests/radar_postponed_decisions.sql', supabaseDirectory), 'utf8'));
+  console.log('Radar postponed decisions regression PASS (isolated PGlite)');
 } catch (error) {
   console.error('Radar API SQL regression FAILED:', error.message, error.where ?? '');
   process.exitCode = 1;

@@ -27,18 +27,34 @@ function fitMeta(value: string, fallback: string) {
   return `${base} Conocé el criterio operativo de NexOps y qué implica para empresas que buscan resultados medibles.`.slice(0, 180);
 }
 
+export function radarPreviewComposition(data: FormData, candidate: RadarRunCandidate, editable: boolean): RadarPublicationComposition {
+  const composition = !editable && candidate.composition
+    ? { ...candidate.composition }
+    : Object.fromEntries(data.entries()) as unknown as RadarPublicationComposition;
+  composition.sourceVerified = data.get("sourceVerified") === "true";
+  composition.rightsVerified = data.get("rightsVerified") === "true";
+  composition.clientClaimsAuthorizedOrAbsent = data.get("clientClaimsAuthorizedOrAbsent") === "true";
+  return composition;
+}
+
 export function RadarPublicationComposer({
   runId,
   workspaceId,
   candidate,
   canPublish,
   publicationConnected,
+  onPreviewReviewed,
+  canPreview = true,
+  editable = true,
 }: {
   runId: string;
   workspaceId: string;
   candidate: RadarRunCandidate;
   canPublish: boolean;
   publicationConnected: boolean;
+  onPreviewReviewed?: (receipt: { token: string; digest: string } | null) => void;
+  canPreview?: boolean;
+  editable?: boolean;
 }) {
   const draft = candidate.draft;
   const initial = candidate.composition;
@@ -61,14 +77,11 @@ export function RadarPublicationComposer({
     const form = section.current?.querySelector("form");
     if (!form || previewPending) return;
     cleanup.current();
-    setPreviewToken("");
+    setPreviewToken(""); onPreviewReviewed?.(null);
     setPreviewError("");
     const requestRevision = revision.current;
     const data = new FormData(form);
-    const composition = Object.fromEntries(data.entries()) as unknown as RadarPublicationComposition;
-    composition.sourceVerified = data.get("sourceVerified") === "true";
-    composition.rightsVerified = data.get("rightsVerified") === "true";
-    composition.clientClaimsAuthorizedOrAbsent = data.get("clientClaimsAuthorizedOrAbsent") === "true";
+    const composition = radarPreviewComposition(data, candidate, editable);
     const child = window.open("about:blank", "_blank");
     if (!child) { setPreviewError("Permití abrir ventanas para revisar la nota en webneoxps."); return; }
     setPreviewPending(true);
@@ -88,7 +101,7 @@ export function RadarPublicationComposer({
         if (event.source !== child || event.origin !== url.origin || event.data?.nonce !== nonce) return;
         if (event.data.type === "radar.preview.ready") child.postMessage({ type: "radar.preview.package", nonce, package: { article: prepared.article, cover: prepared.cover, compositionDigest: prepared.compositionDigest } }, url.origin);
         if (event.data.type === "radar.preview.viewed" && event.data.compositionDigest === prepared.compositionDigest) {
-          setPreviewToken(prepared.token);
+          setPreviewToken(prepared.token); onPreviewReviewed?.({ token: prepared.token, digest: prepared.compositionDigest });
           cleanup.current();
         }
       };
@@ -100,18 +113,29 @@ export function RadarPublicationComposer({
   }
 
   return (
-    <section ref={section} onChangeCapture={() => { revision.current += 1; setPreviewToken(""); setPreviewImage(""); cleanup.current(); }} className="mt-6 overflow-hidden rounded-2xl border border-[#cfc3f4] bg-[#f8f5ff]">
+    <section ref={section} onChangeCapture={() => { revision.current += 1; setPreviewToken(""); onPreviewReviewed?.(null); setPreviewImage(""); cleanup.current(); }} className="mt-6 overflow-hidden rounded-2xl border border-[#cfc3f4] bg-[#f8f5ff]">
       <div className="grid lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]">
         <div className="p-5 sm:p-7">
           <div className="flex items-start gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#5b3db8] shadow-sm ring-1 ring-[#e2daf9]"><Palette size={18} /></span>
-            <div><h3 className="text-xl font-bold text-slate-950">Compositor visual</h3><p className="mt-1 text-sm leading-6 text-slate-600">Revisá la pieza final. Nada se publica hasta el último botón.</p></div>
+            <div><h3 className="text-xl font-bold text-slate-950">Vista previa y revisión</h3><p className="mt-1 text-sm leading-6 text-slate-600">Abrí la nota completa con su portada. Cualquier edición requiere revisar de nuevo esa versión.</p></div>
           </div>
           <PendingForm action={publishApprovedRadarRunAction} className="mt-6 grid gap-5">
             <input type="hidden" name="workspaceId" value={workspaceId} />
             <input type="hidden" name="runId" value={runId} />
             <input type="hidden" name="previewToken" value={previewToken} />
             <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+            <fieldset className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4">
+              <legend className="px-1 text-xs font-bold text-slate-700">Confirmación editorial obligatoria</legend>
+              <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="sourceVerified" value="true" /> Verifiqué que la fuente respalda la nota.</label>
+              <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="rightsVerified" value="true" /> El visual es original de NexOps y puede publicarse.</label>
+              <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="clientClaimsAuthorizedOrAbsent" value="true" /> No hay afirmaciones de clientes sin autorización ni advertencias editoriales críticas pendientes.</label>
+            </fieldset>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900"><strong className="block">Último gate manual</strong>Este clic inicia una sola publicación real. webneoxps todavía ejecuta validaciones, despliegue y verificación antes de declararla publicada.</div>
+            <button type="button" onClick={preview} disabled={previewPending || !canPreview} className="min-h-12 rounded-xl border border-[#4f35b5] bg-white px-5 text-sm font-bold text-[#4f35b5] disabled:opacity-50">{!canPreview ? "Preview requiere permiso de operación" : previewPending ? "Preparando vista previa…" : "Revisar nota completa en webneoxps"}</button>
+            {previewError && <p role="alert" className="text-sm text-rose-800">{previewError}</p>}
+            <p role="status" className="text-xs text-slate-600">{previewToken ? "Vista previa revisada. La aprobación corresponde a esta versión exacta." : "Revisá la vista previa y confirmala en la ventana del sitio. Cualquier edición requiere una nueva revisión."}</p>
+            <details className="rounded-xl border border-slate-200 bg-white p-4"><summary className="cursor-pointer text-sm font-bold text-slate-700">{editable ? "Editar pieza y portada" : "Consultar composición · edición después de aprobar"}</summary><fieldset disabled={!editable}>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Título<input required name="title" value={title} onChange={(event) => { setTitle(event.target.value); setSlug(slugify(event.target.value)); }} minLength={10} maxLength={150} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Dirección web<input required name="slug" value={slug} onChange={(event) => setSlug(slugify(event.target.value))} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-mono text-xs font-normal text-slate-900" /></label>
@@ -126,17 +150,8 @@ export function RadarPublicationComposer({
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Texto accesible de portada<input required name="coverAlt" defaultValue={initial?.coverAlt ?? `Ilustración editorial de NexOps sobre ${candidate.topic}`} minLength={10} maxLength={220} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900" /></label>
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Cuerpo de la nota<textarea required name="bodyMarkdown" defaultValue={initial?.bodyMarkdown ?? draft?.bodyMarkdown ?? ""} minLength={120} maxLength={20_000} rows={16} className="rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs font-normal leading-6 text-slate-900" /></label>
             </div>
-            <fieldset className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4">
-              <legend className="px-1 text-xs font-bold text-slate-700">Confirmación editorial obligatoria</legend>
-              <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="sourceVerified" value="true" /> Verifiqué que la fuente respalda la nota.</label>
-              <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="rightsVerified" value="true" /> El visual es original de NexOps y puede publicarse.</label>
-              <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="clientClaimsAuthorizedOrAbsent" value="true" /> No hay afirmaciones de clientes sin autorización ni advertencias editoriales críticas pendientes.</label>
-            </fieldset>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900"><strong className="block">Último gate manual</strong>Este clic inicia una sola publicación real. webneoxps todavía ejecuta validaciones, despliegue y verificación antes de declararla publicada.</div>
-            <button type="button" onClick={preview} disabled={previewPending} className="min-h-12 rounded-xl border border-[#4f35b5] bg-white px-5 text-sm font-bold text-[#4f35b5] disabled:opacity-50">{previewPending ? "Preparando vista previa…" : "Revisar nota completa en webneoxps"}</button>
-            {previewError && <p role="alert" className="text-sm text-rose-800">{previewError}</p>}
-            <p role="status" className="text-xs text-slate-600">{previewToken ? "Vista previa revisada. La aprobación corresponde a esta versión exacta." : "Revisá la vista previa y confirmala en la ventana del sitio. Cualquier edición requiere una nueva revisión."}</p>
-            <PendingSubmitButton disabled={!enabled} idleLabel={publicationConnected ? "Aprobar visual y publicar ahora" : "Puente de publicación pendiente"} pendingLabel="Iniciando publicación…" className="min-h-12 rounded-xl bg-[#4f35b5] px-5 text-sm font-bold text-white disabled:bg-slate-300" />
+            </fieldset></details>
+            <PendingSubmitButton disabled={!enabled} idleLabel={publicationConnected ? "Publicar versión revisada" : "Publicación no habilitada"} pendingLabel="Iniciando publicación…" className="min-h-12 rounded-xl bg-[#4f35b5] px-5 text-sm font-bold text-white disabled:bg-slate-300" />
           </PendingForm>
         </div>
         <aside className="border-t border-[#d9cff7] bg-[#25124f] p-5 text-white lg:border-l lg:border-t-0 sm:p-7">

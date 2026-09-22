@@ -80,7 +80,8 @@ describe("Radar Control Plane V1", () => {
     expect(publicationMigration).toContain("or settings.scheduler_enabled");
     expect(actions).not.toContain("RADAR_PUBLICATION_GATE_ENABLED");
     expect(operationPage).not.toContain("Listo para operar");
-    expect(operationPage).toContain("Panel activo · trabajador editorial pendiente");
+    expect(operationPage).not.toContain("Panel activo");
+    expect(operationPage).toContain("getRadarAdmission");
   });
 
   it("authorizes every server action before mutation and does not trust a client company id", () => {

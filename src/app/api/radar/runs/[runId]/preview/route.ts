@@ -13,11 +13,15 @@ export async function POST(request: Request, context: { params: Promise<{ runId:
     const body = await request.text();
     if (body.length > 100_000) return Response.json({ error: "Paquete demasiado grande." }, { status: 413 });
     const { workspaceId, composition } = JSON.parse(body) as { workspaceId: string; composition: RadarPublicationComposition };
-    const { actor } = await requireRadarWorkspaceAccess(workspaceId, "admin");
+    const { actor } = await requireRadarWorkspaceAccess(workspaceId, "operate");
     const run = await getRadarRunForPublication(runId);
     if (run.workspaceId !== workspaceId) return Response.json({ error: "Nota no disponible." }, { status: 403 });
     const webUrl = radarPreviewWebUrl();
-    const bundle = await buildRadarPublicationPackage(run, composition);
+    const awaitingDecision = ["review_pending", "postponed"].includes(run.status);
+    if (awaitingDecision && !run.candidate?.composition) return Response.json({ error: "La pieza no conserva su composición de revisión." }, { status: 409 });
+    // Before approval, the preview represents the persisted candidate exactly.
+    // Editing remains available after approval, behind the publisher's fresh preview gate.
+    const bundle = await buildRadarPublicationPackage(run, awaitingDecision ? run.candidate!.composition! : composition);
     const token = issueRadarPreviewToken({ runId, workspaceId, actorId: actor.id, compositionDigest: bundle.compositionDigest });
     return Response.json({ ...bundle, token, webUrl }, { headers: { "Cache-Control": "no-store, private" } });
   } catch (error) {

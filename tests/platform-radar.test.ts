@@ -23,7 +23,7 @@ describe("Radar de la cuenta madre", () => {
     expect(page).toContain('basePath: "/backoffice/radar"');
     expect(page).toContain('companyName: "NexOps · cuenta madre"');
     expect(page).not.toContain("companyLookup");
-    expect(read("src/app/backoffice/radar/page.tsx")).toContain('view="overview"');
+    expect(read("src/app/backoffice/radar/page.tsx")).toContain('view="review"');
   });
 
   it("keeps projected links HTTPS-only and bounds the public manifest", () => {
