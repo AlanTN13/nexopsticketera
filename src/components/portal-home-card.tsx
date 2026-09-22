@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/radar/radar-entry-link";
 import { ReactNode } from "react";
 
 export function PortalHomeCard({
