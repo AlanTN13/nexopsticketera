@@ -73,6 +73,14 @@ try {
   await db.exec(await readFile(new URL('migrations/20260922005607_radar_reconciled_cost_budget.sql', supabaseDirectory), 'utf8'));
   await db.exec(afterReconciled);
   console.log('Radar reconciled USD5 cost budget regression PASS (isolated PGlite)');
+  // Rebuild the historical fixture after its rollback; verify transition from consumed agent quota.
+  await db.exec(beforeReconciled);
+  await db.exec(await readFile(new URL('migrations/20260922005607_radar_reconciled_cost_budget.sql', supabaseDirectory), 'utf8'));
+  const [beforeManual, afterManual] = (await readFile(new URL('tests/radar_manual_admission.sql', supabaseDirectory), 'utf8')).split('-- APPLY MANUAL MIGRATION HERE');
+  await db.exec(beforeManual);
+  await db.exec(await readFile(new URL('migrations/20260922014442_radar_manual_admission.sql', supabaseDirectory), 'utf8'));
+  await db.exec(afterManual);
+  console.log('Radar manual admission regression PASS (isolated PGlite)');
 } catch (error) {
   console.error('Radar API SQL regression FAILED:', error.message, error.where ?? '');
   process.exitCode = 1;
