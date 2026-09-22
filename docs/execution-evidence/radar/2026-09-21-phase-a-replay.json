@@ -1,0 +1,21 @@
+{
+  "mode": "OFFLINE_REPLAY_SAVED_RESPONSES",
+  "executionId": "31358",
+  "runId": "480e1520-51ec-453f-9b28-fd2eb2afb70e",
+  "responseCount": 2,
+  "requestPending": false,
+  "error": null,
+  "result": "rejected",
+  "decision": {
+    "outcome": "REJECT",
+    "eligibility": "INELIGIBLE",
+    "score": null,
+    "reason": "QA inconsistente: informó PASS con controles críticos pendientes. clientClaims: el QA no justificó el control fallido",
+    "failedGates": [
+      "clientClaims"
+    ]
+  },
+  "providerCalls": 0,
+  "liveMutation": false,
+  "note": "Only replay deadline advanced locally; non-editorial gates true in harness, not live assertions."
+}
