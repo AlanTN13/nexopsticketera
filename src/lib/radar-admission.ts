@@ -45,7 +45,7 @@ export async function getRadarAdmission(workspaceId: string, existingQueuedRunId
     const money = [spentUsd, heldUsd, availableUsd, legacyReservedUsd];
     if (money.some(value => typeof value !== "number" || !Number.isFinite(value) || value < 0) ||
         Math.abs(availableUsd - Math.max(0, 5 - spentUsd - heldUsd)) > 0.0000001 ||
-        !Number.isInteger(remainingRuns) || remainingRuns < 0 || remainingRuns > Math.min(config.maxRuns, 1) ||
+        !Number.isInteger(remainingRuns) || remainingRuns < 0 || remainingRuns > config.maxRuns ||
         (code === "available" && (remainingRuns < 1 || availableUsd < 1.5)) ||
         (code === "run_limit" && remainingRuns !== 0)) return unavailable("unavailable");
     return { allowed: data.allowed, code: code as RadarAdmission["code"], message: messages[code as RadarAdmission["code"]], spentUsd, heldUsd, availableUsd, legacyReservedUsd, maxUsd: 5, remainingRuns };

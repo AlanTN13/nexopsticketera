@@ -12,6 +12,10 @@ describe("read-only reconciled Radar admission", () => {
     expect(await getRadarAdmission("pilot")).toMatchObject(available);
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("get_radar_admission", { target_workspace_id: "pilot", pilot_max_runs: 6 });
   });
+  it("allows manual daily capacity beyond the completed single agent run", async () => {
+    mocks.rpc.mockResolvedValue({ data: { ...available, remainingRuns: 4 } });
+    expect(await getRadarAdmission("pilot")).toMatchObject({ allowed: true, remainingRuns: 4 });
+  });
   it("blocks insufficient headroom even if run authorization remains", async () => {
     mocks.rpc.mockResolvedValue({ data: { ...available, code: "budget_exhausted", allowed: false, spentUsd: 4, availableUsd: 1 } });
     expect(await getRadarAdmission("pilot")).toMatchObject({ allowed: false, code: "budget_exhausted", remainingRuns: 1 });
@@ -47,7 +51,7 @@ describe("read-only reconciled Radar admission", () => {
     { data: { ...available, heldUsd: NaN } },
     { data: { ...available, maxUsd: 9 } },
     { data: { ...available, allowed: false } },
-    { data: { ...available, remainingRuns: 2 } },
+    { data: { ...available, remainingRuns: 7 } },
     { data: { ...available, code: "__proto__" } },
   ])("fails closed for inconsistent monetary evidence %#", async result => {
     mocks.rpc.mockResolvedValue(result);

@@ -42,7 +42,7 @@ try {
   let setup=prerequisites+access.slice(access.indexOf('create or replace function private.user_has_module_access('),access.indexOf('create or replace function private.has_module_access('));
   for (const name of ['20260901131322_radar_control_plane_v1.sql','20260901180902_radar_github_queue_bridge.sql','20260901194500_radar_manual_publication_gate.sql','20260915174740_radar_api_bounded_state.sql','20260917122641_radar_n8n_atomic_completion.sql','20260921181608_radar_pilot_six_dollar_extension.sql','20260921202253_radar_pilot_nine_dollar_extension.sql','20260921232941_radar_read_only_admission.sql']) setup+=await readFile(new URL(`migrations/${name}`,root),'utf8');
   const fixtures=(await readFile(new URL('tests/radar_reconciled_budget.sql',root),'utf8')).split('-- APPLY RECONCILED MIGRATION HERE')[0];
-  setup+=fixtures+await readFile(new URL('migrations/20260922005607_radar_reconciled_cost_budget.sql',root),'utf8')+'\ncommit;';
+  setup+=fixtures+await readFile(new URL('migrations/20260922005607_radar_reconciled_cost_budget.sql',root),'utf8')+await readFile(new URL('migrations/20260922014442_radar_manual_admission.sql',root),'utf8')+'\ncommit;';
   await checked(setup);
   await checked(`insert into public.radar_runs(id,workspace_id,requested_by,idempotency_key,autonomy_mode,status,api_context,api_deadline_at)
     values ('b2000000-0000-0000-0000-000000000001','nexops','a1000000-0000-0000-0000-000000000001','b2000000-0000-0000-0000-000000000001','review','dispatching','{"engine":"radar_api_v1"}',clock_timestamp()+interval '240 seconds'),
