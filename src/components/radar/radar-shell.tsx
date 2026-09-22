@@ -147,11 +147,11 @@ export function RadarShell({
               </div>
               <div className="flex items-center gap-3">
                 <span className="hidden sm:inline-flex"><HealthIndicator health={health} /></span>
-                <Link href={exitHref} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-950">
+                <a href={exitHref} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-950">
                   <ArrowLeft size={15} aria-hidden="true" />
                   <span className="hidden sm:inline">{exitLabel}</span>
                   <span className="sm:hidden">Volver</span>
-                </Link>
+                </a>
               </div>
             </div>
             <nav aria-label="Secciones de Radar" className="flex gap-1 overflow-x-auto px-4 pb-3 sm:px-6 xl:hidden">
