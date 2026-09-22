@@ -97,7 +97,8 @@ begin
     and (usage->'responseIds' is null or usage->'responseIds'='[]'::jsonb) then
     -- Explicit durable zero authorization. Absence of telemetry alone is NOT zero.
     complete := true; kind := 'pre_provider_no_authorization';
-  elsif run.id = 'fb783cc0-29cc-4f69-b64d-cdc723de1b66'::uuid
+  elsif run.api_context ->> 'engine' = 'radar_api_v1'
+    and usage ? 'pilotReservation' and not (usage ? 'budgetVersion')
     and run.api_context ->> 'n8nExecutionId' is null
     and run.api_context ->> 'phase' = 'research_response_received'
     and usage ->> 'calls' = '1'
