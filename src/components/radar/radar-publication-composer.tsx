@@ -131,7 +131,7 @@ export function RadarPublicationComposer({
               <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="rightsVerified" value="true" /> El visual es original de NexOps y puede publicarse.</label>
               <label className="flex gap-3 text-xs leading-5 text-slate-700"><input required type="checkbox" name="clientClaimsAuthorizedOrAbsent" value="true" /> No hay afirmaciones de clientes sin autorización ni advertencias editoriales críticas pendientes.</label>
             </fieldset>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900"><strong className="block">Último gate manual</strong>Este clic inicia una sola publicación real. webneoxps todavía ejecuta validaciones, despliegue y verificación antes de declararla publicada.</div>
+            <p className="text-xs leading-5 text-slate-600">Abrir la vista previa no aprueba ni publica la nota.</p>
             <button type="button" onClick={preview} disabled={previewPending || !canPreview} className="min-h-12 rounded-xl border border-[#4f35b5] bg-white px-5 text-sm font-bold text-[#4f35b5] disabled:opacity-50">{!canPreview ? "Preview requiere permiso de operación" : previewPending ? "Preparando vista previa…" : "Revisar nota completa en webneoxps"}</button>
             {previewError && <p role="alert" className="text-sm text-rose-800">{previewError}</p>}
             <p role="status" className="text-xs text-slate-600">{previewToken ? "Vista previa revisada. La aprobación corresponde a esta versión exacta." : "Revisá la vista previa y confirmala en la ventana del sitio. Cualquier edición requiere una nueva revisión."}</p>
@@ -151,6 +151,7 @@ export function RadarPublicationComposer({
               <label className="grid gap-2 text-xs font-bold text-slate-700 sm:col-span-2">Cuerpo de la nota<textarea required name="bodyMarkdown" defaultValue={initial?.bodyMarkdown ?? draft?.bodyMarkdown ?? ""} minLength={120} maxLength={20_000} rows={16} className="rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs font-normal leading-6 text-slate-900" /></label>
             </div>
             </fieldset></details>
+            {canPublish && publicationConnected && <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">«Publicar versión revisada» inicia una publicación real. webneoxps ejecuta las validaciones, el despliegue y la verificación antes de declararla publicada.</p>}
             <PendingSubmitButton disabled={!enabled} idleLabel={publicationConnected ? "Publicar versión revisada" : "Publicación no habilitada"} pendingLabel="Iniciando publicación…" className="min-h-12 rounded-xl bg-[#4f35b5] px-5 text-sm font-bold text-white disabled:bg-slate-300" />
           </PendingForm>
         </div>
