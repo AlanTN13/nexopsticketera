@@ -2,6 +2,7 @@ import "server-only";
 import { timingSafeEqual } from "node:crypto";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { loadRadarResearchCorpus } from "@/lib/radar-workspace";
+import { radarBudgetUsage } from "@/lib/radar-budget-usage";
 import { radarApiConfiguration } from "@/lib/radar-api-provider";
 import { advanceRadarN8n, decideRadarN8n, editorialGates, RADAR_SCORE_BANDS, sanitizeRadarResponse, type RadarN8nState, type RadarGates } from "@/lib/radar-n8n-editorial";
 import { radarPayloadDigest } from "@/lib/radar-engine-contract";
@@ -16,14 +17,15 @@ export function authenticateRadarN8n(value: string | null) {
   const expected = Buffer.from(secret); const received = Buffer.from(value.trim());
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
-const emptyUsage = { calls: 0, inputTokens: 0, outputTokens: 0, webSearchCalls: 0, responseIds: [] };
+
 const fail = () => new Error("Corrida n8n ausente, duplicada, cancelada o vencida.");
 
 export async function handleRadarN8n(runId: string, operation: string, payload: Record<string, unknown>) {
   const client = getSupabaseAdminClient();
   const config = radarApiConfiguration();
   if (!config.enabled) throw fail();
-  const { data: row, error } = await client.from("radar_runs").select("*").eq("id", runId).maybeSingle();
+  const { data: loaded, error } = await client.from("radar_runs").select("*").eq("id", runId).maybeSingle();
+  let row = loaded;
   if (error || !row || row.workspace_id !== config.workspaceId || row.api_context?.engine !== "radar_api_v1") throw fail();
   const executionId = String(payload.executionId ?? "");
   if (!/^[a-zA-Z0-9_-]{1,100}$/.test(executionId)) throw fail();
@@ -33,9 +35,15 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
     const { data: claimed, error: claimError } = await client.rpc("reserve_radar_api_run", { target_run_id: runId,
       requested_context: { corpus, model: config.model, requestedAt: new Date().toISOString(), n8nExecutionId: executionId, n8nRevision: 0, n8nIssuedCall: 0 }, pilot_max_runs: config.maxRuns });
     // Admission is a read-only precheck and can race. Only the identified last-guard
-    // budget failure is terminalized here; unrelated conflicts keep their own cause.
-    if (claimError?.code === "55000" && claimError.message === "Límite persistente del piloto API alcanzado.") {
-      const reason = "El presupuesto autorizado del piloto está agotado. No se inició la investigación ni se llamó a OpenAI.";
+    // admission-limit failure is terminalized here; unrelated conflicts keep their cause.
+    const limits: Record<string, string> = {
+      "Límite persistente del piloto API alcanzado.": "El presupuesto autorizado del piloto está agotado.",
+      "Límite de corridas autorizadas del piloto alcanzado.": "Se alcanzó el límite autorizado de corridas.",
+      "Límite diario de corridas del piloto alcanzado.": "Se alcanzó el límite diario de corridas.",
+      "Radar ya tiene una corrida activa.": "Hay otra investigación o revisión pendiente.",
+    };
+    if (claimError?.code === "55000" && Object.hasOwn(limits, claimError.message)) {
+      const reason = `${limits[claimError.message]} No se inició la investigación ni se llamó a OpenAI.`;
       const { data: finished, error: finishError } = await client.rpc("finish_radar_api_run", {
         target_run_id: runId, requested_status: "failed", requested_candidate: null,
         requested_reason: reason, requested_usage: {},
@@ -49,7 +57,7 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
   }
   if (row.api_context.n8nExecutionId !== executionId) throw fail();
   if (operation === "finish" && row.api_context.n8nReceipt) return row.api_context.n8nReceipt;
-  if (row.status !== "running" || Date.parse(row.api_deadline_at) <= Date.now()) throw fail();
+  if (!["checkpoint", "prepare", "finish"].includes(operation)) throw fail();
   const saved: RadarN8nState = row.api_context.n8nState ?? {
     version: 1, runId, executionId, deadline: row.api_deadline_at,
     context: { preferences: row.api_context.preferences, corpus: row.api_context.corpus, model: row.api_context.model, requestedAt: row.api_context.requestedAt, requestKind: row.request_kind, requestPayload: row.request_payload }, responses: [],
@@ -60,12 +68,25 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
   if (responses.length < saved.responses.length || responses.length > saved.responses.length + 1 || responses.length > 4 ||
       radarPayloadDigest(responses.slice(0, saved.responses.length)) !== radarPayloadDigest(saved.responses)) throw fail();
   if (responses.length > saved.responses.length && row.api_context.n8nIssuedCall !== responses.length) throw fail();
+  const usage = radarBudgetUsage(responses);
+  // Store provider evidence before replay/cover work, including a late response after
+  // cancellation or timeout. The database reconciles the hold; editorial state stays shut.
+  if (responses.length > saved.responses.length) {
+    const telemetryContext = { ...row.api_context, n8nState: { ...saved, responses }, n8nRevision: Number(row.api_context.n8nRevision) + 1 };
+    const { data: recorded, error: telemetryError } = await client.from("radar_runs").update({
+      api_usage: { ...row.api_usage, ...usage }, api_context: telemetryContext, updated_at: new Date().toISOString(),
+    }).eq("id", runId).eq("api_context->>n8nExecutionId", executionId)
+      .eq("api_context->>n8nRevision", String(row.api_context.n8nRevision)).select("*").maybeSingle();
+    if (telemetryError || !recorded) throw fail();
+    row = recorded;
+  }
+  if (row.status !== "running" || Date.parse(row.api_deadline_at) <= Date.now()) throw fail();
   const state = await advanceRadarN8n({ ...saved, responses });
   const context = { ...row.api_context, n8nState: state, n8nRevision: Number(row.api_context.n8nRevision) + 1,
     phase: state.checkpoint?.phase, sources: state.checkpoint?.sources ?? [], claims: state.checkpoint?.claims ?? [], checkedClaims: state.checkpoint?.checkedClaims ?? [] };
   async function persist(extra: Record<string, unknown> = {}) {
     const { data, error: saveError } = await client.from("radar_runs").update({ api_context: context,
-      api_usage: { ...row.api_usage, ...(state.checkpoint?.usage ?? emptyUsage) }, candidate: state.checkpoint?.candidate ?? null,
+      api_usage: { ...row.api_usage, ...usage }, candidate: state.checkpoint?.candidate ?? null,
       updated_at: new Date().toISOString(), ...extra,
     }).eq("id", runId).eq("status", "running").eq("api_context->>n8nExecutionId", executionId)
       .eq("api_context->>n8nRevision", String(row.api_context.n8nRevision)).gt("api_deadline_at", new Date().toISOString()).select("id").maybeSingle();
@@ -80,7 +101,7 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
   if (!["prepare", "finish"].includes(operation) || state.request) throw fail();
   let candidate: RadarRunCandidate | null = state.result?.candidate ?? state.checkpoint?.candidate ?? null;
   const gates: RadarGates = { ...editorialGates(state), cover: false, siteValidation: false,
-    budget: row.api_usage?.reserved === true && row.api_usage.pilotReservedUsd <= 9 && (state.checkpoint?.usage.calls ?? 0) <= 4 && (state.checkpoint?.usage.estimatedUsd ?? 0) <= row.api_usage.reservedUsd,
+    budget: row.api_usage?.reserved === true && row.api_usage.budgetVersion === 2 && row.api_usage.reservedUsd === 1.5 && usage.telemetryComplete && usage.calls === row.api_context.n8nIssuedCall && usage.calls <= 4 && usage.estimatedUsd! <= row.api_usage.reservedUsd,
     consistency: !state.error && responses.length <= 4 };
   if (state.result?.status === "review_pending" && candidate) {
     try {
@@ -101,7 +122,7 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
   Object.assign(context, { decision, gates, bands, controlledPublication: true });
   const { data: finished, error: finishError } = await client.rpc("finish_radar_n8n_run", { target_run_id: runId, requested_execution_id: executionId, expected_revision: row.api_context.n8nRevision, requested_context: context, requested_status: status, requested_candidate: candidate,
     requested_reason: decision.outcome === "AUTO_PUBLISH" ? "Elegible para AUTO_PUBLISH en piloto controlado; publicación productiva apagada." : decision.reason,
-    requested_usage: state.checkpoint?.usage ?? emptyUsage });
+    requested_usage: usage });
   if (finishError || !finished) throw fail();
   return finished;
 }

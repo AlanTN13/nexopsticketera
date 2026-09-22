@@ -68,6 +68,11 @@ try {
   console.log('Radar read-only admission regression PASS (isolated PGlite)');
   await db.exec(await readFile(new URL('tests/radar_postponed_decisions.sql', supabaseDirectory), 'utf8'));
   console.log('Radar postponed decisions regression PASS (isolated PGlite)');
+  const [beforeReconciled, afterReconciled] = (await readFile(new URL('tests/radar_reconciled_budget.sql', supabaseDirectory), 'utf8')).split('-- APPLY RECONCILED MIGRATION HERE');
+  await db.exec(beforeReconciled);
+  await db.exec(await readFile(new URL('migrations/20260922005607_radar_reconciled_cost_budget.sql', supabaseDirectory), 'utf8'));
+  await db.exec(afterReconciled);
+  console.log('Radar reconciled USD5 cost budget regression PASS (isolated PGlite)');
 } catch (error) {
   console.error('Radar API SQL regression FAILED:', error.message, error.where ?? '');
   process.exitCode = 1;

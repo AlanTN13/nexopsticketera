@@ -22,7 +22,7 @@ beforeEach(()=>{
   const execute=()=>{if(patch&&race)row.status="canceled";const matches=conditions.every(([key,value])=>get(key)===value)&&(!deadline||row.api_deadline_at>deadline);if(patch&&matches){Object.assign(row,patch);writes++;}return {data:matches?structuredClone(row):null,error:null};};
   const q={select:()=>q,update:(v:Record<string,unknown>)=>{patch=v;return q;},eq:(k:string,v:unknown)=>{conditions.push([k,v]);return q;},gt:(_k:string,v:string)=>{deadline=v;return q;},maybeSingle:async()=>execute()};return q;
  },rpc:async(name:string,args:Record<string,unknown>)=>{
-  if(name==="reserve_radar_api_run"){if(claimFailure)return{data:null,error:claimFailure};if(row.status!=="dispatching")return{data:null,error:null};reservations++;row.status="running";row.api_context={...(args.requested_context as object),engine:"radar_api_v1",preferences:{topics:["CRM & Ventas"]}};row.api_usage={reserved:true,reservedUsd:1.5,pilotReservedUsd:1.5};return{data:structuredClone(row),error:null};}
+  if(name==="reserve_radar_api_run"){if(claimFailure)return{data:null,error:claimFailure};if(row.status!=="dispatching")return{data:null,error:null};reservations++;row.status="running";row.api_context={...(args.requested_context as object),engine:"radar_api_v1",preferences:{topics:["CRM & Ventas"]}};row.api_usage={reserved:true,reservedUsd:1.5,budgetVersion:2,pilotReservedUsd:9};return{data:structuredClone(row),error:null};}
   if(name==="finish_radar_n8n_run"){if(row.status!=="running")return{data:null,error:null};row.status=args.requested_status;row.candidate=args.requested_candidate;row.api_context=args.requested_context;row.api_usage={...row.api_usage,...(args.requested_usage as object)};const receipt={ok:true,decision:row.api_context.decision,usage:row.api_usage,controlledPublication:true};row.api_context.n8nReceipt=receipt;return{data:receipt,error:null};}
   if(name==="finish_radar_api_run"){if(race)row.status="canceled";if(finishFailure)return{data:false,error:{message:"database unavailable"}};if(!["running","dispatching"].includes(row.status))return{data:false,error:null};row.status=args.requested_status;row.result_reason=args.requested_reason;row.api_usage={...row.api_usage,...(args.requested_usage as object)};writes++;return{data:true,error:null};}throw Error(name);
  }};
@@ -34,6 +34,11 @@ describe("Portal n8n durable ownership",()=>{
   expect(row.status).toBe("failed");expect(row.result_reason).toContain("ni se llamó a OpenAI");expect(row.api_usage).toEqual({});
   expect(writes).toBe(1);expect(reservations).toBe(0);
   await expect(handleRadarN8n(runId,"claim",{executionId:"budget-rejected"})).rejects.toThrow();expect(writes).toBe(1);
+ });
+ it.each(["Límite de corridas autorizadas del piloto alcanzado.","Límite diario de corridas del piloto alcanzado.","Radar ya tiene una corrida activa."])("closes an operational admission race without billing %s",async(message)=>{
+  claimFailure={code:"55000",message};
+  await expect(handleRadarN8n(runId,"claim",{executionId:"operational-limit"})).rejects.toThrow("No se inició");
+  expect(row.status).toBe("failed");expect(row.api_usage).toEqual({});expect(reservations).toBe(0);
  });
  it.each([{code:"55000",message:"Reserva API ausente o vencida."},{code:"22023",message:"Límite persistente del piloto API alcanzado."},{code:"PGRST000",message:"Connection failed"}])("does not misclassify another claim failure as budget: %s",async(error)=>{
   claimFailure=error;
@@ -53,7 +58,7 @@ describe("Portal n8n durable ownership",()=>{
  it.each([['NO_PUBLICATION',null],['REJECT',0],['READY_FOR_REVIEW',2],['AUTO_PUBLISH',3]] as const)("persists controlled %s through the complete callback protocol",async(outcome,level)=>{
   let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
   const outputs=level===null?[{outcome:"NO_PUBLICATION",candidate:null,reason:"Sin novedad suficiente."}]:[writer(),review(level,level===0?"REJECT":"PASS")];
-  for(const output of outputs){state=await advanceRadarN8n(state);state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;state.responses.push(response(output));}
+  for(const output of outputs){state=await advanceRadarN8n(state);state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;state.responses.push({...response(output),id:`resp_${state.responses.length}`});}
   state=await advanceRadarN8n(state);
   const prepared=await handleRadarN8n(runId,"prepare",{executionId:"one",state}) as {state:RadarN8nState;gates:RadarGates;bands:{review:number;automatic:number}};
   const decision=decideRadarN8n(prepared.state,prepared.gates,prepared.bands);expect(decision.outcome).toBe(outcome);
@@ -66,7 +71,7 @@ describe("Portal n8n durable ownership",()=>{
  it("never prepares a cover for contradictory QA, even through the callback",async()=>{
   let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
   const report=review(4); report.criticalGates.clientClaims=false;
-  for(const output of [writer(),report]){state=await advanceRadarN8n(state);state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;state.responses.push(response(output));}
+  for(const output of [writer(),report]){state=await advanceRadarN8n(state);state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;state.responses.push({...response(output),id:`resp_${state.responses.length}`});}
   state=await advanceRadarN8n(state);
   const prepare=vi.spyOn(publication,"prepareRadarPublicationCandidate");
   try {
@@ -75,10 +80,10 @@ describe("Portal n8n durable ownership",()=>{
     expect(decideRadarN8n(prepared.state,prepared.gates)).toMatchObject({outcome:"REJECT",score:null,failedGates:["clientClaims"]});
   } finally { prepare.mockRestore(); }
  });
- it.each([[7.5,true],[9,true],[9.01,false]])("enforces the authorized USD9 budget gate at %s",async(reserved,allowed)=>{
+ it.each([[2,true],[1,false],[undefined,false]])("requires a reconciled-budget reservation proof %s",async(version,allowed)=>{
   let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
-  row.api_usage.pilotReservedUsd=reserved;
-  for(const output of [writer(),review(3)]){state=await advanceRadarN8n(state);state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;state.responses.push(response(output));}
+  row.api_usage.budgetVersion=version;
+  for(const output of [writer(),review(3)]){state=await advanceRadarN8n(state);state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;state.responses.push({...response(output),id:`resp_${state.responses.length}`});}
   state=await advanceRadarN8n(state);
   const prepared=await handleRadarN8n(runId,"prepare",{executionId:"one",state}) as {state:RadarN8nState;gates:RadarGates;bands:{review:number;automatic:number}};
   expect(prepared.gates.budget).toBe(allowed);
@@ -87,10 +92,19 @@ describe("Portal n8n durable ownership",()=>{
   if(!allowed)expect(decision.score).toBeNull();
  });
  it("claims once and rejects a duplicate execution before spend",async()=>{await handleRadarN8n(runId,"claim",{executionId:"one"});await expect(handleRadarN8n(runId,"claim",{executionId:"two"})).rejects.toThrow();expect(reservations).toBe(1);});
- it("authorizes each billable request once and keeps dollar reservation",async()=>{const initial=await handleRadarN8n(runId,"claim",{executionId:"one"});const state=await advanceRadarN8n(initial as Parameters<typeof advanceRadarN8n>[0]);await handleRadarN8n(runId,"checkpoint",{executionId:"one",state});expect(row.api_usage).toMatchObject({reservedUsd:1.5,calls:1});await expect(handleRadarN8n(runId,"checkpoint",{executionId:"one",state})).rejects.toThrow();expect(writes).toBe(1);});
+ it("authorizes each billable request once and keeps dollar reservation",async()=>{const initial=await handleRadarN8n(runId,"claim",{executionId:"one"});const state=await advanceRadarN8n(initial as Parameters<typeof advanceRadarN8n>[0]);await handleRadarN8n(runId,"checkpoint",{executionId:"one",state});expect(row.api_usage).toMatchObject({reservedUsd:1.5,calls:0});await expect(handleRadarN8n(runId,"checkpoint",{executionId:"one",state})).rejects.toThrow();expect(writes).toBe(1);});
  it("rejects execution-id substitution and does not replace context with caller data",async()=>{const state=await handleRadarN8n(runId,"claim",{executionId:"one"});await expect(handleRadarN8n(runId,"checkpoint",{executionId:"two",state})).rejects.toThrow();expect(writes).toBe(0);});
  it("cancellation racing with checkpoint wins",async()=>{const state=await handleRadarN8n(runId,"claim",{executionId:"one"});race=true;await expect(handleRadarN8n(runId,"checkpoint",{executionId:"one",state})).rejects.toThrow();expect(row.status).toBe("canceled");expect(writes).toBe(0);});
  it("rejects timeout before another provider call",async()=>{const state=await handleRadarN8n(runId,"claim",{executionId:"one"});row.api_deadline_at="2020-01-01";await expect(handleRadarN8n(runId,"checkpoint",{executionId:"one",state})).rejects.toThrow();expect(writes).toBe(0);});
+ it.each(["canceled","failed"])("records a late paid response without reopening %s",async(status)=>{
+  let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
+  state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;
+  state=structuredClone(state);state.responses.push(response(writer()));row.status=status;row.api_deadline_at="2020-01-01";
+  await expect(handleRadarN8n(runId,"prepare",{executionId:"one",state})).rejects.toThrow();
+  expect(row.status).toBe(status);expect(row.api_usage).toMatchObject({calls:1,telemetryComplete:true});
+  expect(row.api_usage.estimatedUsd).toBeGreaterThan(0);const after=writes;
+  await expect(handleRadarN8n(runId,"prepare",{executionId:"one",state})).rejects.toThrow();expect(writes).toBe(after);
+ });
  it("requires a distinct secure callback credential",()=>{vi.stubEnv("RADAR_N8N_CALLBACK_SECRET","c".repeat(32));expect(authenticateRadarN8n(null)).toBe(false);expect(authenticateRadarN8n("wrong")).toBe(false);expect(authenticateRadarN8n("c".repeat(32))).toBe(true);expect(authenticateRadarN8n(`  ${"c".repeat(32)}  `)).toBe(true);vi.unstubAllEnvs();});
  it("unauthenticated callback cannot read or mutate a run",async()=>{const res=await POST(new Request("https://portal.example/api",{method:"POST",body:"{}"}),{params:Promise.resolve({runId})});expect(res.status).toBe(401);expect(writes).toBe(0);});
  it("oversized callback is bounded before JSON parse",async()=>{vi.stubEnv("RADAR_N8N_CALLBACK_SECRET","c".repeat(32));const res=await POST(new Request("https://portal.example/api",{method:"POST",headers:{"x-radar-callback-secret":"c".repeat(32)},body:"x".repeat(1000001)}),{params:Promise.resolve({runId})});expect(res.status).toBe(413);vi.unstubAllEnvs();});
