@@ -16,7 +16,7 @@ import type { RadarAdmission } from "@/lib/radar-admission";
 const candidate = { title: "Una oportunidad verificable", topic: "IA aplicada", sourceName: "Fuente oficial", sourceUrl: "https://example.com/source", sources: [{ name: "Fuente oficial", url: "https://example.com/source" }], score: 82, businessReasons: ["Reduce tareas repetitivas"], qa: { verdict: "PASS" as const, reason: "Evidencia contrastada" }, draft: { headline: "Una oportunidad verificable", deck: "Detalle de la oportunidad para empresas", bodyMarkdown: "BORRADOR_LARGO_NO_VISIBLE_EN_HISTORIAL" } };
 const run: RadarRun = { id: "c40b81b7-6ac4-4da1-92e8-86a7a50f9dc4", workspaceId: "nexops", companyId: null, requestedBy: "actor", triggerKind: "manual", requestKind: "opportunity_search", manualNote: null, autonomyMode: "review", status: "review_pending", eligibility: "ELIGIBLE", externalRunId: null, externalRunUrl: null, candidate, resultReason: "Evidencia lista para revisión", finalUrl: null, errorMessage: null, startedAt: null, completedAt: null, createdAt: "2026-09-21T22:00:00Z", updatedAt: "2026-09-21T22:00:00Z", events: [], decisions: [], publication: null };
 const snapshot: RadarControlPlaneSnapshot = { availability: "ready", settings: { workspaceId: "nexops", companyId: null, enabled: true, schedulerEnabled: false, scheduleDays: [1,2,3,4,5,6], scheduleHour: 7, scheduleTimezone: "America/Argentina/Buenos_Aires", autonomyMode: "review", nextRunAt: null, preferences: { topics: ["IA aplicada"], publicationsPerWeek: 2, opportunityBehavior: "suggest", publishingMode: "review", siteIntegrated: true } }, runs: [], engineConnected: true, publicationConnected: false };
-const admission: RadarAdmission = { allowed: false, code: "budget_exhausted", message: "Presupuesto agotado. Búsqueda no iniciada.", reservedUsd: 9, maxUsd: 9, remainingRuns: 0 };
+const admission: RadarAdmission = { allowed: false, code: "budget_exhausted", message: "Presupuesto agotado. Búsqueda no iniciada.", spentUsd: 5, heldUsd: 0, availableUsd: 0, legacyReservedUsd: 9, maxUsd: 5, remainingRuns: 0 };
 const props = { snapshot, admission, workspaceId: "nexops", canOperate: true, canAdmin: true, basePath: "/backoffice/radar" };
 const render = (element: React.ReactNode) => renderToStaticMarkup(element);
 beforeEach(() => { vi.clearAllMocks(); });
@@ -55,6 +55,14 @@ describe("Radar truthful recovery", () => {
     const html = render(<RadarControlPlaneView {...props} snapshot={{ ...snapshot, runs: [{ ...run, status: "rejected" }] }} />);
     expect(html).toContain("Presupuesto agotado"); expect(html).toMatch(/disabled=""[^>]*>Buscar oportunidad/); expect(html).toMatch(/disabled=""[^>]*>Investigar fuente/);
     expect(html).not.toContain("BORRADOR_LARGO"); expect(html).not.toContain("Configuración editorial"); expect(html).not.toContain("Panel activo");
+  });
+  it("shows reconciled cost, temporary holds and preserved history separately", () => {
+    const html = render(<RadarControlPlaneView {...props} view="configuration" admission={{ ...admission, spentUsd: 0.112158, availableUsd: 4.887842 }} />);
+    expect(html).toContain("Costo reconciliado: USD 0.112158 de USD 5.00");
+    expect(html).toContain("Reserva transitoria: USD 0.000000");
+    expect(html).toContain("Disponible: USD 4.887842");
+    expect(html).toContain("Reservas históricas conservadas: USD 9.00");
+    expect(html).not.toContain("Reserva acumulada");
   });
   it("does not enable operation for read-only members even when admitted", () => {
     const html = render(<RadarControlPlaneView {...props} canOperate={false} admission={{ ...admission, allowed: true, code: "available" }} />);
