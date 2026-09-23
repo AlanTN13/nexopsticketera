@@ -33,14 +33,14 @@ async function main() {
   const claim = { text: 'La versión permite exportar datos.', sourceUrls: [sources[0].url] };
   const draft = { headline: 'Nueva exportación de datos para operaciones comerciales', deck: 'Datos simulados de prueba: una actualización orientada a reducir tareas manuales con controles de calidad.', bodyMarkdown: '## Datos simulados para integración\n\n' + 'La actualización permite exportar datos para la revisión del equipo. El responsable contrasta los resultados con la fuente antes de incorporarlos a sus informes de gestión. '.repeat(6) };
   const candidate = { title: draft.headline, topic: 'CRM & Ventas', sourceName: sources[0].name, sourceUrl: sources[0].url, score: 90, businessReasons: ['Reduce tareas manuales de seguimiento con revisión humana.'], draft };
-  const outputs = [{ outcome: 'CANDIDATE', reason: 'Prueba simulada', candidate, sources, claims: [claim], topicIdentity: 'simulated-export-september-2026' }, { verdict: 'PASS', reason: 'Las fuentes simuladas respaldan el claim de prueba.', sources, checkedClaims: [{ ...claim, supported: true }], criticalGates: { sources: true, facts: true, novelty: true, clientClaims: true, content: true }, rubric: Object.fromEntries(RADAR_SCORE_CRITERIA.map(key => [key, { level: 3, evidence: sources[0].evidence, sourceUrls: [sources[0].url] }])) }];
+  const outputs = [{ outcome: 'CANDIDATE', reason: 'Prueba simulada', candidate, sources, claims: [claim], topicIdentity: 'simulated-export-september-2026' }, { verdict: 'PASS', reason: 'Las fuentes simuladas respaldan el claim de prueba.', sources, checkedClaims: [{ ...claim, supported: true }], duplicateMatch: null, criticalGates: { sources: true, facts: true, novelty: true, clientClaims: true, content: true }, rubric: Object.fromEntries(RADAR_SCORE_CRITERIA.map(key => [key, { level: 3, evidence: sources[0].evidence, sourceUrls: [sources[0].url] }])) }];
   let calls = 0;
   let state = { version: 1, runId: 'c40b81b7-6ac4-4da1-92e8-86a7a50f9dc4', executionId: 'controlled-fixture', deadline: new Date(Date.now()+240000).toISOString(), context: { preferences: { topics: ['CRM & Ventas'] }, corpus: [], requestKind: 'opportunity_search', requestPayload: {}, requestedAt: '2026-09-15T12:00:00Z', model: 'gpt-5-mini' }, responses: [] };
   for (const output of outputs) {
     state = await runExport(state);
-    assert.ok(state.request, JSON.stringify(state.error));
+    assert.ok(state.request, `fixture call ${calls + 1}: ${JSON.stringify(state.error)}`);
     calls++;
-    state.responses.push(sanitizeRadarResponse({ status: 'completed', id: `simulated-${calls}`, usage: { input_tokens: 100, output_tokens: 100 }, output: [{ type: 'web_search_call', action: { sources } }, { type: 'message', content: [{ type: 'output_text', text: JSON.stringify(output) }] }] }));
+    state.responses.push(sanitizeRadarResponse({ status: 'completed', id: `simulated-${calls}`, usage: { input_tokens: 100, output_tokens: 100 }, output: [{ type: 'web_search_call', status: 'completed', action: { type: 'search', sources } }, { type: 'message', content: [{ type: 'output_text', text: JSON.stringify(output) }] }] }));
   }
   state = await runExport(state);
   assert.deepEqual(JSON.parse(JSON.stringify(state)), await advanceRadarN8n(JSON.parse(JSON.stringify(state))));

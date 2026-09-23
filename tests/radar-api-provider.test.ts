@@ -6,8 +6,8 @@ const claim = { text: "La versión permite exportar datos.", sourceUrls: [source
 const draft = { headline: "La nueva versión permite exportar datos", deck: "Una actualización orientada a reducir el trabajo manual de los equipos comerciales.", bodyMarkdown: "## Qué cambia\n\n" + "La actualización facilita la exportación de datos para revisión por el equipo. ".repeat(12) };
 const candidate = { title: draft.headline, topic: "CRM & Ventas", sourceName: source.name, sourceUrl: source.url, score: 85, businessReasons: ["Reduce tareas manuales de seguimiento."], draft };
 const writer = () => ({ outcome: "CANDIDATE", reason: "Aporte empresarial", candidate, sources: [source], claims: [claim], topicIdentity: "Vendor exportación septiembre 2026" });
-const review = (verdict = "PASS") => ({ verdict, reason: verdict === "FIX" ? "Aclarar límites de disponibilidad." : "La fuente respalda la afirmación.", sources: [source], checkedClaims: [{ ...claim, supported: true }], criticalGates: {sources:true,facts:true,novelty:true,clientClaims:true,content:true}, criticalGateReasons: {sources:"",facts:"",novelty:"",clientClaims:"",content:""} });
-function response(output: unknown, sources = [source]) { return { status: "completed", id: "resp_test", usage: { input_tokens: 100, output_tokens: 200 }, output: [{ type: "web_search_call", action: { sources } }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(output) }] }] }; }
+const review = (verdict = "PASS") => ({ verdict, reason: verdict === "FIX" ? "Aclarar límites de disponibilidad." : "La fuente respalda la afirmación.", sources: [source], checkedClaims: [{ ...claim, supported: true }], duplicateMatch: null, criticalGates: {sources:true,facts:true,novelty:true,clientClaims:true,content:true}, criticalGateReasons: {sources:"",facts:"",novelty:"",clientClaims:"",content:""} });
+function response(output: unknown, sources = [source]) { return { status: "completed", id: "resp_test", usage: { input_tokens: 100, output_tokens: 200 }, output: [{ type: "web_search_call", status: "completed", action: { type: "search", sources } }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(output) }] }] }; }
 async function run(outputs: unknown[], options: { active?: () => Promise<void>; signal?: AbortSignal; status?: number } = {}) {
   const checkpoints: RadarApiCheckpoint[] = [];
   const fetchImpl = vi.fn(async () => new Response(JSON.stringify(response(outputs.shift())), { status: options.status ?? 200 }));
@@ -33,6 +33,12 @@ describe("Radar API editorial contract", () => {
   it("terminates NO_PUBLICATION without drafting or reviewing", async () => {
     const test = await run([{ outcome: "NO_PUBLICATION", candidate: null, reason: "No hay novedad suficiente." }]);
     expect((await test.result).status).toBe("no_publication"); expect(test.fetchImpl).toHaveBeenCalledTimes(1);
+  });
+  it("stops a deterministic manual duplicate before the provider", async () => {
+    const checkpoints: RadarApiCheckpoint[] = [];
+    const fetchImpl = vi.fn();
+    const result = await executeRadarEditorial({ context: { preferences: {}, corpus: [{ slug: "published", title: "Nota publicada", sources: [{ url: "https://vendor.example/release" }] }], requestKind: "manual_note", requestPayload: { sourceUrl: "https://vendor.example/release/?utm_campaign=radar#top" }, requestedAt: "2026-09-22", model: "gpt-5-mini" }, signal: new AbortController().signal, fetchImpl: fetchImpl as typeof fetch, checkpoint: async value => { checkpoints.push(value); }, assertActive: async()=>{} });
+    expect(result).toMatchObject({status:"no_publication",usage:{calls:0}}); expect(fetchImpl).not.toHaveBeenCalled(); expect(checkpoints.at(-1)?.phase).toBe("prefilter_duplicate");
   });
   it("allows one FIX and a fresh review, never a second repair", async () => {
     const test = await run([writer(), review("FIX"), writer(), review("FIX")]);
@@ -64,6 +70,7 @@ describe("Radar API editorial contract", () => {
     expect(schema.properties.candidate.anyOf[1]).toEqual({ type: "null" });
     expect(schema.properties.sources.items.properties.publishedAt.type).toEqual(["string", "null"]);
     expect(requests[1].text.format.schema.required).toContain("criticalGates");
+    expect(requests[1].text.format.schema.required).toContain("duplicateMatch");
     expect(requests[1].text.format.schema.required).toContain("rubric");
   });
   it("provider errors fail without exposing response body or pretending NO_PUBLICATION", async () => {

@@ -2,7 +2,15 @@
 
 This is the replacement runtime for PR #75, retaining the package/preview implementation in webneoxps#74. Do not run the superseded Next `after()` worker: it has been removed. `radar-api-provider.ts` is a reusable interpreter; its transport is mandatory, and Portal only supplies a network-free replay of responses. Only the native n8n HTTP Request node calls OpenAI.
 
-## Current pilot: two additional validation runs (2026-09-21)
+## Editorial integrity correction (2026-09-22)
+
+The generated workflow now runs a deterministic corpus prefilter before the first provider request whenever the request already contains a manual source. URL identity removes fragments and known tracking parameters, sorts the remaining query and normalizes only trailing slashes/default URL parsing; functional query parameters remain significant. Candidate URL/topic identity is checked again after research. An unequivocal match returns `NO_PUBLICATION`; uncertain similarity still goes through the established QA path.
+
+QA cannot lower `novelty` on free text alone. It must return a stable corpus id/slug, matching corpus URL, exact title, optional exact fingerprint and a reason. Portal validates those fields against the same corpus supplied to QA. A missing or false reference is treated as an inconsistent QA/FIX response and cannot lower the novelty gate or create a PASS.
+
+The server-side evidence ledger accumulates provider-attested search sources, completed page actions, safe HTTPS citations and an explicit manual source across the whole run. Writer, QA and the one FIX receive that ledger; validation accepts only URLs already present in it. Offline replays preserve n8n `31268` as a real Meta duplicate and advance n8n `31419` past its false duplicate while retaining the Microsoft Learn evidence from the first pass. No provider call is part of those regressions.
+
+## Historical pilot extension: two validation runs (2026-09-21)
 
 Alan explicitly authorized USD6 → USD9, preserving the existing four reservations / USD6. Migration `20260921202253_radar_pilot_nine_dollar_extension.sql`, backend gate <=9 and Production `RADAR_API_PILOT_MAX_RUNS=6` allow at most two additional USD1.50 reservations. No reset/refund or third run. Use the existing manual-note form with a fresh primary source absent from the corpus to reduce duplicate research; this uses the same n8n/QA/gates. Stop after success or two attempts; diagnose before requesting further budget. Scheduler/autopublishing OFF. The workflow bundle itself is unchanged.
 
