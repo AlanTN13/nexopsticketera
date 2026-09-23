@@ -1,4 +1,4 @@
-import { executeRadarEditorial, RADAR_API_LIMITS, RadarApiError, type RadarApiContext, type RadarApiCheckpoint, type RadarApiResult } from "@/lib/radar-api-provider";
+import { executeRadarEditorial, RADAR_API_LIMITS, RadarApiError, validateRadarDuplicateMatch, type RadarApiContext, type RadarApiCheckpoint, type RadarApiResult } from "@/lib/radar-api-provider";
 import { isSafeHttpsUrl } from "@/lib/radar-control-plane";
 
 type Json = Record<string, unknown>;
@@ -101,5 +101,7 @@ export function decideRadarN8n(state: RadarN8nState, gates: RadarGates, bands: {
 
 export function editorialGates(state: RadarN8nState): Pick<RadarGates, "sources" | "facts" | "novelty" | "clientClaims" | "content"> {
   const report = object(lastReview(state).criticalGates);
-  return { sources: report.sources === true, facts: report.facts === true, novelty: report.novelty === true, clientClaims: report.clientClaims === true, content: report.content === true };
+  const review = lastReview(state);
+  const invalidDuplicate = report.novelty === false && !validateRadarDuplicateMatch(review.duplicateMatch, state.context.corpus);
+  return { sources: report.sources === true, facts: report.facts === true, novelty: report.novelty === true || invalidDuplicate, clientClaims: report.clientClaims === true, content: report.content === true };
 }

@@ -19,9 +19,17 @@ const writer = object({
   sources: array(source), claims: array(claim), topicIdentity: text,
 });
 const criterion = object({ level: { type: "integer", enum: [0, 1, 2, 3, 4] }, evidence: text, sourceUrls: texts });
+const duplicateMatch = object({
+  matchedPublicationId: text,
+  matchedPublicationUrl: text,
+  matchedPublicationTitle: text,
+  matchedTopicFingerprint: { type: ["string", "null"] },
+  reason: text,
+});
 const review = object({
   verdict: { type: "string", enum: ["PASS", "FIX", "REJECT"] }, reason: text,
   sources: array(source), checkedClaims: array(object({ text, supported: { type: "boolean" }, sourceUrls: texts })),
+  duplicateMatch: { anyOf: [duplicateMatch, { type: "null" }] },
   criticalGates: object(Object.fromEntries(["sources", "facts", "novelty", "clientClaims", "content"].map(key => [key, { type: "boolean" }]))),
   criticalGateReasons: object(Object.fromEntries(["sources", "facts", "novelty", "clientClaims", "content"].map(key => [key, text]))),
   rubric: object(Object.fromEntries(["businessImpact", "novelty", "evidenceQuality", "actionability", "timeliness"].map(key => [key, criterion]))),
