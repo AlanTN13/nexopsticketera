@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only",()=>({}));
 import { advanceRadarN8n, decideRadarN8n, editorialGates, sanitizeRadarResponse, RADAR_CRITICAL_GATES, RADAR_SCORE_CRITERIA, type RadarGates } from "@/lib/radar-n8n-editorial";
-import { writer, review, response, initial } from "./helpers/radar-n8n-fixtures";
+import { writer, discovery, review, response, initial } from "./helpers/radar-n8n-fixtures";
 const gates=():RadarGates=>Object.fromEntries(RADAR_CRITICAL_GATES.map(key=>[key,true])) as RadarGates;
 async function completed(outputs:unknown[]){let state=initial();for(const output of outputs){state=await advanceRadarN8n(state);expect(state.request).toBeTruthy();state.responses.push(response(output));}return advanceRadarN8n(state);}
 const metaCorpusPublication={slug:"meta-business-agent-whatsapp-leads-ventas",title:"Meta Business Agent: qué cambia cuando WhatsApp empieza a calificar leads y cerrar ventas",topicFingerprint:"actualidad:crm-automatizacion-comercial:meta-business-agent-whatsapp-leads-ventas",sources:[{name:"Meta Newsroom",url:"https://about.fb.com/news/2026/06/meta-business-agent/"}],url:"https://www.nexopstech.com/noticias/meta-business-agent-whatsapp-leads-ventas"};
@@ -13,10 +13,10 @@ function replayResponse(output:unknown,sources:Record<string,unknown>[],type:"se
 }
 function microsoftWriter(){const output=writer();output.candidate={...output.candidate,title:"Power Automate acelera la búsqueda completa en My Flows",sourceName:microsoftSource.name,sourceUrl:microsoftSource.url,draft:{...output.candidate.draft,headline:"Power Automate acelera la búsqueda completa en My Flows"}};output.sources=[microsoftSource,microsoftSupportingSource];output.claims=[microsoftClaim];output.topicIdentity="Power Automate + búsqueda del lado del servidor en My Flows + 2026-09-17";return output;}
 describe("n8n bounded editorial state and gate-aware scoring",()=>{
- it("replays n8n31268 as the same real Meta duplicate after one stored provider response",async()=>{
-  let state=initial(); state.context.corpus=[metaCorpusPublication]; state=await advanceRadarN8n(state); expect(state.request).toBeTruthy();
-  const output=writer(); output.candidate={...output.candidate,title:"Meta Business Agent ya está disponible",sourceName:"Meta Newsroom",sourceUrl:"https://about.fb.com/news/2026/06/meta-business-agent/"}; output.sources=[{name:"Meta Newsroom",url:output.candidate.sourceUrl,evidence:"Meta anunció disponibilidad global el 3 de junio de 2026."}]; output.claims=[{text:"Meta anunció Business Agent.",sourceUrls:[output.candidate.sourceUrl]}]; output.topicIdentity="Meta Business Agent — lanzamiento global — 2026-06-03";
-  state.responses.push(replayResponse(output,output.sources)); state=await advanceRadarN8n(state);
+ it("replays n8n31268 as the same real Meta duplicate after one discovery response",async()=>{
+  let state=initial(); state.context.requestKind="opportunity_search"; state.context.requestPayload={}; state.context.corpus=[metaCorpusPublication]; state=await advanceRadarN8n(state); expect(state.request).toBeTruthy();
+  const output=discovery(); output.candidates=[{...output.candidates[0],title:"Meta Business Agent ya está disponible",sourceName:"Meta Newsroom",sourceUrl:"https://about.fb.com/news/2026/06/meta-business-agent/",topicIdentity:"Meta Business Agent — lanzamiento global — 2026-06-03"}];
+  state.responses.push(replayResponse(output,[{name:"Meta Newsroom",url:output.candidates[0].sourceUrl,evidence:"Meta anunció disponibilidad global el 3 de junio de 2026."}])); state=await advanceRadarN8n(state);
   expect(state.result?.status).toBe("no_publication"); expect(state.checkpoint?.usage.calls).toBe(1); expect(decideRadarN8n(state,gates())).toMatchObject({outcome:"NO_PUBLICATION",score:null});
  });
  it("deduplicates a manual source before the provider when only tracking, fragment and trailing slash differ",async()=>{
@@ -70,12 +70,12 @@ describe("n8n bounded editorial state and gate-aware scoring",()=>{
   {type:"unknown",status:"completed",url:"https://vendor.example/release"},
  ])("never invents evidence for an invalid page action %j",async action=>{
   const raw=response(writer()); (raw.output as Record<string,unknown>[])[0]={type:"web_search_call",status:action.status,action:{type:action.type,url:action.url}};
-  const state=initial(); state.responses.push(sanitizeRadarResponse(raw)); const next=await advanceRadarN8n(state);
+  const state=initial(); state.context.requestPayload={}; state.responses.push(sanitizeRadarResponse(raw)); const next=await advanceRadarN8n(state);
   expect(next.error).toContain("evidencia verificable"); expect(next.checkpoint?.sources).toEqual([]); expect(decideRadarN8n(next,gates()).score).toBeNull();
  });
  it("does not admit sources from a failed search into the evidence ledger",async()=>{
   const raw=response(writer()); (raw.output as Record<string,unknown>[])[0]={type:"web_search_call",status:"failed",action:{type:"search",sources:[{name:"Untrusted",url:"https://untrusted.example/fake"}]}};
-  const state=initial(); state.responses.push(sanitizeRadarResponse(raw)); const next=await advanceRadarN8n(state);
+  const state=initial(); state.context.requestPayload={}; state.responses.push(sanitizeRadarResponse(raw)); const next=await advanceRadarN8n(state);
   expect(next.error).toContain("evidencia verificable"); expect(next.checkpoint?.sources).toEqual([]);
  });
  it("produces native OpenAI request without credentials or provider network access",async()=>{const state=await advanceRadarN8n(initial());expect(state.request).toMatchObject({model:"gpt-5-mini",store:false,max_tool_calls:2});expect(JSON.stringify(state)).not.toContain("Bearer");expect(state.checkpoint?.usage.calls).toBe(1);});

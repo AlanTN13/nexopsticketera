@@ -79,6 +79,11 @@ try {
   const [beforeManual, afterManual] = (await readFile(new URL('tests/radar_manual_admission.sql', supabaseDirectory), 'utf8')).split('-- APPLY MANUAL MIGRATION HERE');
   await db.exec(beforeManual);
   await db.exec(await readFile(new URL('migrations/20260922014442_radar_manual_admission.sql', supabaseDirectory), 'utf8'));
+  const [beforeFive, afterFive] = (await readFile(new URL('tests/radar_five_call_telemetry.sql', supabaseDirectory), 'utf8')).split('-- APPLY FIVE CALL MIGRATION HERE');
+  await db.exec(beforeFive);
+  await db.exec(await readFile(new URL('migrations/20260925134445_radar_five_call_telemetry.sql', supabaseDirectory), 'utf8'));
+  await db.exec(afterFive);
+  console.log('Radar five-call telemetry regression PASS (isolated PGlite)');
   await db.exec(afterManual);
   console.log('Radar manual admission regression PASS (isolated PGlite)');
 } catch (error) {

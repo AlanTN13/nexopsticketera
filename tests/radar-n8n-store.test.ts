@@ -8,19 +8,19 @@ import * as publication from "@/lib/radar-publication";
 import { handleRadarN8n, authenticateRadarN8n } from "@/lib/radar-n8n-store";
 import { advanceRadarN8n, decideRadarN8n, type RadarN8nState, type RadarGates } from "@/lib/radar-n8n-editorial";
 import { POST } from "@/app/api/radar/runs/[runId]/n8n/route";
-import { writer, review, response } from "./helpers/radar-n8n-fixtures";
+import { discovery, writer, review, response } from "./helpers/radar-n8n-fixtures";
 let row:Record<string,any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-let writes:number;let reservations:number;let race=false;
+let writes:number;let reservations:number;let race=false;let recentRows:Record<string,unknown>[]=[];
 let claimFailure: {code:string;message:string}|null;let finishFailure:boolean;
 const runId="c40b81b7-6ac4-4da1-92e8-86a7a50f9dc4";
 beforeEach(()=>{
- writes=0;reservations=0;race=false;claimFailure=null;finishFailure=false;
- row={id:runId,created_at:"2026-09-16T12:00:00Z",workspace_id:"pilot",status:"dispatching",api_context:{engine:"radar_api_v1"},api_deadline_at:new Date(Date.now()+240000).toISOString(),request_kind:"opportunity_search",request_payload:{}};
+ writes=0;reservations=0;race=false;claimFailure=null;finishFailure=false;recentRows=[];
+ row={id:runId,created_at:"2026-09-16T12:00:00Z",workspace_id:"pilot",status:"dispatching",api_context:{engine:"radar_api_v1"},api_deadline_at:new Date(Date.now()+240000).toISOString(),request_kind:"manual_note",request_payload:{sourceUrl:"https://vendor.example/release"}};
  mocks.client={from:()=>{
   let patch:Record<string,unknown>|undefined;const conditions:Array<[string,unknown]>=[];let deadline="";
   const get=(key:string)=>key.includes("->>")?String(row[key.split("->>")[0]][key.split("->>")[1]]):row[key];
   const execute=()=>{if(patch&&race)row.status="canceled";const matches=conditions.every(([key,value])=>get(key)===value)&&(!deadline||row.api_deadline_at>deadline);if(patch&&matches){Object.assign(row,patch);writes++;}return {data:matches?structuredClone(row):null,error:null};};
-  const q={select:()=>q,update:(v:Record<string,unknown>)=>{patch=v;return q;},eq:(k:string,v:unknown)=>{conditions.push([k,v]);return q;},gt:(_k:string,v:string)=>{deadline=v;return q;},maybeSingle:async()=>execute()};return q;
+  const q={select:()=>q,update:(v:Record<string,unknown>)=>{patch=v;return q;},eq:(k:string,v:unknown)=>{conditions.push([k,v]);return q;},order:()=>q,limit:async()=>({data:recentRows,error:null}),gt:(_k:string,v:string)=>{deadline=v;return q;},maybeSingle:async()=>execute()};return q;
  },rpc:async(name:string,args:Record<string,unknown>)=>{
   if(name==="reserve_radar_api_run"){if(claimFailure)return{data:null,error:claimFailure};if(row.status!=="dispatching")return{data:null,error:null};reservations++;row.status="running";row.api_context={...(args.requested_context as object),engine:"radar_api_v1",preferences:{topics:["CRM & Ventas"]}};row.api_usage={reserved:true,reservedUsd:1.5,budgetVersion:2,pilotReservedUsd:9};return{data:structuredClone(row),error:null};}
   if(name==="finish_radar_n8n_run"){if(row.status!=="running")return{data:null,error:null};row.status=args.requested_status;row.candidate=args.requested_candidate;row.api_context=args.requested_context;row.api_usage={...row.api_usage,...(args.requested_usage as object)};const receipt={ok:true,decision:row.api_context.decision,usage:row.api_usage,controlledPublication:true};row.api_context.n8nReceipt=receipt;return{data:receipt,error:null};}
@@ -28,6 +28,16 @@ beforeEach(()=>{
  }};
 });
 describe("Portal n8n durable ownership",()=>{
+ it("carries recently discarded duplicate URLs into opportunity discovery without a new table",async()=>{
+  row.request_kind="opportunity_search";row.request_payload={};
+  recentRows=[{result_reason:"La oportunidad coincide con Meta Business Agent (published).",candidate:{sourceUrl:"https://about.fb.com/news/2026/06/meta-business-agent/"}}];
+  let state=await handleRadarN8n(runId,"claim",{executionId:"one"}) as RadarN8nState;
+  expect(state.context.recentDuplicates).toEqual([{sourceUrl:"https://about.fb.com/news/2026/06/meta-business-agent/"}]);
+  state=await advanceRadarN8n(state);expect(state.request?.text).toBeTruthy();
+  state=await handleRadarN8n(runId,"checkpoint",{executionId:"one",state}) as RadarN8nState;
+  state.responses.push({...response(discovery()),id:"resp_discovery"});state=await advanceRadarN8n(state);
+  expect(state.request).toBeTruthy();expect(state.checkpoint?.phase).toBe("research");
+ });
  it("immediately closes the identified budget rejection without reserving usage",async()=>{
   claimFailure={code:"55000",message:"Límite persistente del piloto API alcanzado."};
   await expect(handleRadarN8n(runId,"claim",{executionId:"budget-rejected"})).rejects.toThrow("presupuesto autorizado");

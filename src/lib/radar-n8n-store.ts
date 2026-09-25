@@ -3,13 +3,14 @@ import { timingSafeEqual } from "node:crypto";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { loadRadarResearchCorpus } from "@/lib/radar-workspace";
 import { radarBudgetUsage } from "@/lib/radar-budget-usage";
-import { radarApiConfiguration } from "@/lib/radar-api-provider";
+import { radarApiConfiguration, RADAR_API_LIMITS } from "@/lib/radar-api-provider";
 import { advanceRadarN8n, decideRadarN8n, editorialGates, RADAR_SCORE_BANDS, sanitizeRadarResponse, type RadarN8nState, type RadarGates } from "@/lib/radar-n8n-editorial";
 import { radarPayloadDigest } from "@/lib/radar-engine-contract";
 import { prepareRadarPublicationCandidate, buildRadarPublicationPackage } from "@/lib/radar-publication";
 import { validateArticle } from "@/lib/radar-site-contract/news-contract.mjs";
 import { validateEditorialCover } from "@/lib/radar-site-contract/news-image-policy.mjs";
 import type { RadarRun, RadarRunCandidate } from "@/lib/radar-control-plane";
+import { isSafeHttpsUrl } from "@/lib/radar-control-plane";
 
 export function authenticateRadarN8n(value: string | null) {
   const secret = process.env.RADAR_N8N_CALLBACK_SECRET?.trim() ?? "";
@@ -19,6 +20,30 @@ export function authenticateRadarN8n(value: string | null) {
 }
 
 const fail = () => new Error("Corrida n8n ausente, duplicada, cancelada o vencida.");
+
+/** Reuses the last persisted duplicate outcomes; no new table or cross-workspace state. */
+async function loadRecentRadarDuplicates(client: ReturnType<typeof getSupabaseAdminClient>, workspaceId: string) {
+  const { data, error } = await client.from("radar_runs")
+    .select("candidate,api_context,result_reason").eq("workspace_id", workspaceId).eq("status", "no_publication")
+    .order("created_at", { ascending: false }).limit(4);
+  if (error) throw fail();
+  const recent: Array<{ sourceUrl: string; topicFingerprint?: string }> = [];
+  for (const row of data ?? []) {
+    const discarded = row.api_context?.n8nState?.checkpoint?.discardedCandidates;
+    const oldDuplicate = typeof row.result_reason === "string" &&
+      /^(?:La oportunidad coincide con|Coincidencia determinística con)/.test(row.result_reason);
+    const values = [ ...(Array.isArray(discarded) ? discarded : []), ...(oldDuplicate ? [row.candidate] : []) ];
+    for (const raw of values) {
+      const sourceUrl = raw?.sourceUrl;
+      if (typeof sourceUrl !== "string" || sourceUrl.length > 1000 || !isSafeHttpsUrl(sourceUrl)) continue;
+      const topicFingerprint = typeof raw.topicFingerprint === "string" && raw.topicFingerprint.length <= 300 ? raw.topicFingerprint : undefined;
+      if (!recent.some(item => item.sourceUrl === sourceUrl && item.topicFingerprint === topicFingerprint))
+        recent.push({ sourceUrl, ...(topicFingerprint ? { topicFingerprint } : {}) });
+      if (recent.length === 6) return recent;
+    }
+  }
+  return recent;
+}
 
 export async function handleRadarN8n(runId: string, operation: string, payload: Record<string, unknown>) {
   const client = getSupabaseAdminClient();
@@ -32,8 +57,9 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
   if (operation === "claim") {
     if (row.status !== "dispatching") throw fail();
     const corpus = await loadRadarResearchCorpus(row.workspace_id);
+    const recentDuplicates = row.request_kind === "opportunity_search" ? await loadRecentRadarDuplicates(client, row.workspace_id) : [];
     const { data: claimed, error: claimError } = await client.rpc("reserve_radar_api_run", { target_run_id: runId,
-      requested_context: { corpus, model: config.model, requestedAt: new Date().toISOString(), n8nExecutionId: executionId, n8nRevision: 0, n8nIssuedCall: 0 }, pilot_max_runs: config.maxRuns });
+      requested_context: { corpus, recentDuplicates, model: config.model, requestedAt: new Date().toISOString(), n8nExecutionId: executionId, n8nRevision: 0, n8nIssuedCall: 0 }, pilot_max_runs: config.maxRuns });
     // Admission is a read-only precheck and can race. Only the identified last-guard
     // admission-limit failure is terminalized here; unrelated conflicts keep their cause.
     const limits: Record<string, string> = {
@@ -53,19 +79,19 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
     }
     if (claimError || !claimed) throw fail();
     return { version: 1, runId, executionId, deadline: claimed.api_deadline_at,
-      context: { preferences: claimed.api_context.preferences, corpus, model: config.model, requestedAt: claimed.api_context.requestedAt, requestKind: claimed.request_kind, requestPayload: claimed.request_payload }, responses: [] } satisfies RadarN8nState;
+      context: { preferences: claimed.api_context.preferences, corpus, recentDuplicates, model: config.model, requestedAt: claimed.api_context.requestedAt, requestKind: claimed.request_kind, requestPayload: claimed.request_payload }, responses: [] } satisfies RadarN8nState;
   }
   if (row.api_context.n8nExecutionId !== executionId) throw fail();
   if (operation === "finish" && row.api_context.n8nReceipt) return row.api_context.n8nReceipt;
   if (!["checkpoint", "prepare", "finish"].includes(operation)) throw fail();
   const saved: RadarN8nState = row.api_context.n8nState ?? {
     version: 1, runId, executionId, deadline: row.api_deadline_at,
-    context: { preferences: row.api_context.preferences, corpus: row.api_context.corpus, model: row.api_context.model, requestedAt: row.api_context.requestedAt, requestKind: row.request_kind, requestPayload: row.request_payload }, responses: [],
+    context: { preferences: row.api_context.preferences, corpus: row.api_context.corpus, recentDuplicates: row.api_context.recentDuplicates ?? [], model: row.api_context.model, requestedAt: row.api_context.requestedAt, requestKind: row.request_kind, requestPayload: row.request_payload }, responses: [],
   };
   const incoming = payload.state as RadarN8nState | undefined;
   if (!incoming || incoming.runId !== runId || !Array.isArray(incoming.responses)) throw fail();
   const responses = incoming.responses.map(sanitizeRadarResponse);
-  if (responses.length < saved.responses.length || responses.length > saved.responses.length + 1 || responses.length > 4 ||
+  if (responses.length < saved.responses.length || responses.length > saved.responses.length + 1 || responses.length > RADAR_API_LIMITS.callsPerRun ||
       radarPayloadDigest(responses.slice(0, saved.responses.length)) !== radarPayloadDigest(saved.responses)) throw fail();
   if (responses.length > saved.responses.length && row.api_context.n8nIssuedCall !== responses.length) throw fail();
   const usage = radarBudgetUsage(responses);
@@ -101,8 +127,8 @@ export async function handleRadarN8n(runId: string, operation: string, payload: 
   if (!["prepare", "finish"].includes(operation) || state.request) throw fail();
   let candidate: RadarRunCandidate | null = state.result?.candidate ?? state.checkpoint?.candidate ?? null;
   const gates: RadarGates = { ...editorialGates(state), cover: false, siteValidation: false,
-    budget: row.api_usage?.reserved === true && row.api_usage.budgetVersion === 2 && row.api_usage.reservedUsd === 1.5 && usage.telemetryComplete && usage.calls === row.api_context.n8nIssuedCall && usage.calls <= 4 && usage.estimatedUsd! <= row.api_usage.reservedUsd,
-    consistency: !state.error && responses.length <= 4 };
+    budget: row.api_usage?.reserved === true && row.api_usage.budgetVersion === 2 && row.api_usage.reservedUsd === 1.5 && usage.telemetryComplete && usage.calls === row.api_context.n8nIssuedCall && usage.calls <= RADAR_API_LIMITS.callsPerRun && usage.estimatedUsd! <= row.api_usage.reservedUsd,
+    consistency: !state.error && responses.length <= RADAR_API_LIMITS.callsPerRun };
   if (state.result?.status === "review_pending" && candidate) {
     try {
       candidate = { ...candidate, ...await prepareRadarPublicationCandidate(candidate) };
