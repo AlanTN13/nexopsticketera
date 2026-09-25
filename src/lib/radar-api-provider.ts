@@ -300,11 +300,13 @@ export async function executeRadarEditorial(input: {
     const manualUrl = record(input.context.requestPayload).sourceUrl;
     if (input.context.requestKind === "manual_note" && (typeof manualUrl !== "string" || !evidence!.some(source => canonicalizeRadarSourceUrl(source.url) === canonicalizeRadarSourceUrl(manualUrl))))
       return { status: "rejected", candidate, reason: "La investigación no contrastó la URL manual solicitada.", sources, usage };
-    const identity = requiredText(writer.output.topicIdentity, 300);
+    // Discovery owns the selected identity. Writer may cite or rephrase it,
+    // but only the canonical source URL may bind its draft to that selection.
+    const identity = selected?.topicIdentity ?? requiredText(writer.output.topicIdentity, 300);
     if (!identity) fail("INVALID_IDENTITY", "Falta la identidad del acontecimiento investigado.");
     sources = mergeRadarSources(sources, evidence!);
-    const topicFingerprint = `topic:${radarPayloadDigest(identity!.toLowerCase().normalize("NFKC").replace(/\s+/g, " "))}`;
-    if (selected && (canonicalizeRadarSourceUrl(candidate!.sourceUrl) !== canonicalizeRadarSourceUrl(selected.sourceUrl) || topicFingerprint !== selected.topicFingerprint))
+    const topicFingerprint = selected?.topicFingerprint ?? `topic:${radarPayloadDigest(identity!.toLowerCase().normalize("NFKC").replace(/\s+/g, " "))}`;
+    if (selected && canonicalizeRadarSourceUrl(candidate!.sourceUrl) !== canonicalizeRadarSourceUrl(selected.sourceUrl))
       return { status: "rejected", candidate, reason: "La redacción se apartó de la candidata verificada durante discovery.", sources, usage };
     const duplicate = findRadarCorpusMatch(input.context.corpus, { sourceUrl: candidate!.sourceUrl, topicFingerprint });
     if (duplicate) return { status: "no_publication", candidate,

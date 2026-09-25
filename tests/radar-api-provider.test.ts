@@ -33,6 +33,33 @@ describe("Radar API editorial contract", () => {
     expect(JSON.stringify(requests[0].text.format.schema)).not.toContain("bodyMarkdown");
     expect(requests[1].input).toContain(source.url);
   });
+  it("replays 3755c: preserves discovery-owned WAME identity despite writer citation and URL tracking drift",async()=>{
+    const wameUrl="https://support.gupshup.io/hc/en-us/articles/62505395379481-New-WhatsApp-Account-structure-WAME-WhatsApp-Account-Model-Evolution-2026";
+    const discoveryIdentity=`WhatsApp Business Platform — introducción del nuevo WhatsApp Account Model Evolution (WAME) — 23 Sep 2026. ([support.gupshup.io](${wameUrl}?utm_source=openai))`;
+    const writerIdentity="WhatsApp Business Platform — introducción del nuevo WhatsApp Account Model Evolution (WAME) — 23 Sep 2026";
+    const wameSource={name:"Gupshup Support",url:wameUrl,evidence:"El documento explica la nueva estructura WAME de cuentas de WhatsApp."};
+    const wameClaim={text:"WAME introduce una nueva estructura de cuentas.",sourceUrls:[wameUrl]};
+    const proposal={...newProposal,title:"Nueva estructura WAME",sourceName:wameSource.name,sourceUrl:wameUrl,topicIdentity:discoveryIdentity};
+    const draftOutput={...writer(),topicIdentity:writerIdentity,candidate:{...candidate,sourceName:wameSource.name,sourceUrl:`${wameUrl}?utm_source=openai`},sources:[wameSource],claims:[wameClaim]};
+    const qa={...review(),sources:[wameSource],checkedClaims:[{...wameClaim,supported:true}]};
+    const test=await run([discovery(proposal),draftOutput,{...qa,verdict:"FIX",reason:"Aclarar una frase."},draftOutput,qa],
+      {context:{requestKind:"opportunity_search",requestPayload:{}},responseSources:[wameSource]});
+    const result=await test.result;
+    expect(result.status).toBe("review_pending"); expect(result.usage.calls).toBe(5);
+    const requests=(test.fetchImpl.mock.calls as unknown as Array<[unknown,RequestInit]>).map(call=>JSON.parse(String(call[1].body)));
+    const selected=JSON.parse(String(requests[1].input).split("\n").at(-1)!).selected;
+    expect(selected.topicIdentity).toBe(discoveryIdentity);
+    expect(result.candidate?.topicFingerprint).toBe(selected.topicFingerprint);
+    expect(test.checkpoints.filter(point=>point.phase==="draft_ready").map(point=>point.candidate?.topicFingerprint)).toEqual([selected.topicFingerprint,selected.topicFingerprint]);
+  });
+  it("still rejects a writer draft attached to a different canonical source before QA",async()=>{
+    const wameUrl="https://support.gupshup.io/hc/en-us/articles/62505395379481-New-WhatsApp-Account-structure-WAME-WhatsApp-Account-Model-Evolution-2026";
+    const proposal={...newProposal,sourceUrl:wameUrl,topicIdentity:"WhatsApp Account Model Evolution — 23 Sep 2026"};
+    const attested={...source,url:wameUrl};
+    const test=await run([discovery(proposal),writer()],{context:{requestKind:"opportunity_search",requestPayload:{}},responseSources:[attested,source]});
+    expect((await test.result).reason).toBe("La redacción se apartó de la candidata verificada durante discovery.");
+    expect(test.fetchImpl).toHaveBeenCalledTimes(2);
+  });
   it("ends NO_PUBLICATION only after every bounded discovery candidate is a proven duplicate",async()=>{
     const tracked={...metaProposal,sourceUrl:`${metaSource.url}?utm_source=radar#top`};
     const test=await run([discovery(metaProposal,tracked)],{context:{requestKind:"opportunity_search",requestPayload:{},corpus:[metaPublication]},responseSources:[metaSource]});
