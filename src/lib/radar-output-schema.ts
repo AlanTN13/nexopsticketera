@@ -13,6 +13,14 @@ const candidate = object({
   title: text, topic: text, sourceName: text, sourceUrl: text, businessReasons: texts,
   draft: object({ headline: text, deck: text, bodyMarkdown: text }),
 });
+const discoveryCandidate = object({
+  title: text, topic: text, sourceName: text, sourceUrl: text,
+  businessReasons: texts, topicIdentity: text,
+});
+const discovery = object({
+  outcome: { type: "string", enum: ["CANDIDATES", "NO_PUBLICATION"] }, reason: text,
+  candidates: array(discoveryCandidate),
+});
 const writer = object({
   outcome: { type: "string", enum: ["CANDIDATE", "NO_PUBLICATION"] }, reason: text,
   candidate: { anyOf: [candidate, { type: "null" }] },
@@ -37,5 +45,6 @@ const review = object({
 
 export function radarOutputFormat(phase: string) {
   const isReview = phase === "review" || phase === "review_after_fix";
-  return { type: "json_schema", name: isReview ? "radar_review_v1" : "radar_writer_v1", strict: true, schema: isReview ? review : writer };
+  const isDiscovery = phase === "discovery";
+  return { type: "json_schema", name: isReview ? "radar_review_v1" : isDiscovery ? "radar_discovery_v1" : "radar_writer_v1", strict: true, schema: isReview ? review : isDiscovery ? discovery : writer };
 }
