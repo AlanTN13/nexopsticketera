@@ -10,6 +10,7 @@ import { hasModuleAccess } from "@/lib/authorization";
 import { formatRelativeDate, getTicketNextStep, translateHistoryMessage } from "@/lib/ticketing";
 import { CommentAttachments } from "@/components/comment-attachments";
 import { TicketContextLinks } from "@/components/ticket-context-links";
+import { TicketInitialAttachments } from "@/components/ticket-initial-attachments";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ ticketCode: string }>; searchParams: Promise<{ success?: string }> };
@@ -37,7 +38,7 @@ export default async function PortalTicketDetail({ params, searchParams }: Props
 
   const comments = getVisibleComments(db, actor, ticket.id);
   const history = getTicketHistory(db, ticket.id);
-  const attachments = db.attachments.filter((item) => item.ticketId === ticket.id && item.commentId === null);
+  const initialAttachments = db.attachments.filter((item) => item.ticketId === ticket.id && item.commentId === null);
 
   return <AppShell eyebrow="Portal NexOps · Soporte" title={`${ticket.code} · ${ticket.title}`} description="Conversación y seguimiento del caso." tone="light"
     navigation={navigation}
@@ -46,7 +47,7 @@ export default async function PortalTicketDetail({ params, searchParams }: Props
     {success ? <InlineNotice tone="success">{success}</InlineNotice> : null}
     <section className="rounded-xl border border-slate-200 bg-white px-4 py-3">
       <div className="flex flex-wrap items-center gap-2"><StatusPill status={ticket.status} /><PriorityPill priority={ticket.priority} /><span className="text-xs text-slate-600">Nivel de atención asignado por NexOps</span></div>
-      <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-4"><Meta label="Responsable de NexOps" value={ticket.assigneeName ?? "Aún no asignado"} /><Meta label="Última actualización" value={formatRelativeDate(ticket.updatedAt)} /><Meta label="Próximo paso" value={getTicketNextStep(ticket)} /><Meta label="Adjuntos iniciales" value={attachments.length ? `${attachments.length} archivo(s)` : "Sin adjuntos"} /></dl>
+      <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-4"><Meta label="Responsable de NexOps" value={ticket.assigneeName ?? "Aún no asignado"} /><Meta label="Última actualización" value={formatRelativeDate(ticket.updatedAt)} /><Meta label="Próximo paso" value={getTicketNextStep(ticket)} /><Meta label="Adjuntos iniciales" value={initialAttachments.length ? `${initialAttachments.length} archivo(s)` : "Sin adjuntos"} /></dl>
     </section>
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
       <SectionCard title="Conversación" description="Los mensajes aparecen del más antiguo al más reciente." tone="light">
@@ -54,7 +55,7 @@ export default async function PortalTicketDetail({ params, searchParams }: Props
         <div className="mt-4 border-t border-slate-200 pt-4">{hasModuleAccess(actor, company, "support", "operate") ? <AddCommentForm actor={actor} ticketId={ticket.id} returnPath={canonicalPath} label="Escribí un mensaje" submitLabel="Enviar mensaje" tone="light" /> : <EmptyState title="Sin permisos para comentar" detail="Podés seguir el ticket, pero no publicar mensajes." tone="light" />}</div>
       </SectionCard>
       <div className="grid content-start gap-3">
-        <SectionCard title="Descripción" tone="light"><p className="whitespace-pre-line text-sm leading-6 text-slate-700">{ticket.description}</p>{ticket.contextUrls.length ? <div className="mt-3 border-t border-slate-200 pt-3"><p className="mb-2 text-sm font-semibold text-slate-800">Enlaces aportados ({ticket.contextUrls.length})</p><TicketContextLinks urls={ticket.contextUrls} /></div> : null}{attachments.length ? <details className="mt-3 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-sm font-semibold text-slate-800">Archivos adjuntos ({attachments.length})</summary><div className="mt-2 grid gap-2">{attachments.map((item) => <a key={item.id} href={item.url} className="text-sm text-violet-700 underline">{item.name}</a>)}</div></details> : null}</SectionCard>
+        <SectionCard title="Descripción" tone="light"><p className="whitespace-pre-line text-sm leading-6 text-slate-700">{ticket.description}</p>{ticket.contextUrls.length ? <div className="mt-3 border-t border-slate-200 pt-3"><p className="mb-2 text-sm font-semibold text-slate-800">Enlaces aportados ({ticket.contextUrls.length})</p><TicketContextLinks urls={ticket.contextUrls} /></div> : null}<TicketInitialAttachments attachments={initialAttachments} /></SectionCard>
         <details className="rounded-xl border border-slate-200 bg-white"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-900">Historial ({history.length})</summary><div className="grid gap-2 border-t border-slate-200 p-3">{history.map((entry) => <div key={entry.id} className="text-sm text-slate-700"><p>{translateHistoryMessage(entry.message)}</p><TimelineDate value={entry.createdAt} tone="light" /></div>)}</div></details>
       </div>
     </div>
