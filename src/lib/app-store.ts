@@ -48,6 +48,7 @@ import {
   isRoleCompatibleWithCompany,
 } from "@/lib/ticketing";
 import { requireUserTitle } from "@/lib/validation";
+import { parseMetricsConnection } from "@/lib/metrics-connection";
 import { validateCommentImages, validateTicketImages } from "@/lib/comment-image-validation";
 import { getSafeTicketContextUrls, normalizeTicketContextUrls } from "@/lib/ticket-context-urls";
 import { parseKommoEmbedUrl, requireKommoEmbedUrl } from "@/lib/metrics-embed";
@@ -138,6 +139,8 @@ export type UpdateCompanyModulesInput = {
   radarWorkspaceId: string | null;
   radarSiteIntegrated: boolean;
   kommoEmbedUrl: string | null;
+  metricsAccountName?: string;
+  metricsMetaSheetUrl?: string;
 };
 
 export type UpdateUserModulePermissionsInput = {
@@ -1291,6 +1294,7 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
     throw new Error("No pudimos encontrar la empresa.");
   }
 
+  const metricsConnection = parseMetricsConnection(input.metricsAccountName, input.metricsMetaSheetUrl);
   const client = await getSupabaseServerClient();
   const kommoEmbedUrl =
     input.kommoEmbedUrl === null
@@ -1313,6 +1317,33 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
 
   assertNoError(error);
 
+  if (metricsConnection) {
+    const { data: configuration, error: configurationError } = await client
+      .from("company_modules")
+      .select("settings, updated_at")
+      .eq("company_id", company.id)
+      .eq("module", "metrics")
+      .single();
+    assertNoError(configurationError);
+    const current = assertData(configuration, "No pudimos consultar la configuración de Métricas.");
+    const currentSettings = current.settings && typeof current.settings === "object" && !Array.isArray(current.settings)
+      ? current.settings
+      : {};
+    const { data: updated, error: sourceError } = await client
+      .from("company_modules")
+      .update({
+        settings: { ...currentSettings, ...metricsConnection },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("company_id", company.id)
+      .eq("module", "metrics")
+      .eq("updated_at", current.updated_at)
+      .select("company_id")
+      .single();
+    assertNoError(sourceError);
+    assertData(updated, "La configuración cambió mientras guardabas. Recargá la empresa e intentá de nuevo.");
+  }
+
   return {
     ...company,
     modules: {
@@ -1326,6 +1357,7 @@ async function updateCompanyModulesInSupabase(input: UpdateCompanyModulesInput) 
         settings: {
           ...company.modules.metrics.settings,
           metaAdsEnabled: input.metaAdsEnabled,
+          ...metricsConnection,
         },
       },
       radar: {

@@ -598,6 +598,34 @@ export function UpdateCompanyModulesForm({
         </span>
       </label>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="metricsAccountName">
+          <span className="text-xs font-semibold text-slate-700">Cuenta de Meta Ads</span>
+          <input
+            id="metricsAccountName"
+            name="metricsAccountName"
+            maxLength={200}
+            defaultValue={company.modules.metrics.settings.accountName ?? ""}
+            className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+          />
+          <span className="text-xs leading-5 text-slate-600">Nombre exacto de la cuenta en la fuente compartida.</span>
+        </label>
+        <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="metricsMetaSheetUrl">
+          <span className="text-xs font-semibold text-slate-700">Fuente de Meta Ads</span>
+          <input
+            id="metricsMetaSheetUrl"
+            name="metricsMetaSheetUrl"
+            type="url"
+            inputMode="url"
+            maxLength={2048}
+            defaultValue={company.modules.metrics.settings.metaSheetUrl ?? ""}
+            placeholder="https://docs.google.com/spreadsheets/..."
+            className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+          />
+          <span className="text-xs leading-5 text-slate-600">CSV publicado de Google Sheets. Ambos campos vacíos conservan la configuración actual.</span>
+        </label>
+      </div>
+
       <label className="grid gap-2 text-sm text-[#5a5d7f]" htmlFor="kommoEmbedUrl">
         <span className="text-xs font-semibold text-slate-700">Reporte embebido de Kommo</span>
         <input

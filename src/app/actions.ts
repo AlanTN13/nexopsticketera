@@ -343,6 +343,8 @@ export async function updateCompanyModulesAction(formData: FormData): Promise<Mu
       radarWorkspaceId: getString(formData, "radarWorkspaceId") || null,
       radarSiteIntegrated: formData.has("radarSiteIntegrated"),
       kommoEmbedUrl: getString(formData, "kommoEmbedUrl"),
+      metricsAccountName: formData.has("metricsAccountName") ? getString(formData, "metricsAccountName") : undefined,
+      metricsMetaSheetUrl: formData.has("metricsMetaSheetUrl") ? getString(formData, "metricsMetaSheetUrl") : undefined,
     });
   } catch (error) {
     return {
