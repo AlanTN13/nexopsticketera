@@ -105,3 +105,17 @@ Estado vigente: **PARTIAL / BLOCKED_VERCEL_PROJECT_ACCESS**. Alan autorizó cont
 - Chrome de Alan no tenía sesión Vercel. GitHub devolvió account_not_linked; método habitual Google inició sesión alantn13 con equipo alan-fernandezs-projects vacío. El proyecto exacto sdnexops figura Not Found. No cambiar identidades ni permisos para eludirlo. Hace falta que Alan entre con la cuenta administradora correcta del proyecto.
 - Próxima ejecución autorizada cuando exista acceso: verificar proyecto/dominio y baseline productivo exacto; leer únicamente el perfil servidor, añadir Kenta conservando otros perfiles; redeploy de ese baseline; actualizar fuentes por UI existente y validar métricas/campañas Kenta, frescura y ausencia de URL compartida en respuestas cliente. Sin código nuevo ni cambios globales.
 - Invitación permanece como antes: disparada automáticamente al crear, sin reenvío y sin verificación independiente de entrega o login de Juan.
+# Corrección de avisos internos en Métricas — 2026-10-20
+
+EXECUTION PREFLIGHT / PATCH MODE
+- Rol/superficie: ejecución directa sobre AlanTN13/nexopsticketera, baseline main 95c01e5547c5656536e445cf6cd08bc416156c7e.
+- Autorización: Alan pide eliminar los avisos internos de permisos y Kommo sin configurar, señalados en image(5).png e image(6).png, de la pantalla del cliente.
+- Contexto: AGENTS.md 6e12519; Execution_Runtime_Contract.md c74478a; Execution_Decision_Framework_V1.md ca30a97; hogar Tiketera_NexOps.md 80236b6.
+- Budget/tipo/riesgo: S / T1 / R1; eliminar dos bloques visuales y ajustar la expectativa existente que los exige. Sin abstracciones ni dependencias nuevas.
+- Superficie permitida: portal/metricas/page.tsx, metrics-workspace.tsx, test Kommo existente y este checkpoint.
+- Congelado: métricas, filtros, campañas, canales configurados, permisos efectivos, datos, Auth, recuperación, configuración de fuentes y otras empresas.
+- Aceptación: ninguno de los dos avisos aparece; dashboard y filtros existentes se conservan. Validación focalizada de métricas, lint/typecheck/build y CI requerido; un smoke de la pantalla desplegada.
+- Producción/recuperación: el pedido de quitar los avisos de la herramienta del cliente autoriza publicar este delta visual una vez verificado; rollback al commit/deployment anterior conservando configuración servidor.
+- STOP: terminar al verificar el delta; bloqueo de acceso o fallo fuera de esta superficie se informa sin ampliar el alcance.
+
+Validación previa a publicación: 12 tests de métricas/Kommo aprobados; lint, typecheck y build aprobados con Node 22.19.0 / Next 16.3.3. Revisión React: sólo se retiran nodos informativos; sin cambios de hooks, carga, datos ni controles de los canales configurados. Publicación y smoke pendientes al momento de este commit.
