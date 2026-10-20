@@ -1,6 +1,6 @@
 # Alta Kenta — checkpoint 2026-10-20
 
-Estado vigente: **PARTIAL / BLOCKED_VERCEL_PROJECT_ACCESS**. Ver cierre de evaluación al final; la asociación de Kenta todavía no se aplicó.
+Estado vigente: **METRICS_LIVE_VERIFIED_ADMIN_SESSION**. Kenta muestra métricas de pauta reales en producción; ver resultado productivo al final. Invitación enviada por circuito automático; entrega/login cliente independientes pendientes.
 
 Estado al primer corte: **PARTIAL / BLOCKED_METRICS_SOURCE**. Empresa y administrador creados; Soporte y Métricas habilitados con permisos guardados. La pauta todavía no muestra datos porque no tiene fuentes configuradas. Invitación disparada por el circuito automático de alta; entrega al buzón y acceso real de Juan no comprobados.
 
@@ -105,3 +105,21 @@ Estado vigente: **PARTIAL / BLOCKED_VERCEL_PROJECT_ACCESS**. Alan autorizó cont
 - Chrome de Alan no tenía sesión Vercel. GitHub devolvió account_not_linked; método habitual Google inició sesión alantn13 con equipo alan-fernandezs-projects vacío. El proyecto exacto sdnexops figura Not Found. No cambiar identidades ni permisos para eludirlo. Hace falta que Alan entre con la cuenta administradora correcta del proyecto.
 - Próxima ejecución autorizada cuando exista acceso: verificar proyecto/dominio y baseline productivo exacto; leer únicamente el perfil servidor, añadir Kenta conservando otros perfiles; redeploy de ese baseline; actualizar fuentes por UI existente y validar métricas/campañas Kenta, frescura y ausencia de URL compartida en respuestas cliente. Sin código nuevo ni cambios globales.
 - Invitación permanece como antes: disparada automáticamente al crear, sin reenvío y sin verificación independiente de entrega o login de Juan.
+
+
+## Resultado productivo — 2026-10-20 20:52 UTC
+
+Estado vigente: **METRICS_LIVE_VERIFIED_ADMIN_SESSION**. El bloqueo de acceso quedó resuelto al usar la pestaña Vercel que Alan abrió en su Chrome perfil Joaquin, sesión sysnexops-7509. No se cambiaron identidades ni privilegios para eludir controles; se usó la sesión administrativa presentada por Alan.
+
+- Vercel proyecto sdnexops, dominio portal.nexopstech.com, repositorio AlanTN13/nexopsticketera verificados por UI. Baseline production READY dpl_97seZHqpmGomLng6KqJVDCfau4o6, SHA 95c01e5547c5656536e445cf6cd08bc416156c7e.
+- Variable existente PORTAL_METRICS_COMPANY_CONFIG tenía sólo punky/Starcred. Se conservó íntegro ese objeto y se añadió exclusivamente kenta: accountName Kenta Ads y metaSheetUrl CSV compartido ya confirmado. Target Production conservado, tipo Config conservado. UI confirmó Updated Environment Variable successfully. company_modules, permisos, Auth y RLS no modificados.
+- Redeploy del código del baseline seleccionado, sin Build Cache: [dpl_97Zy1kHLbUo32mHqi9j28AxCcdfQ](https://vercel.com/alan-fernandezs-projects-f6e1f457/sdnexops/97Zy1kHLbUo32mHqi9j28AxCcdfQ), SHA 95c01e5, Production, READY en 51s. Overview recargado confirmó ese deployment como Production Deployment y dominio portal.nexopstech.com.
+- Portal recargado mostró cuenta Kenta Ads y habilitó la primera actualización. Se ejecutó una actualización manual normal. Retorno company=6086ee9e-fa7c-4036-95c9-b92b60df8870&updated=1; mensaje Los datos se actualizaron correctamente. Última actualización 20/10/2026 17:50 ART; último dato 2026-10-20.
+- Últimos 30 días: inversión $367.887,42; impresiones 1.184.749; clics 5.497; conversaciones 41; CPC $66,93; CPM $310,52; CTR 0,46%; costo/conversación $8.972,86. Valores reportados por el dashboard, no verificación contable ni evaluación comercial.
+- Tabla de campañas: KENTA | TOFU | Reconocimiento | Sept26 ($292.334,56; 3 conversaciones) y Sorteos ($75.552,86; 38 conversaciones). Ranking muestra seis creativos propios de Kenta.
+- Lectura DOM actual: identificador de URL CSV compartida ausente del HTML del documento; texto de Starcred/Global Trip/OnlySellers/Punky ausente del body. Es comprobación focalizada de esta respuesta administrativa, complementa contrato/revisión DB; no es sesión negativa viva de Juan.
+- Captura completa inspeccionada: KPIs y tablas legibles y cargados. Ejes/tooltip del gráfico presentes; no se certifica el trazado de curvas de esa captura. No se amplió alcance con cambios del componente.
+- Invitación ya disparada por el alta automática, sin reenvío. Entrega independiente y activación/login personal de Juan siguen sin comprobarse. Kommo permanece sin reporte, fuera del alcance de pauta.
+- PR #93 continúa cerrada/sin merge; no código nuevo, migración, fuente global ni otras empresas modificadas. Recuperación de configuración: restaurar el JSON anterior sólo con punky/Starcred y redeploy compatible; no ejecutada.
+
+Este cierre documental se guarda en rama docs/kenta-dashboard-verification-20261020 para no generar otro rollout productivo sólo por el receipt. Hogar/Ultimo_Sync canónicos se reconcilian con enlace inmutable al receipt; frescura global ajena preservada.
