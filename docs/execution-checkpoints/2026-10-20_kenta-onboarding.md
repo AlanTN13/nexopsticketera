@@ -1,6 +1,8 @@
 # Alta Kenta — checkpoint 2026-10-20
 
-Estado: **PARTIAL / BLOCKED_METRICS_SOURCE**. Empresa y administrador creados; Soporte y Métricas habilitados con permisos guardados. La pauta todavía no muestra datos porque no tiene fuentes configuradas. Invitación disparada por el circuito automático de alta; entrega al buzón y acceso real de Juan no comprobados.
+Estado vigente: **PARTIAL / BLOCKED_METRICS_CONFIGURATION_WRITE**. La fuente compartida y la cuenta Kenta Ads ya fueron identificadas; falta guardar la asociación por una vía administrativa autorizada. El estado anterior de ausencia de fuente efectiva se conserva abajo como evidencia del primer intento.
+
+Estado al primer corte: **PARTIAL / BLOCKED_METRICS_SOURCE**. Empresa y administrador creados; Soporte y Métricas habilitados con permisos guardados. La pauta todavía no muestra datos porque no tiene fuentes configuradas. Invitación disparada por el circuito automático de alta; entrega al buzón y acceso real de Juan no comprobados.
 
 ## EXECUTION PREFLIGHT / diseño proporcional
 
@@ -66,3 +68,18 @@ Trabajo directo de Dirección, una sola alta y una actualización de fuentes; si
 Resultado parcial: onboarding configurado; no declarar Métricas operativo con datos de pauta. Próximo dato necesario: Google Sheet/CSV existente de Kenta y nombre exacto de cuenta; autorización adicional sólo si se requiere construir integración nueva. Entrega Resend requiere permiso de lectura al proveedor si se quiere comprobación independiente. Acceso Juan pendiente. Reconciliar este delta en el hogar NexOps y Ultimo_Sync sin graduar frescura global.
 
 [Historia previa del checkpoint](https://github.com/AlanTN13/nexopsticketera/blob/9f3754d9176a6adc0e33f877478a57a742833e94/docs/execution-checkpoints/2026-10-20_kenta-onboarding.md).
+
+
+## Corrección de fuente compartida — 2026-10-20
+
+- Alan aclaró “es el mismo de los otros amigoo”. Autoriza reutilizar la fuente existente para Kenta; no solicita ni autoriza una nueva integración o desarrollo.
+- Lectura focalizada de configuración/snapshots de Métricas confirmó que Global Trip y Punky consumen la misma fuente Meta Ads:
+  `https://docs.google.com/spreadsheets/d/e/2PACX-1vQPMAsRhvllZApkl8ODRQjCfOFKJBNQqzPi-pZm13VcJ3jVcj9Lu533NoW-iXzTItqjhA7hsu2MrW7E/pub?gid=822437464&single=true&output=csv`.
+- El snapshot compartido READY, fetched_at 2026-10-20T03:23:04.182Z, contiene registros de la cuenta exacta **Kenta Ads** y campañas KENTA | TOFU | Reconocimiento | Sept26. Se encontraron 137 líneas físicas que contienen Kenta; no se afirma que sean 137 registros CSV, porque hay campos multilínea.
+- La fuente de clientes del mismo documento (gid 111380031) también identifica client_name y account_name **Kenta Ads**. No se copiaron branding, estrategia, objetivos ni valores de otro cliente.
+- Configuración mínima identificada: conservar metrics.enabled=true y metaAdsEnabled=true; asociar únicamente accountName=Kenta Ads y metaSheetUrl al CSV compartido. No cambiar fuente global ni otras empresas. Fuente real no necesita nueva planilla de Alan.
+- Intento de guardar sólo esa configuración en la fila Kenta/metrics por el conector SQL fue rechazado con SQLSTATE 42501: “No autorizado para administrar la configuración del módulo.” La transacción no tuvo efectos. SELECT posterior confirmó settings={metaAdsEnabled:true}, sin asociación guardada.
+- Diagnóstico de la vía legítima: trigger private.enforce_access_control_write exige actor autorizado; no se alteró ni se suplantaron claims. El formulario Backoffice observado sólo tiene disponibilidad de productos, Meta Ads ON/OFF y Kommo/Radar. La función vigente set_company_modules acepta metaAdsEnabled y kommoEmbedUrl, pero no accountName/metaSheetUrl. No hay guardado de esas fuentes en ese circuito.
+- No se insistió con otra escritura privilegiada, JWT simulado, desactivación de trigger/RLS, credenciales ni ruta indirecta. Sin nuevo refresh equivalente: la configuración sigue igual y el resultado conocido seguiría sin fuente.
+- **Nuevo bloqueo preciso: guardado autorizado de la asociación**, no inexistencia de datos. Para ampliar el Backoffice con esa configuración se necesita autorizar un desarrollo acotado; el mandato inicial excluye desarrollos no solicitados. No se implementó código por este hallazgo.
+- Reconciliar el hogar y el índice: fuente y cuenta confirmadas; fuente efectiva aún sin vincular; pauta no operativa. Mail y acceso Juan conservan los límites del primer corte.
