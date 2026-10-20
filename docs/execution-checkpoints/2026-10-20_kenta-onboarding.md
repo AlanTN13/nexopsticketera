@@ -83,3 +83,13 @@ Resultado parcial: onboarding configurado; no declarar Métricas operativo con d
 - No se insistió con otra escritura privilegiada, JWT simulado, desactivación de trigger/RLS, credenciales ni ruta indirecta. Sin nuevo refresh equivalente: la configuración sigue igual y el resultado conocido seguiría sin fuente.
 - **Nuevo bloqueo preciso: guardado autorizado de la asociación**, no inexistencia de datos. Para ampliar el Backoffice con esa configuración se necesita autorizar un desarrollo acotado; el mandato inicial excluye desarrollos no solicitados. No se implementó código por este hallazgo.
 - Reconciliar el hogar y el índice: fuente y cuenta confirmadas; fuente efectiva aún sin vincular; pauta no operativa. Mail y acceso Juan conservan los límites del primer corte.
+
+
+## Comprobación con navegador administrativo de Alan — 2026-10-20
+
+- Nueva instrucción de Alan: “usa mi navegador dale”. Se identificó su Chrome perfil alan con Supabase autenticado, organización nexops y proyecto Ticketera nexops tfonsiurhjmllqaknhgh/main Production.
+- Se abrió Table Editor → public.company_modules mediante controles normales. La fila exacta company_id 6086ee9e-fa7c-4036-95c9-b92b60df8870 / module metrics tenía {metaAdsEnabled:true}.
+- Se preparó en el editor JSON únicamente metaAdsEnabled conservado + accountName Kenta Ads + metaSheetUrl compartida confirmada; un único intento de guardar por Enter.
+- La UI mostró temporalmente el JSON propuesto y luego volvió a {metaAdsEnabled:true}. SELECT independiente confirmó que no se persistió la asociación. No se capturó una nueva explicación de error del editor; no atribuir una excepción específica no observada en esta vía.
+- Esta fue una comprobación por la superficie administrativa normal expresamente solicitada, con sus controles activos. No se cambiaron rol de conexión, claims, RLS, triggers, claves ni privilegios; no se insistió ni se abrió otra vía privilegiada tras comprobar que tampoco persistía.
+- Estado conservado PARTIAL / BLOCKED_METRICS_CONFIGURATION_WRITE. Fuente y cuenta identificadas; falta guardado autorizado. Siguiente propuesta, todavía sin aprobar: ajuste puntual en Backoffice para guardar fuente/cuenta usando la sesión real del administrador. El mandato inicial prohíbe desarrollos no solicitados; no se implementó ese ajuste.
