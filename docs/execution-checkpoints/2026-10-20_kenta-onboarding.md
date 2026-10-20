@@ -1,6 +1,6 @@
 # Alta Kenta — checkpoint 2026-10-20
 
-Estado: **BLOCKED_EXTERNAL_SESSION**. No se ejecutaron altas, modificaciones de permisos ni envíos.
+Estado vigente: **BLOCKED_APPROVAL_AUTO_REVIEW**. Sesión interna disponible en Chrome; formulario preparado. No se ejecutaron altas, modificaciones de permisos ni envíos. El diagnóstico de sesión siguiente se conserva como historia.
 
 ## EXECUTION PREFLIGHT
 
@@ -54,3 +54,15 @@ Dirección trabaja directamente: una sola configuración secuencial por UI; dele
 ## EXECUTION RECEIPT / Knowledge Delta
 
 Resultado parcial: diagnóstico y bloqueo documentados; ninguna mutación productiva. No código, PR, merge, deploy, pruebas ejecutadas ni integración nueva. No cambios a otras empresas. Frescura global AlanOS no graduada. Siguiente dependencia: sesión interna normal; datos Ads exactos sólo si no existen en configuración productiva.
+
+
+## Continuación en Chrome del usuario — 2026-10-20
+
+- Nueva instrucción directa: “usa mi navegador metele tranca”. Chrome del usuario tiene sesión normal de Backoffice disponible; se usó la pestaña existente en /backoffice/companies. El bloqueo previo de sesión está resuelto.
+- Aplicadas las guías resolve-recipients, control-browser y Supabase. Identidad exacta tomada del mandato Kenta; no se amplió destinatario.
+- Revalidación SELECT productiva: companies [] para Kenta por nombre/slug, users [] por correo exacto o nombre Juan Alonso, auth_matches 0 por correo exacto. Consulta final exitosa contra public.users; una primera lectura utilizó el nombre de tabla incorrecto public.profiles y falló sin efectos.
+- Formulario Nueva empresa preparado: Kenta; industria “Pendiente de confirmar”; responsable Juan Alonso; Juan.alonso@bitek.com.ar; cargo Administrador cliente. No se inventó giro comercial.
+- Al intentar pulsar Crear empresa, la revisión automática rechazó la acción por riesgo: crea una empresa real y envía invitación con acceso a Juan, y el revisor no consideró las instrucciones directas actuales autorización suficientemente explícita de empresa, destinatario, rol y alcance. No se insistió ni se cambió a una escritura SQL/API para evitar el rechazo.
+- La UI después del rechazo sigue mostrando el formulario preparado, sin resultado de alta. No se creó empresa, cuenta ni envío en esta continuación. La pestaña quedó disponible para retomar.
+- Próximo gate: aprobación directa explícita de crear Kenta, asociar Juan Alonso (Juan.alonso@bitek.com.ar) como administrador cliente, habilitar únicamente Soporte/Métricas y enviar la invitación. Después continuar el flujo existente y validar persistencia, resultado de envío, fuente Ads y aislamiento.
+- Sin código, migraciones, deploys, cambios globales ni otras empresas. No se afirmaron pruebas vivas de Juan ni verificación efectiva de datos Ads. La documentación describe un bloqueo de autorización, no una falla del Portal.
