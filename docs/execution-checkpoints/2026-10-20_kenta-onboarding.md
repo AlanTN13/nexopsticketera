@@ -123,3 +123,12 @@ Estado vigente: **METRICS_LIVE_VERIFIED_ADMIN_SESSION**. El bloqueo de acceso qu
 - PR #93 continúa cerrada/sin merge; no código nuevo, migración, fuente global ni otras empresas modificadas. Recuperación de configuración: restaurar el JSON anterior sólo con punky/Starcred y redeploy compatible; no ejecutada.
 
 Este cierre documental se guarda en rama docs/kenta-dashboard-verification-20261020 para no generar otro rollout productivo sólo por el receipt. Hogar/Ultimo_Sync canónicos se reconcilian con enlace inmutable al receipt; frescura global ajena preservada.
+
+
+## Acceso con contraseña — preflight autorizado 2026-10-20
+
+En curso; todavía sin mutación al registrar este preflight. Alan ordenó conservar para después el fallo del enlace y asignar contraseña compleja al usuario existente; renovó instrucción “metete por supabase y asignala despues la cambia”.
+
+EXECUTION PREFLIGHT / DELIVERY DESIGN / PATCH MODE: Dirección de Ejecución; operación S/T4/R3. Baseline Juan/Kenta exacto user4c745c8c-df8c-4e9e-b47c-e13b80d130c0/company6086ee9e-fa7c-4036-95c9-b92b60df8870/emailjuan.alonso@bitek.com.ar/client_admin/statusinvited; email confirmado23:08:44Z y sin password. Contexto RuntimeContractc74478a3/DecisionFrameworkca30a979; código auth67a883d exige statusactive. Revisor independiente GO para API Admin oficial; confirma identidademail exacta, sin bloqueo/borrado/sesiones/tokens pendientes. Escritura SQL directa de credencial descartada por invariantes administradas por Auth. Credencial admin ya presente en .env.local del checkout conocido, proyecto URL exacto verificado sin exponer valor ni modificar repo.
+
+Delta autorizado: API auth.admin.updateUserById(id,{password}) con nueva contraseña CSPRNG (<72bytes, clases requeridas) y activación sólo del perfil público exacto; conservar empresa/rol/metadatos/módulos/permisos. Congelados: enlaces/callback/recovery, dashboard, configuración global/Auth/RLS, otras cuentas, código y despliegues. Verificación: lecturas API antes/después y autenticación aislada sin persistencia de sesión, comprobación de accesos; contraseña sólo para Alan, nunca Git/receipt. No es clave con vencimiento ni cambio forzado. Recuperación: ante fallo previo no mutar; ante resultado parcial registrar etapa y preferir completar activación exacta; no restaurar credencial desconocida ni recrear usuario. STOP ante identidad/proyecto distintos, credencial inválida/denegación, actividad concurrente o efectos fuera del alcance. Sin spoof de claims, nuevas claves ni infraestructura.
