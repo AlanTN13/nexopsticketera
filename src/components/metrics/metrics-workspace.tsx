@@ -112,11 +112,6 @@ export function MetricsWorkspace({
                 El período se controla dentro del reporte de Kommo.
               </p>
             ) : null}
-            {!kommoEmbedUrl ? (
-              <p className="max-w-md rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-                Kommo no está disponible para esta empresa porque todavía no tiene un reporte configurado.
-              </p>
-            ) : null}
           </div>
         </div>
       </div>

@@ -84,9 +84,7 @@ export default async function PortalMetricsPage({
       {hasManagedSources ? (
         hasModuleAccess(actor, company, "metrics", "operate") ? (
           <MetricsSyncControl sync={data.sync} action={refreshMetricsAction.bind(null, company.id)} />
-        ) : (
-          <InlineNotice tone="info">Tu nivel permite consultar Métricas, pero no actualizar sus fuentes.</InlineNotice>
-        )
+        ) : null
       ) : null}
 
       {updated === "1" ? (

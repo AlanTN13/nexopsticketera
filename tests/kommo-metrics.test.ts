@@ -87,7 +87,7 @@ describe("Kommo metrics embed", () => {
     expect(workspace).toContain("{kommoEmbedUrl ? (");
     expect(workspace).toContain('onClick={() => setChannel("kommo")}');
     expect(workspace).toContain('channel && channel !== "kommo" ? (');
-    expect(workspace).toContain("Kommo no está disponible para esta empresa");
+    expect(workspace).not.toContain("Kommo no está disponible para esta empresa");
     expect(embed).toContain("Reporte de Kommo no configurado");
     expect(embed).toContain("loading=\"lazy\"");
     expect(embed).toContain("allowFullScreen");
