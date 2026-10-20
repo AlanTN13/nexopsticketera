@@ -1,6 +1,6 @@
 # Alta Kenta — checkpoint 2026-10-20
 
-Estado vigente: **PARTIAL / BLOCKED_METRICS_CONFIGURATION_WRITE**. La fuente compartida y la cuenta Kenta Ads ya fueron identificadas; falta guardar la asociación por una vía administrativa autorizada. El estado anterior de ausencia de fuente efectiva se conserva abajo como evidencia del primer intento.
+Estado vigente: **PARTIAL / BLOCKED_VERCEL_PROJECT_ACCESS**. Ver cierre de evaluación al final; la asociación de Kenta todavía no se aplicó.
 
 Estado al primer corte: **PARTIAL / BLOCKED_METRICS_SOURCE**. Empresa y administrador creados; Soporte y Métricas habilitados con permisos guardados. La pauta todavía no muestra datos porque no tiene fuentes configuradas. Invitación disparada por el circuito automático de alta; entrega al buzón y acceso real de Juan no comprobados.
 
@@ -93,3 +93,15 @@ Resultado parcial: onboarding configurado; no declarar Métricas operativo con d
 - La UI mostró temporalmente el JSON propuesto y luego volvió a {metaAdsEnabled:true}. SELECT independiente confirmó que no se persistió la asociación. No se capturó una nueva explicación de error del editor; no atribuir una excepción específica no observada en esta vía.
 - Esta fue una comprobación por la superficie administrativa normal expresamente solicitada, con sus controles activos. No se cambiaron rol de conexión, claims, RLS, triggers, claves ni privilegios; no se insistió ni se abrió otra vía privilegiada tras comprobar que tampoco persistía.
 - Estado conservado PARTIAL / BLOCKED_METRICS_CONFIGURATION_WRITE. Fuente y cuenta identificadas; falta guardado autorizado. Siguiente propuesta, todavía sin aprobar: ajuste puntual en Backoffice para guardar fuente/cuenta usando la sesión real del administrador. El mandato inicial prohíbe desarrollos no solicitados; no se implementó ese ajuste.
+
+
+## Cierre de evaluación — 2026-10-20 20:44 UTC
+
+Estado vigente: **PARTIAL / BLOCKED_VERCEL_PROJECT_ACCESS**. Alan autorizó continuar (“bueno hacelo nomas”) para mostrar únicamente el dashboard existente. Fuente compartida y cuenta exacta Kenta Ads confirmadas; asociación productiva todavía NO aplicada, dashboard sin datos.
+
+- La propuesta de UI/código PR #93 fue preparada y luego rechazada por revisión independiente: UPDATE autenticado no permitido y URL de CSV compartido no debe guardarse en company_modules, legible por clientes. PR cerrada sin merge; no desplegar esa rama. Ninguna migración, RLS, Auth ni permiso fue alterado.
+- Vía existente revisada con dictamen independiente GO: PORTAL_METRICS_COMPANY_CONFIG, sólo servidor, añadir perfil kenta con accountName Kenta Ads y metaSheetUrl compartida, preservando las demás entradas. company_modules debe conservarse intacto. Snapshot/sync tienen RLS y carecen de SELECT/policies para anon/authenticated; el servidor filtra por empresa y cuenta exacta y no entrega URL/CSV crudo al cliente.
+- El conector Vercel enumera el equipo team_Dd84rleycBIFoY84LaXy5BYj / alan-fernandezs-projects-f6e1f457 pero no encuentra sdnexops; get_project y env devolvieron 404 y listado no contiene ese proyecto. No se leyó ni modificó ninguna variable.
+- Chrome de Alan no tenía sesión Vercel. GitHub devolvió account_not_linked; método habitual Google inició sesión alantn13 con equipo alan-fernandezs-projects vacío. El proyecto exacto sdnexops figura Not Found. No cambiar identidades ni permisos para eludirlo. Hace falta que Alan entre con la cuenta administradora correcta del proyecto.
+- Próxima ejecución autorizada cuando exista acceso: verificar proyecto/dominio y baseline productivo exacto; leer únicamente el perfil servidor, añadir Kenta conservando otros perfiles; redeploy de ese baseline; actualizar fuentes por UI existente y validar métricas/campañas Kenta, frescura y ausencia de URL compartida en respuestas cliente. Sin código nuevo ni cambios globales.
+- Invitación permanece como antes: disparada automáticamente al crear, sin reenvío y sin verificación independiente de entrega o login de Juan.
